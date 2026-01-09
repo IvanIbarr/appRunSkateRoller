@@ -114,6 +114,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+    
+    // Para react-native-video (reproducción de videos)
+    implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)

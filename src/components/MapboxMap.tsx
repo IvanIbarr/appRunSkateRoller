@@ -2,15 +2,25 @@ import React, {useEffect, useRef, useState} from 'react';
 import {View, Platform, ActivityIndicator, Text, StyleSheet, Alert} from 'react-native';
 import {MAPBOX_ACCESS_TOKEN, isExampleToken} from '../config/mapbox';
 
+interface Location {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+}
+
 interface MapboxMapProps {
   origin: string;
   destination: string;
+  currentLocation?: Location | null;
+  trackingPoints?: Location[];
   onRouteCalculate?: (route: {distance: number; duration: number; geometry: any}) => void;
 }
 
 export const MapboxMap: React.FC<MapboxMapProps> = ({
   origin,
   destination,
+  currentLocation,
+  trackingPoints = [],
   onRouteCalculate,
 }) => {
   const containerRef = useRef<any>(null);
@@ -24,6 +34,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
     }
 
     // Crear un div dinámicamente para el mapa
+    if (typeof document === 'undefined') return;
     const mapDiv = document.createElement('div');
     mapDiv.id = 'mapbox-map-container';
     mapDiv.style.width = '100%';
@@ -109,6 +120,130 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
       }
     };
   }, []);
+
+  // Efecto para actualizar ubicación actual y puntos de seguimiento
+  useEffect(() => {
+    if (!mapRef.current || Platform.OS !== 'web' || loading) return;
+
+    const mapboxgl = typeof window !== 'undefined' ? (window as any).mapboxgl : null;
+    if (!mapboxgl) return;
+
+    // Función para actualizar capas del mapa
+    const updateMapLayers = () => {
+      if (!mapRef.current || !mapRef.current.loaded) return;
+
+      // Actualizar marcador de ubicación actual
+      if (currentLocation) {
+        const sourceId = 'current-location';
+        const layerId = 'current-location-layer';
+        
+        // Eliminar marcador anterior si existe
+        if (mapRef.current.getLayer(layerId)) {
+          mapRef.current.removeLayer(layerId);
+        }
+        if (mapRef.current.getSource(sourceId)) {
+          mapRef.current.removeSource(sourceId);
+        }
+
+        // Agregar marcador de ubicación actual
+        mapRef.current.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [currentLocation.longitude, currentLocation.latitude],
+            },
+          },
+        });
+
+        mapRef.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-radius': 10,
+            'circle-color': '#FF3B30',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#FFF',
+          },
+        });
+
+        // Centrar mapa en ubicación actual
+        mapRef.current.flyTo({
+          center: [currentLocation.longitude, currentLocation.latitude],
+          zoom: 15,
+          duration: 1000,
+        });
+      }
+
+      // Actualizar línea de seguimiento
+      if (trackingPoints.length > 0) {
+        const trackingSourceId = 'tracking-path';
+        const trackingLayerId = 'tracking-path-layer';
+
+        // Eliminar capa anterior si existe
+        if (mapRef.current.getLayer(trackingLayerId)) {
+          mapRef.current.removeLayer(trackingLayerId);
+        }
+        if (mapRef.current.getSource(trackingSourceId)) {
+          mapRef.current.removeSource(trackingSourceId);
+        }
+
+        // Crear línea con todos los puntos
+        const coordinates = trackingPoints.map(point => [
+          point.longitude,
+          point.latitude,
+        ]);
+
+        if (coordinates.length > 1) {
+          mapRef.current.addSource(trackingSourceId, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates,
+              },
+            },
+          });
+
+          mapRef.current.addLayer({
+            id: trackingLayerId,
+            type: 'line',
+            source: trackingSourceId,
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#34C759',
+              'line-width': 4,
+              'line-opacity': 0.8,
+            },
+          });
+        }
+      }
+    };
+
+    // Esperar a que el mapa esté cargado
+    if (!mapRef.current.loaded) {
+      const checkLoaded = setInterval(() => {
+        if (mapRef.current && mapRef.current.loaded) {
+          clearInterval(checkLoaded);
+          // Ejecutar actualización después de que el mapa esté listo
+          setTimeout(() => {
+            updateMapLayers();
+          }, 100);
+        }
+      }, 100);
+
+      setTimeout(() => clearInterval(checkLoaded), 5000);
+      return;
+    }
+
+    updateMapLayers();
+  }, [currentLocation, trackingPoints, loading]);
 
   useEffect(() => {
     if (!mapRef.current || !origin || !destination || Platform.OS !== 'web') return;
@@ -268,6 +403,15 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
           alert(errorMessage);
         } else {
           Alert.alert('Error', errorMessage);
+        }
+        // Asegurar que se notifique que terminó (con error) para desactivar el loading
+        if (onRouteCalculate) {
+          // Pasar null o datos vacíos para indicar error
+          onRouteCalculate({
+            distance: 0,
+            duration: 0,
+            geometry: null,
+          });
         }
       }
     };

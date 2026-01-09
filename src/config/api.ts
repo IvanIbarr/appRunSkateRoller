@@ -55,6 +55,16 @@ export const API_ENDPOINTS = {
     AGREGAR: `${API_BASE_URL}/alias/agregar`,
     CAMBIAR: `${API_BASE_URL}/alias/cambiar`,
   },
+  SEGUIMIENTO: {
+    CREATE: `${API_BASE_URL}/seguimiento/create`,
+    GET: (id: string) => `${API_BASE_URL}/seguimiento/${id}`,
+    ACTIVE: `${API_BASE_URL}/seguimiento/active`,
+    HISTORY: `${API_BASE_URL}/seguimiento/history`,
+    STATS: (id: string) => `${API_BASE_URL}/seguimiento/stats/${id}`,
+    USER_STATS: `${API_BASE_URL}/seguimiento/user-stats`,
+    FINISH: (id: string) => `${API_BASE_URL}/seguimiento/${id}/finish`,
+    ADD_LOCATION_POINT: `${API_BASE_URL}/seguimiento/location-point`,
+  },
 };
 
 // Avatar endpoints

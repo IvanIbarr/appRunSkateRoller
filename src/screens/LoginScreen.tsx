@@ -90,46 +90,48 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
             />
           </View>
 
-          {/* Formulario */}
+          {/* Formulario con fondo semitransparente */}
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Input
-                label="Email"
-                placeholder="correo@ejemplo.com"
-                value={credentials.email}
-                onChangeText={text =>
-                  setCredentials({...credentials, email: text})
-                }
-                error={errors.email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                labelStyle={styles.labelWhite}
+            <View style={styles.formCard}>
+              <View style={styles.inputContainer}>
+                <Input
+                  label="Email"
+                  placeholder="correo@ejemplo.com"
+                  value={credentials.email}
+                  onChangeText={text =>
+                    setCredentials({...credentials, email: text})
+                  }
+                  error={errors.email}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  labelStyle={styles.labelWhite}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Input
+                  label="Contraseña"
+                  placeholder="Ingresa tu contraseña"
+                  value={credentials.password}
+                  onChangeText={text =>
+                    setCredentials({...credentials, password: text})
+                  }
+                  error={errors.password}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  labelStyle={styles.labelWhite}
+                />
+              </View>
+
+              <Button
+                title="Iniciar Sesión"
+                onPress={handleLogin}
+                loading={loading}
+                style={styles.loginButton}
+                textStyle={styles.loginButtonText}
               />
             </View>
-
-            <View style={styles.inputContainer}>
-              <Input
-                label="Contraseña"
-                placeholder="Ingresa tu contraseña"
-                value={credentials.password}
-                onChangeText={text =>
-                  setCredentials({...credentials, password: text})
-                }
-                error={errors.password}
-                secureTextEntry
-                autoCapitalize="none"
-                labelStyle={styles.labelWhite}
-              />
-            </View>
-
-            <Button
-              title="Iniciar Sesión"
-              onPress={handleLogin}
-              loading={loading}
-              style={styles.loginButton}
-              textStyle={styles.loginButtonText}
-            />
           </View>
 
           {/* Leyenda de registro fuera del formulario */}
@@ -199,12 +201,23 @@ const styles = StyleSheet.create({
   },
   form: {
     zIndex: 10,
-    // Sin fondo para que resalte el logo de fondo
     padding: 24,
-    marginTop: 80, // Espacio desde el título
+    marginTop: 80,
     marginBottom: 20,
-    alignItems: 'center', // Centrar los campos
+    alignItems: 'center',
     width: '100%',
+  },
+  formCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
   inputContainer: {
     width: '100%',
@@ -219,35 +232,50 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   loginButton: {
-    marginTop: 8,
-    paddingVertical: 10, // Reducido pero más legible
-    paddingHorizontal: 18, // Reducido pero más legible
-    minHeight: 35, // Reducido pero más legible
-    alignSelf: 'center', // Centrar el botón
+    marginTop: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    minHeight: 52,
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   loginButtonText: {
-    fontSize: 13, // Tamaño más legible
+    fontSize: 16,
+    fontWeight: '600',
   },
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 24,
     zIndex: 10,
-    // Sin fondo para que resalte el logo de fondo
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    borderRadius: 20,
     alignSelf: 'center',
     minWidth: 280,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   registerText: {
     fontSize: 14,
-    color: '#000',
-    fontWeight: 'bold',
+    color: '#333',
+    fontWeight: '500',
   },
   registerLink: {
     fontSize: 14,
-    color: '#FFF',
+    color: '#007AFF',
     fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
 });
 
