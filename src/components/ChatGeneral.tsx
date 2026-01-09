@@ -10,8 +10,12 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import {EmojiPicker} from './EmojiPicker';
+import {AttachmentPicker, Attachment} from './AttachmentPicker';
+import {AttachmentPreview} from './AttachmentPreview';
+import {ChatAttachment} from './ChatAttachment';
 import chatService, {Message} from '../services/chatService';
 
 interface ChatGeneralProps {
@@ -29,6 +33,7 @@ export const ChatGeneral: React.FC<ChatGeneralProps> = ({
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMessageDateRef = useRef<Date | null>(null);
@@ -116,12 +121,21 @@ export const ChatGeneral: React.FC<ChatGeneralProps> = ({
   };
 
   const handleSendMessage = async () => {
-    if (inputText.trim()) {
+    if (inputText.trim() || attachment) {
       const textToSend = inputText.trim();
+      const attachmentToSend = attachment;
       setInputText('');
+      setAttachment(null);
       
       try {
-        const response = await chatService.createMessage('general', textToSend);
+        const response = await chatService.createMessage(
+          'general',
+          textToSend,
+          attachmentToSend ? {
+            uri: attachmentToSend.uri,
+            type: attachmentToSend.type,
+          } : undefined,
+        );
         if (response.success) {
           // Recargar mensajes para obtener el último (sin mostrar loading)
           await loadMessages(false);
@@ -132,11 +146,13 @@ export const ChatGeneral: React.FC<ChatGeneralProps> = ({
         } else {
           Alert.alert('Error', response.error || 'No se pudo enviar el mensaje');
           setInputText(textToSend); // Restaurar texto si falla
+          setAttachment(attachmentToSend); // Restaurar adjunto si falla
         }
       } catch (error) {
         console.error('Error al enviar mensaje:', error);
         Alert.alert('Error', 'No se pudo enviar el mensaje');
         setInputText(textToSend); // Restaurar texto si falla
+        setAttachment(attachmentToSend); // Restaurar adjunto si falla
       }
     }
   };
@@ -166,19 +182,37 @@ export const ChatGeneral: React.FC<ChatGeneralProps> = ({
           isSystemMessage && styles.systemMessageContainer,
         ]}>
         {!isSystemMessage && (
-          <Text style={styles.userName}>
+          <Text
+            style={[
+              styles.userName,
+              isOwnMessage && styles.ownUserName,
+            ]}>
             {isOwnMessage ? 'Tú' : item.userName}
+          </Text>
+        )}
+        {item.attachmentUrl && item.attachmentType && (
+          <ChatAttachment
+            attachmentUrl={item.attachmentUrl}
+            attachmentType={item.attachmentType}
+          />
+        )}
+        {item.text && (
+          <Text
+            style={[
+              styles.messageText,
+              isOwnMessage && styles.ownMessageText,
+              isSystemMessage && styles.systemMessageText,
+            ]}>
+            {item.text}
           </Text>
         )}
         <Text
           style={[
-            styles.messageText,
-            isOwnMessage && styles.ownMessageText,
-            isSystemMessage && styles.systemMessageText,
+            styles.timestamp,
+            isOwnMessage && styles.ownTimestamp,
           ]}>
-          {item.text}
+          {formatTime(item.timestamp)}
         </Text>
-        <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
       </View>
     );
   };
@@ -205,7 +239,19 @@ export const ChatGeneral: React.FC<ChatGeneralProps> = ({
         contentContainerStyle={styles.messagesList}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({animated: true})}
       />
+      {/* Vista previa de adjunto */}
+      {attachment && (
+        <View style={styles.attachmentPreviewContainer}>
+          <AttachmentPreview
+            attachment={attachment}
+            onRemove={() => setAttachment(null)}
+            compact
+          />
+        </View>
+      )}
+
       <View style={styles.inputContainer}>
+        <AttachmentPicker onAttachmentSelected={setAttachment} />
         <TouchableOpacity
           style={styles.emojiButton}
           onPress={() => setShowEmojiPicker(true)}>
@@ -221,9 +267,12 @@ export const ChatGeneral: React.FC<ChatGeneralProps> = ({
           maxLength={1000}
         />
         <TouchableOpacity
-          style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+          style={[
+            styles.sendButton,
+            !inputText.trim() && !attachment && styles.sendButtonDisabled,
+          ]}
           onPress={handleSendMessage}
-          disabled={!inputText.trim()}>
+          disabled={!inputText.trim() && !attachment}>
           <Text style={styles.sendButtonText}>Enviar</Text>
         </TouchableOpacity>
       </View>
@@ -303,10 +352,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
+  ownUserName: {
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
   timestamp: {
     fontSize: 10,
     color: '#999',
     alignSelf: 'flex-end',
+  },
+  ownTimestamp: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  attachmentPreviewContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
   },
   inputContainer: {
     flexDirection: 'row',

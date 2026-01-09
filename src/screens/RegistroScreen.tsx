@@ -260,18 +260,19 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
             <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
           </View>
 
-          {/* Formulario */}
+          {/* Formulario con fondo semitransparente */}
           <View style={styles.form}>
-            <Input
-              label={t('register.email')}
-              placeholder="correo@ejemplo.com"
-              value={formData.email}
-              onChangeText={text => setFormData({...formData, email: text})}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+            <View style={styles.formCard}>
+              <Input
+                label={t('register.email')}
+                placeholder="correo@ejemplo.com"
+                value={formData.email}
+                onChangeText={text => setFormData({...formData, email: text})}
+                error={errors.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
 
             {/* Campo de Alias */}
             <View style={styles.aliasSection}>
@@ -523,20 +524,21 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            <Button
-              title={t('register.create')}
-              onPress={handleRegistro}
-              loading={loading}
-              style={styles.registroButton}
-            />
+              <Button
+                title={t('register.create')}
+                onPress={handleRegistro}
+                loading={loading}
+                style={styles.registroButton}
+              />
 
-            <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>{t('register.login')} </Text>
-              <Text
-                style={styles.loginLink}
-                onPress={() => navigation.goBack()}>
-                {t('register.loginLink')}
-              </Text>
+              <View style={styles.loginContainer}>
+                <Text style={styles.loginText}>{t('register.login')} </Text>
+                <Text
+                  style={styles.loginLink}
+                  onPress={() => navigation.goBack()}>
+                  {t('register.loginLink')}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -606,6 +608,18 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+    width: '100%',
+  },
+  formCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
   pickerContainer: {
     marginBottom: 20,
@@ -622,17 +636,24 @@ const styles = StyleSheet.create({
   },
   sexoButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#DDD',
     backgroundColor: '#FFF',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sexoButtonActive: {
     borderColor: '#007AFF',
     backgroundColor: '#E3F2FD',
+    shadowColor: '#007AFF',
+    shadowOpacity: 0.2,
   },
   sexoButtonText: {
     fontSize: 14,
@@ -648,17 +669,24 @@ const styles = StyleSheet.create({
   },
   nacionalidadButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#DDD',
     backgroundColor: '#FFF',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   nacionalidadButtonActive: {
     borderColor: '#007AFF',
     backgroundColor: '#E3F2FD',
+    shadowColor: '#007AFF',
+    shadowOpacity: 0.2,
   },
   nacionalidadButtonText: {
     fontSize: 14,
@@ -672,17 +700,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   perfilButton: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#DDD',
     backgroundColor: '#FFF',
     alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   perfilButtonActive: {
     borderColor: '#007AFF',
     backgroundColor: '#E3F2FD',
+    shadowColor: '#007AFF',
+    shadowOpacity: 0.2,
   },
   perfilButtonText: {
     fontSize: 14,
@@ -693,7 +729,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   registroButton: {
-    marginTop: 8,
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   loginContainer: {
     flexDirection: 'row',

@@ -17,6 +17,7 @@ import {CambiarAliasScreen} from '../screens/CambiarAliasScreen';
 import {IntegrantesGrupoScreen} from '../screens/IntegrantesGrupoScreen';
 import {CrearEventoScreen} from '../screens/CrearEventoScreen';
 import {VistaPreviaEventoScreen} from '../screens/VistaPreviaEventoScreen';
+import {SeguimientoCompartidoScreen} from '../screens/SeguimientoCompartidoScreen';
 import {LanguageProvider} from '../contexts/LanguageContext';
 import authService from '../services/authService';
 
@@ -44,6 +45,9 @@ export type RootStackParamList = {
     nivel: string;
     logoGrupo: string | null;
     lugarDestino: string | null;
+  };
+  SeguimientoCompartido: {
+    seguimientoId: string;
   };
 };
 
@@ -120,6 +124,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="IntegrantesGrupo" component={IntegrantesGrupoScreen} />
             <Stack.Screen name="CrearEvento" component={CrearEventoScreen} />
             <Stack.Screen name="VistaPreviaEvento" component={VistaPreviaEventoScreen} />
+            <Stack.Screen name="SeguimientoCompartido" component={SeguimientoCompartidoScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </LanguageProvider>

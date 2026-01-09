@@ -8,6 +8,8 @@ export interface Message {
   userName: string;
   timestamp: Date | string;
   chatType?: string;
+  attachmentUrl?: string | null;
+  attachmentType?: 'image' | 'video' | null;
 }
 
 export interface ChatResponse {
@@ -42,14 +44,23 @@ class ChatService {
   async createMessage(
     chatType: 'general' | 'staff',
     text: string,
+    attachment?: {uri: string; type: 'image' | 'video'},
   ): Promise<ChatResponse> {
     try {
+      const payload: any = {
+        chatType,
+        text: text || '',
+      };
+
+      // Si hay adjunto, incluir la información
+      if (attachment) {
+        payload.attachment = attachment.uri; // Base64 o URL
+        payload.attachmentType = attachment.type;
+      }
+
       const response = await apiService.post<ChatResponse>(
         API_ENDPOINTS.CHAT.CREATE_MESSAGE,
-        {
-          chatType,
-          text,
-        },
+        payload,
       );
       return response;
     } catch (error) {

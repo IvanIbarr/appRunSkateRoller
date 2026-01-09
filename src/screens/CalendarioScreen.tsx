@@ -883,32 +883,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pageTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 31,
+    fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 2,
-    letterSpacing: 0.5,
-    ...Platform.select({
-      web: {
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      },
-      ios: {
-        fontFamily: 'System',
-        fontWeight: '700',
-      },
-    }),
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: {width: 2, height: 2},
+    textShadowRadius: 4,
   },
   pageSubtitle: {
-    fontSize: 12,
-    color: '#8B9DC3',
-    ...Platform.select({
-      web: {
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      },
-      ios: {
-        fontFamily: 'System',
-      },
-    }),
+    fontSize: 21,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
   },
   addEventButton: {
     width: 44,

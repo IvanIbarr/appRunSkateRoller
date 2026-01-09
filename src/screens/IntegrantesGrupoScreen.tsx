@@ -82,12 +82,26 @@ export const IntegrantesGrupoScreen: React.FC<IntegrantesGrupoScreenProps> = ({
 
   const loadNombreGrupo = async () => {
     try {
+      console.log('[IntegrantesGrupoScreen] Cargando nombre del grupo...');
       const response = await grupoService.getNombreGrupo();
-      if (response.success && response.nombreGrupo) {
-        setNombreGrupo(response.nombreGrupo);
+      console.log('[IntegrantesGrupoScreen] Respuesta completa:', JSON.stringify(response, null, 2));
+      console.log('[IntegrantesGrupoScreen] response.success:', response.success);
+      console.log('[IntegrantesGrupoScreen] response.nombreGrupo:', response.nombreGrupo);
+      
+      if (response.success) {
+        const nombre = response.nombreGrupo;
+        console.log('[IntegrantesGrupoScreen] Nombre del grupo a mostrar:', nombre);
+        // Mostrar el nombre del grupo incluso si es null o string vacío
+        // para que el usuario sepa que está en un grupo sin nombre
+        setNombreGrupo(nombre || null);
+        console.log('[IntegrantesGrupoScreen] Estado nombreGrupo actualizado a:', nombre || null);
+      } else {
+        console.warn('[IntegrantesGrupoScreen] getNombreGrupo no fue exitoso:', response.error);
+        setNombreGrupo(null);
       }
     } catch (error) {
-      console.error('Error al cargar nombre del grupo:', error);
+      console.error('[IntegrantesGrupoScreen] Error al cargar nombre del grupo:', error);
+      console.error('[IntegrantesGrupoScreen] Detalles del error:', error instanceof Error ? error.message : String(error));
       // Si hay error, no mostrar nombre del grupo
       setNombreGrupo(null);
     }
@@ -256,7 +270,11 @@ export const IntegrantesGrupoScreen: React.FC<IntegrantesGrupoScreenProps> = ({
         <ScrollView
           style={styles.contentScroll}
           contentContainerStyle={styles.content}>
-          <Text style={styles.title}>Integrantes del Grupo</Text>
+          <Text style={styles.title}>
+            {nombreGrupo 
+              ? `Integrantes del Grupo ${nombreGrupo}`
+              : 'Integrantes del Grupo'}
+          </Text>
           <Text style={styles.subtitle}>
             {nombreGrupo 
               ? `Lista de miembros del grupo ${nombreGrupo}`
@@ -705,13 +723,18 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   menuButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#007AFF',
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: '#007AFF',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   menuButtonText: {
     color: '#FFF',

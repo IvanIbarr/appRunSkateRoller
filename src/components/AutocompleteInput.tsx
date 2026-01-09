@@ -10,11 +10,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {MAPBOX_ACCESS_TOKEN, isExampleToken} from '../config/mapbox';
+import locationService, {Location} from '../services/locationService';
 
 interface Suggestion {
   id: string;
   place_name: string;
   center: [number, number]; // [longitud, latitud]
+  text?: string; // Nombre corto del lugar
+  place_type?: string[]; // Tipos de lugar
 }
 
 interface AutocompleteInputProps {
@@ -34,7 +37,36 @@ const PLACE_CATEGORIES = [
   {id: 'parque', label: '🌳 Parque', query: 'parque'},
   {id: 'skatepark', label: '🛹 Skatepark', query: 'skatepark'},
   {id: 'museo', label: '🏛️ Museo', query: 'museo'},
+  {id: 'cine', label: '🎬 Cine', query: 'cine'},
+  {id: 'plaza', label: '🏢 Plaza', query: 'plaza'},
 ];
+
+/**
+ * Calcula la distancia entre dos puntos GPS usando la fórmula de Haversine
+ * @param lat1 Latitud del primer punto
+ * @param lon1 Longitud del primer punto
+ * @param lat2 Latitud del segundo punto
+ * @param lon2 Longitud del segundo punto
+ * @returns Distancia en metros
+ */
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371000; // Radio de la Tierra en metros
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   label,
@@ -52,8 +84,24 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<Location | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Obtener ubicación del usuario al montar el componente
+  useEffect(() => {
+    const getLocation = async () => {
+      try {
+        const location = await locationService.getCurrentLocation();
+        if (location) {
+          setUserLocation(location);
+        }
+      } catch (error) {
+        console.log('No se pudo obtener ubicación, usando ubicación por defecto');
+      }
+    };
+    getLocation();
+  }, []);
 
   useEffect(() => {
     // Limpiar timeout anterior
@@ -129,178 +177,46 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         return;
       }
 
-      // Construir query con categoría si existe
-      let searchQuery = query;
-      const lowerQuery = query.toLowerCase();
+      // Construir query de búsqueda - enfoque simplificado similar a Google Maps
+      let searchQuery = query.trim();
+      const lowerQuery = query.toLowerCase().trim();
       
-      // Verificar si ya incluye "Ciudad de México", "CDMX" o "Mexico City"
-      const hasCityContext = 
-        lowerQuery.includes('ciudad de méxico') || 
-        lowerQuery.includes('cdmx') || 
-        lowerQuery.includes('mexico city') ||
-        lowerQuery.includes('distrito federal') ||
-        lowerQuery.includes('df');
-      
+      // Si hay una categoría, agregarla al query
       if (category) {
         const categoryObj = PLACE_CATEGORIES.find(cat => cat.id === category);
         if (categoryObj) {
-          // Si el query ya contiene el término de la categoría, usar solo el query
           const lowerCategoryQuery = categoryObj.query.toLowerCase();
-          if (lowerQuery.includes(lowerCategoryQuery)) {
-            searchQuery = query.trim();
-          } else {
-            searchQuery = query.trim() ? `${categoryObj.query} ${query}`.trim() : categoryObj.query;
-          }
-          // Agregar contexto de Ciudad de México si no está presente
-          if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-            searchQuery = `${searchQuery} Ciudad de México`.trim();
-          }
-        }
-      } else {
-        // Detectar búsquedas de estaciones de metro (varios formatos)
-        // Formato 1: "metro [nombre]" o "metro pantitlan"
-        const metroMatch = query.trim().match(/^metro\s+(.+)$/i);
-        
-        if (metroMatch) {
-          // Usuario escribió "metro [nombre]" (ej: "metro mixcoac", "metro pantitlan")
-          const stationName = metroMatch[1].trim();
-          searchQuery = `Estación Metro ${stationName} Ciudad de México`.trim();
-        } else if (lowerQuery.includes('metro') || lowerQuery.includes('estación')) {
-          // Si contiene "metro" o "estación" pero no en formato "metro [nombre]"
-          if (!lowerQuery.includes('estación metro')) {
-            searchQuery = `estación metro ${query.replace(/(metro|estación)/gi, '').trim()}`.trim();
-          } else {
-            searchQuery = query.trim();
-          }
-          // Agregar contexto de Ciudad de México si no está presente
-          if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-            searchQuery = `${searchQuery} Ciudad de México`.trim();
-          }
-        } else if (lowerQuery.includes('skatepark') || lowerQuery.includes('skate park') || lowerQuery.includes('skate')) {
-          // Detectar si el usuario busca "skatepark [nombre]" o "[nombre] skatepark"
-          const skateparkMatch = query.trim().match(/^(?:skate\s*)?park\s+(.+)$/i) || 
-                                 query.trim().match(/^skatepark\s+(.+)$/i) ||
-                                 query.trim().match(/^skate\s+(.+)$/i);
-          
-          if (skateparkMatch) {
-            // Usuario escribió "skatepark [nombre]" o "skate park [nombre]", buscar específicamente
-            const parkName = skateparkMatch[1].trim();
-            searchQuery = `Skate Park ${parkName} Ciudad de México`.trim();
-          } else if (lowerQuery.includes('skatepark') || lowerQuery.includes('skate park')) {
-            // Si ya contiene "skatepark" o "skate park", mantenerlo y agregar contexto
-            searchQuery = query.trim();
-            if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-              searchQuery = `${searchQuery} Ciudad de México`.trim();
-            }
-          } else {
-            // Si solo contiene "skate", agregar "park" y contexto
-            searchQuery = `skatepark ${query.replace(/skate/gi, '').trim()}`.trim();
-            if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-              searchQuery = `${searchQuery} Ciudad de México`.trim();
-            }
-          }
-        } else if (lowerQuery.includes('museo') && !lowerQuery.startsWith('museo')) {
-          searchQuery = `museo ${query.replace(/museo/gi, '').trim()}`.trim();
-        } else if (lowerQuery.includes('parque') && !lowerQuery.startsWith('parque')) {
-          searchQuery = `parque ${query.replace(/parque/gi, '').trim()}`.trim();
-        } else if (lowerQuery.includes('bellas artes')) {
-          // Para "Bellas Artes", buscar específicamente el Palacio de Bellas Artes en Centro Histórico
-          if (!lowerQuery.includes('palacio')) {
-            // Si no menciona "palacio", buscar específicamente el Palacio de Bellas Artes
-            searchQuery = 'Palacio de Bellas Artes, Centro Histórico, Ciudad de México';
-          } else {
-            // Si ya menciona palacio, mantener y agregar contexto
-            searchQuery = query.trim();
-            if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-              searchQuery = `${searchQuery} Centro Histórico Ciudad de México`.trim();
-            }
-          }
-        } else {
-          // Detectar lugares comunes y coloquiales
-          const trimmedQuery = query.trim();
-          
-          // Zócalo (varias formas)
-          if (/^zócalo|^zocalo/i.test(trimmedQuery)) {
-            if (/zócalo\s+de\s+la\s+cdmx|zocalo\s+de\s+la\s+cdmx|zócalo\s+cdmx|zocalo\s+cdmx/i.test(trimmedQuery)) {
-              searchQuery = 'Zócalo Ciudad de México';
-            } else {
-              searchQuery = 'Zócalo Ciudad de México';
-            }
-          }
-          // Liverpool (con ubicación o sin ella)
-          else if (/^liverpool/i.test(trimmedQuery)) {
-            if (/liverpool\s+insurgentes/i.test(trimmedQuery)) {
-              searchQuery = 'Liverpool Insurgentes Ciudad de México';
-            } else {
-              searchQuery = `${trimmedQuery} Ciudad de México`;
-            }
-          }
-          // Plaza (varios nombres)
-          else if (/^plaza/i.test(trimmedQuery)) {
-            if (/plaza\s+antena/i.test(trimmedQuery)) {
-              searchQuery = 'Plaza Antena Ciudad de México';
-            } else {
-              searchQuery = `${trimmedQuery} Ciudad de México`;
-            }
-          }
-          // Para otros lugares comunes sin dirección completa
-          else if (!hasCityContext) {
-            // Detectar si parece ser un nombre de lugar (no dirección completa)
-            const looksLikePlaceName = trimmedQuery.length < 50 && 
-                                      !trimmedQuery.match(/\d{5}/) && // Sin código postal
-                                      !trimmedQuery.match(/^\d+/) && // No empieza con número
-                                      (!trimmedQuery.includes(',') || trimmedQuery.split(',').length <= 2); // Máximo 2 comas
-            
-            if (looksLikePlaceName) {
-              // Agregar "Ciudad de México" para mejorar resultados
-              searchQuery = `${trimmedQuery} Ciudad de México`.trim();
-            } else {
-              searchQuery = trimmedQuery;
-            }
-          } else {
-            searchQuery = trimmedQuery;
+          // Solo agregar categoría si no está ya en el query
+          if (!lowerQuery.includes(lowerCategoryQuery)) {
+            searchQuery = `${categoryObj.query} ${searchQuery}`.trim();
           }
         }
       }
 
-      // Coordenadas para proximity (mejora relevancia)
-      // Detectar búsquedas específicas y usar coordenadas más precisas
-      let proximity = '-99.1332,19.4326'; // Centro Histórico por defecto
-      
-      // Si es búsqueda de Bellas Artes, usar coordenadas específicas del Palacio
-      const lowerSearchQueryForProximity = searchQuery.toLowerCase();
-      if (lowerSearchQueryForProximity.includes('bellas artes') || lowerSearchQueryForProximity.includes('palacio de bellas artes')) {
-        proximity = '-99.1418092,19.4363936'; // Coordenadas exactas del Palacio de Bellas Artes
+      // Coordenadas para proximity - usar ubicación del usuario si está disponible
+      // Esto ayuda a priorizar resultados cercanos al usuario
+      let proximity = '-99.1332,19.4326'; // Centro Histórico de CDMX por defecto
+      if (userLocation) {
+        proximity = `${userLocation.longitude},${userLocation.latitude}`;
       }
       
-      // Detectar tipo de búsqueda para usar tipos específicos
-      const lowerSearchQuery = searchQuery.toLowerCase();
-      const isMetroSearch = lowerSearchQuery.includes('metro') || lowerSearchQuery.includes('estación metro');
-      const isSkateparkSearch = lowerSearchQuery.includes('skatepark') || lowerSearchQuery.includes('skate park');
-      const isBellasArtesSearch = lowerSearchQuery.includes('bellas artes') || lowerSearchQuery.includes('palacio de bellas artes');
-      const isZocaloSearch = lowerSearchQuery.includes('zócalo') || lowerSearchQuery.includes('zocalo');
-      const isPlaceSearch = lowerSearchQuery.includes('plaza') || lowerSearchQuery.includes('liverpool') || 
-                           lowerSearchQuery.includes('centro comercial') || lowerSearchQuery.includes('mall');
+      // Tipos de búsqueda mejorados - incluir más tipos de lugares
+      // Permitir POIs, landmarks, atracciones, direcciones, lugares, y establecimientos
+      const types = 'poi,poi.landmark,poi.attraction,poi.business,address,place';
       
-      let types;
-      if (isMetroSearch) {
-        types = 'poi,poi.landmark,address'; // Para metro, priorizar POIs y landmarks
-      } else if (isSkateparkSearch) {
-        types = 'poi,poi.landmark,poi.attraction,address'; // Para skatepark, priorizar POIs, landmarks y atracciones
-      } else if (isBellasArtesSearch) {
-        types = 'poi.landmark,poi.attraction,poi'; // Para Bellas Artes, SOLO POIs y landmarks (NO addresses)
-      } else if (isZocaloSearch || isPlaceSearch) {
-        types = 'poi.landmark,poi.attraction,poi,address'; // Para plazas y lugares conocidos, incluir POIs y landmarks
-      } else {
-        types = 'poi.landmark,poi.attraction,poi,address'; // Para otros, priorizar landmarks y atracciones
-      }
+      // Construir URL de la API con parámetros optimizados
+      const baseUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json`;
+      const params = new URLSearchParams({
+        access_token: MAPBOX_ACCESS_TOKEN,
+        limit: '10', // Aumentar a 10 resultados para mejor selección
+        country: 'mx', // Limitar a México
+        language: 'es', // Resultados en español
+        types: types, // Tipos de lugares
+        proximity: proximity, // Priorizar resultados cercanos al centro
+        autocomplete: 'true', // Habilitar autocompletado
+      });
       
-      // Priorizar landmarks y POIs importantes, aumentar límite para mejor selección
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          searchQuery,
-        )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=10&country=mx&language=es&types=${types}&proximity=${proximity}`,
-      );
+      const response = await fetch(`${baseUrl}?${params.toString()}`);
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -326,138 +242,80 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       }
 
       if (data.features && data.features.length > 0) {
-        // Filtrar y priorizar resultados en Ciudad de México con mejor lógica
+        // Procesar y formatear resultados mejorados para lugares conocidos
         const formattedSuggestions: Suggestion[] = data.features
           .map((feature: any, index: number) => {
             const placeName = feature.place_name || '';
-            const lowerPlaceName = placeName.toLowerCase();
+            const placeTypes = feature.place_type || [];
+            const relevance = feature.relevance || 0;
+            const featureCenter = feature.center || [];
             
-            // Calcular score de prioridad
-            let priorityScore = feature.relevance || 0;
+            // Calcular score de prioridad mejorado
+            let priorityScore = relevance;
             
-            // Priorizar lugares en Ciudad de México
-            if (lowerPlaceName.includes('ciudad de méxico') || 
-                lowerPlaceName.includes('cdmx') ||
-                lowerPlaceName.includes('mexico city') ||
-                lowerPlaceName.includes('centro histórico')) {
+            // Priorizar POIs y landmarks (lugares conocidos como torres, plazas, cines)
+            if (placeTypes.includes('poi.landmark')) {
+              priorityScore += 15; // Landmarks muy importantes
+            } else if (placeTypes.includes('poi.attraction')) {
+              priorityScore += 12; // Atracciones importantes
+            } else if (placeTypes.includes('poi.business')) {
+              priorityScore += 10; // Negocios (cines, restaurantes, etc.)
+            } else if (placeTypes.includes('poi')) {
+              priorityScore += 8; // POIs genéricos
+            }
+            
+            // Priorizar si el nombre contiene el query original (coincidencia exacta)
+            const queryLower = query.toLowerCase();
+            const placeNameLower = placeName.toLowerCase();
+            const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+            
+            // Bonus por coincidencias de palabras clave
+            queryWords.forEach(word => {
+              if (placeNameLower.includes(word)) {
+                priorityScore += 3;
+              }
+            });
+            
+            // Priorizar si el nombre empieza con el query
+            if (placeNameLower.startsWith(queryLower)) {
               priorityScore += 10;
             }
             
-            // Priorizar estaciones de metro específicamente
-            const isMetroStation = lowerPlaceName.includes('metro') || 
-                                  lowerPlaceName.includes('estación metro') ||
-                                  lowerPlaceName.includes('estacion metro') ||
-                                  lowerPlaceName.includes('stc metro') ||
-                                  lowerPlaceName.includes('estación del metro');
-            
-            // Si el query original buscaba metro, dar máxima prioridad a estaciones de metro
-            const originalQueryLower = query.toLowerCase();
-            if (isMetroStation && (originalQueryLower.includes('metro') || category === 'metro')) {
-              priorityScore += 25; // Máxima prioridad para estaciones de metro cuando se busca específicamente
-            } else if (isMetroStation) {
-              priorityScore += 15; // Alta prioridad para estaciones de metro en general
+            // Priorizar lugares cercanos al usuario si tenemos su ubicación
+            if (userLocation && featureCenter.length === 2) {
+              const distance = calculateDistance(
+                userLocation.latitude,
+                userLocation.longitude,
+                featureCenter[1],
+                featureCenter[0],
+              );
+              // Priorizar lugares más cercanos (hasta 5km)
+              if (distance < 5000) {
+                priorityScore += 15 - Math.floor(distance / 500);
+              }
             }
             
-            // Priorizar skateparks específicamente
-            const isSkatepark = lowerPlaceName.includes('skatepark') || 
-                               lowerPlaceName.includes('skate park') ||
-                               lowerPlaceName.includes('skate-park');
-            
-            if (isSkatepark && (originalQueryLower.includes('skate') || originalQueryLower.includes('skatepark') || category === 'skatepark')) {
-              priorityScore += 25; // Máxima prioridad para skateparks cuando se busca específicamente
-            } else if (isSkatepark) {
-              priorityScore += 15; // Alta prioridad para skateparks en general
-            }
-            
-            // Priorizar landmarks y atracciones (lugares más conocidos)
-            const placeTypes = feature.place_type || [];
-            if (placeTypes.includes('poi.landmark')) {
-              priorityScore += 15; // Landmarks son muy importantes
-            } else if (placeTypes.includes('poi.attraction')) {
-              priorityScore += 12; // Atracciones también muy importantes
-            } else if (placeTypes.includes('poi')) {
-              priorityScore += 5; // POIs genéricos
-            }
-            
-            // Priorizar si el nombre coincide exactamente o está muy cerca del query original
-            const queryLower = query.toLowerCase();
-            if (lowerPlaceName.startsWith(queryLower) || lowerPlaceName.includes(queryLower + ',')) {
-              priorityScore += 15;
-            }
-            
-            // Penalizar si tiene código postal muy específico (menos conocido)
-            if (placeName.match(/\d{5}/)) {
-              priorityScore -= 2;
-            }
-            
-            // Priorizar lugares en el Centro Histórico o zonas conocidas
-            if (lowerPlaceName.includes('centro histórico') || 
-                lowerPlaceName.includes('centro historico') ||
-                lowerPlaceName.includes('alameda') ||
-                lowerPlaceName.includes('zócalo') ||
-                lowerPlaceName.includes('zocalo')) {
-              priorityScore += 8;
-            }
-            
-            // Priorizar lugares conocidos específicos
-            // originalQueryLower ya está declarado arriba, no redeclarar
-            if ((originalQueryLower.includes('zócalo') || originalQueryLower.includes('zocalo')) && 
-                (lowerPlaceName.includes('zócalo') || lowerPlaceName.includes('zocalo'))) {
-              priorityScore += 20; // Priorizar Zócalo cuando se busca específicamente
-            }
-            
-            if (originalQueryLower.includes('liverpool') && lowerPlaceName.includes('liverpool')) {
-              priorityScore += 15; // Priorizar Liverpool cuando se busca específicamente
-            }
-            
-            if (originalQueryLower.includes('plaza') && lowerPlaceName.includes('plaza')) {
-              priorityScore += 12; // Priorizar plazas cuando se busca específicamente
-            }
-            
-            // Priorizar específicamente el Palacio de Bellas Artes y filtrar calles
-            const isStreet = lowerPlaceName.includes('calle') || 
-                            lowerPlaceName.includes('avenida') ||
-                            lowerPlaceName.includes('avenue') ||
-                            lowerPlaceName.match(/\d{5}/); // Códigos postales
-            
-            // Penalizar calles cuando se busca "bellas artes"
-            if (originalQueryLower.includes('bellas artes') && isStreet) {
-              priorityScore -= 50; // Penalizar fuertemente calles cuando se busca "bellas artes"
-            }
-            
-            const isPalacioBellasArtes = (lowerPlaceName.includes('palacio de bellas artes') ||
-                                         (lowerPlaceName.includes('bellas artes') && 
-                                          !isStreet &&
-                                          (lowerPlaceName.includes('centro histórico') || 
-                                           lowerPlaceName.includes('alameda') ||
-                                           lowerPlaceName.includes('mexico city') ||
-                                           lowerPlaceName.includes('cdmx')))) &&
-                                        !lowerPlaceName.includes('metro') &&
-                                        !lowerPlaceName.includes('estación') &&
-                                        !lowerPlaceName.includes('estacion');
-            
-            if (isPalacioBellasArtes && originalQueryLower.includes('bellas artes')) {
-              priorityScore += 40; // Máxima prioridad para el Palacio de Bellas Artes cuando se busca "Bellas Artes"
-            } else if (isPalacioBellasArtes) {
-              priorityScore += 25; // Alta prioridad para el Palacio en general
+            // Priorizar lugares en Ciudad de México
+            if (placeNameLower.includes('ciudad de méxico') || 
+                placeNameLower.includes('cdmx') ||
+                placeNameLower.includes('mexico city')) {
+              priorityScore += 3;
             }
             
             return {
               id: feature.id || `suggestion-${index}`,
               place_name: placeName,
-              center: feature.center,
+              center: featureCenter,
               priorityScore,
-              relevance: feature.relevance || 0,
+              relevance,
               placeType: placeTypes,
             };
           })
           // Ordenar por score de prioridad (mayor primero)
           .sort((a: any, b: any) => {
-            // Primero por score de prioridad
             if (b.priorityScore !== a.priorityScore) {
               return b.priorityScore - a.priorityScore;
             }
-            // Si tienen el mismo score, por relevancia
             return (b.relevance || 0) - (a.relevance || 0);
           })
           // Limitar a 8 resultados más relevantes
@@ -466,6 +324,8 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
             id: item.id,
             place_name: item.place_name,
             center: item.center,
+            text: item.place_name.split(',')[0], // Nombre corto (primera parte antes de la coma)
+            place_type: item.placeType,
           }));
 
         setSuggestions(formattedSuggestions);
@@ -582,13 +442,71 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           <FlatList
             data={suggestions}
             keyExtractor={item => item.id}
-            renderItem={({item}) => (
-              <TouchableOpacity
-                style={styles.suggestionItem}
-                onPress={() => handleSelectSuggestion(item)}>
-                <Text style={styles.suggestionText}>{item.place_name}</Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({item}) => {
+              // Determinar icono según el tipo de lugar
+              const getPlaceIcon = () => {
+                const placeName = item.place_name.toLowerCase();
+                const placeTypes = item.place_type || [];
+                
+                if (placeName.includes('metro') || placeName.includes('estación')) {
+                  return '🚇';
+                } else if (placeName.includes('skatepark') || placeName.includes('skate park')) {
+                  return '🛹';
+                } else if (placeName.includes('parque')) {
+                  return '🌳';
+                } else if (placeName.includes('museo')) {
+                  return '🏛️';
+                } else if (placeName.includes('plaza') || placeName.includes('zócalo') || placeName.includes('zocalo')) {
+                  return '🏛️';
+                } else if (placeTypes.includes('poi.landmark')) {
+                  return '📍';
+                } else if (placeTypes.includes('poi.attraction')) {
+                  return '🎯';
+                } else if (placeTypes.includes('poi')) {
+                  return '🏢';
+                } else if (placeTypes.includes('address')) {
+                  return '🏠';
+                }
+                return '📍';
+              };
+              
+              // Formatear el nombre del lugar (nombre corto y dirección)
+              const formatPlaceName = () => {
+                const parts = item.place_name.split(',');
+                if (parts.length > 1) {
+                  return {
+                    main: parts[0].trim(),
+                    address: parts.slice(1).join(',').trim(),
+                  };
+                }
+                return {
+                  main: item.place_name,
+                  address: '',
+                };
+              };
+              
+              const formatted = formatPlaceName();
+              
+              return (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectSuggestion(item)}>
+                  <View style={styles.suggestionContent}>
+                    <Text style={styles.suggestionIcon}>{getPlaceIcon()}</Text>
+                    <View style={styles.suggestionTextContainer}>
+                      <Text style={styles.suggestionMainText} numberOfLines={1}>
+                        {formatted.main}
+                      </Text>
+                      {formatted.address ? (
+                        <Text style={styles.suggestionAddressText} numberOfLines={1}>
+                          {formatted.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
           />
@@ -602,7 +520,8 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
     position: 'relative',
-    zIndex: 1, // Z-index más bajo para evitar conflictos
+    zIndex: 100, // Z-index alto para que el contenedor esté por encima
+    elevation: 20, // Para Android
   },
   label: {
     fontSize: 14,
@@ -652,8 +571,8 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 10,
-    zIndex: 9999, // Alto z-index pero solo dentro de su contenedor
+    elevation: 30, // Elevación muy alta para Android
+    zIndex: 10000, // Z-index muy alto para estar por encima de todo
   },
   suggestionItem: {
     paddingHorizontal: 16,
@@ -661,9 +580,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  suggestionText: {
-    fontSize: 14,
+  suggestionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  suggestionIcon: {
+    fontSize: 20,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+  },
+  suggestionMainText: {
+    fontSize: 15,
     color: '#333',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  suggestionAddressText: {
+    fontSize: 13,
+    color: '#666',
   },
   categoriesContainer: {
     flexDirection: 'row',
