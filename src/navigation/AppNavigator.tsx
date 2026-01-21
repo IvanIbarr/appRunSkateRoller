@@ -18,6 +18,7 @@ import {IntegrantesGrupoScreen} from '../screens/IntegrantesGrupoScreen';
 import {CrearEventoScreen} from '../screens/CrearEventoScreen';
 import {VistaPreviaEventoScreen} from '../screens/VistaPreviaEventoScreen';
 import {SeguimientoCompartidoScreen} from '../screens/SeguimientoCompartidoScreen';
+import {EventoDetalleScreen} from '../screens/EventoDetalleScreen';
 import {LanguageProvider} from '../contexts/LanguageContext';
 import authService from '../services/authService';
 
@@ -49,12 +50,28 @@ export type RootStackParamList = {
   SeguimientoCompartido: {
     seguimientoId: string;
   };
+  EventoDetalle: {
+    id: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const linking = {
+    prefixes: [
+      'runskateroller://',
+      'https://app.runskateroller.com',
+      'http://localhost:3000',
+    ],
+    config: {
+      screens: {
+        EventoDetalle: 'evento/:id',
+        SeguimientoCompartido: 'seguimiento/:seguimientoId',
+      },
+    },
+  };
 
   useEffect(() => {
     console.log('AppNavigator: Iniciando verificación de autenticación...');
@@ -103,7 +120,7 @@ export const AppNavigator: React.FC = () => {
   try {
     return (
       <LanguageProvider>
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
           <Stack.Navigator
             initialRouteName={isAuthenticated ? 'Navegacion' : 'Login'}
             screenOptions={{
@@ -125,6 +142,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="CrearEvento" component={CrearEventoScreen} />
             <Stack.Screen name="VistaPreviaEvento" component={VistaPreviaEventoScreen} />
             <Stack.Screen name="SeguimientoCompartido" component={SeguimientoCompartidoScreen} />
+            <Stack.Screen name="EventoDetalle" component={EventoDetalleScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </LanguageProvider>

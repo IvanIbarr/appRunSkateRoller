@@ -26,6 +26,7 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
   navigation,
   route,
 }) => {
+  const isWide = Dimensions.get('window').width >= 768;
   // Obtener datos del evento para editar si existen
   const eventoParaEditar = route?.params?.eventoParaEditar;
   const esEdicion = route?.params?.esEdicion || false;
@@ -46,7 +47,6 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
   const [cita, setCita] = useState(eventoParaEditar?.cita || eventoParaEditar?.hora || '');
   const [salida, setSalida] = useState(eventoParaEditar?.salida || '');
   const [nivel, setNivel] = useState(eventoParaEditar?.nivel || '');
-  const [logoGrupo, setLogoGrupo] = useState<string | null>(eventoParaEditar?.logoGrupo || null);
   const [lugarDestino, setLugarDestino] = useState<string | null>(eventoParaEditar?.lugarDestino || null);
   const [loading, setLoading] = useState(false);
 
@@ -87,7 +87,6 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
         cita,
         salida,
         nivel,
-        logoGrupo,
         lugarDestino,
       };
       
@@ -159,86 +158,88 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
 
           {/* Formulario */}
           <View style={styles.formContainer}>
-            <Input
-              label="Título de la Ruta"
-              placeholder="Ej: Rodada Nocturna Centro Histórico"
-              value={tituloRuta}
-              onChangeText={setTituloRuta}
-              style={styles.input}
-              labelStyle={styles.inputLabel}
-              inputStyle={styles.inputField}
-            />
+            <View style={styles.formCard}>
+              <Text style={styles.sectionTitle}>Detalles del evento</Text>
+              <Input
+                label="Título de la Ruta"
+                placeholder="Ej: Rodada Nocturna Centro Histórico"
+                value={tituloRuta}
+                onChangeText={setTituloRuta}
+                style={styles.input}
+                labelStyle={styles.inputLabel}
+                inputStyle={styles.inputField}
+              />
 
-            <Input
-              label="Punto de Salida"
-              placeholder="Ej: Monumento a la Revolución"
-              value={puntoSalida}
-              onChangeText={setPuntoSalida}
-              style={styles.input}
-              labelStyle={styles.inputLabel}
-              inputStyle={styles.inputField}
-            />
+              <Input
+                label="Punto de Salida"
+                placeholder="Ej: Monumento a la Revolución"
+                value={puntoSalida}
+                onChangeText={setPuntoSalida}
+                style={styles.input}
+                labelStyle={styles.inputLabel}
+                inputStyle={styles.inputField}
+              />
+            </View>
 
-            <Input
-              label="Fecha Inicio"
-              placeholder="DD/MM/YYYY"
-              value={fechaInicio}
-              onChangeText={setFechaInicio}
-              style={styles.input}
-              labelStyle={styles.inputLabel}
-              inputStyle={styles.inputField}
-            />
-
-            <Input
-              label="Cita"
-              placeholder="HH:MM"
-              value={cita}
-              onChangeText={setCita}
-              style={styles.input}
-              labelStyle={styles.inputLabel}
-              inputStyle={styles.inputField}
-            />
-
-            <Input
-              label="Salida"
-              placeholder="HH:MM"
-              value={salida}
-              onChangeText={setSalida}
-              style={styles.input}
-              labelStyle={styles.inputLabel}
-              inputStyle={styles.inputField}
-            />
-
-            <Input
-              label="Nivel"
-              placeholder="Ej: Principiante, Intermedio, Avanzado"
-              value={nivel}
-              onChangeText={setNivel}
-              style={styles.input}
-              labelStyle={styles.inputLabel}
-              inputStyle={styles.inputField}
-            />
-
-            {/* Dos cuadros lado a lado para subir imágenes */}
-            <View style={styles.imageUploadRow}>
-              <View style={styles.imageUploadColumn}>
-                <ImageUploader
-                  label="Logo del Grupo"
-                  imageUri={logoGrupo}
-                  onImageSelected={setLogoGrupo}
+            <View style={styles.formCard}>
+              <Text style={styles.sectionTitle}>Fecha y horarios</Text>
+              <View style={[styles.inputRow, isWide && styles.inputRowWide]}>
+                <Input
+                  label="Fecha Inicio"
+                  placeholder="DD/MM/YYYY"
+                  value={fechaInicio}
+                  onChangeText={setFechaInicio}
+                  style={[styles.input, styles.inputHalf]}
+                  labelStyle={styles.inputLabel}
+                  inputStyle={styles.inputField}
+                />
+                <Input
+                  label="Nivel"
+                  placeholder="Ej: Principiante"
+                  value={nivel}
+                  onChangeText={setNivel}
+                  style={[styles.input, styles.inputHalf]}
+                  labelStyle={styles.inputLabel}
+                  inputStyle={styles.inputField}
                 />
               </View>
-              <View style={styles.imageUploadColumn}>
+
+              <View style={[styles.inputRow, isWide && styles.inputRowWide]}>
+                <Input
+                  label="Cita"
+                  placeholder="HH:MM"
+                  value={cita}
+                  onChangeText={setCita}
+                  style={[styles.input, styles.inputHalf]}
+                  labelStyle={styles.inputLabel}
+                  inputStyle={styles.inputField}
+                />
+                <Input
+                  label="Salida"
+                  placeholder="HH:MM"
+                  value={salida}
+                  onChangeText={setSalida}
+                  style={[styles.input, styles.inputHalf]}
+                  labelStyle={styles.inputLabel}
+                  inputStyle={styles.inputField}
+                />
+              </View>
+            </View>
+
+            <View style={styles.formCard}>
+              <Text style={styles.sectionTitle}>Imagen del destino</Text>
+              <View style={styles.imageUploadSingle}>
                 <ImageUploader
                   label="Lugar del Destino"
                   imageUri={lugarDestino}
                   onImageSelected={setLugarDestino}
+                  style={styles.imageUploaderSmall}
                 />
               </View>
             </View>
 
             <Button
-              title={esEdicion ? "Actualizar Evento" : "Crear Evento"}
+              title={esEdicion ? 'Actualizar Evento' : 'Crear Evento'}
               onPress={handleCrearEvento}
               loading={loading}
               style={styles.createButton}
@@ -315,8 +316,34 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 20,
   },
+  formCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 217, 255, 0.25)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    color: '#00D9FF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   input: {
     marginBottom: 16,
+  },
+  inputRow: {
+    flexDirection: 'column',
+  },
+  inputRowWide: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  inputHalf: {
+    flex: 1,
   },
   inputLabel: {
     color: '#FFFFFF',
@@ -326,13 +353,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 217, 255, 0.5)',
     color: '#FFFFFF',
   },
-  imageUploadRow: {
-    flexDirection: 'row',
-    gap: 16,
+  imageUploadSingle: {
     marginBottom: 20,
+    alignItems: 'center',
   },
-  imageUploadColumn: {
-    flex: 1,
+  imageUploaderSmall: {
+    width: 220,
+    maxWidth: '100%',
   },
   createButton: {
     marginTop: 8,

@@ -13,6 +13,7 @@ import {
   Modal,
   ActivityIndicator,
   Share,
+  Linking,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
@@ -38,7 +39,10 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [eventoAEliminar, setEventoAEliminar] = useState<{id: string; titulo: string} | null>(null);
+  const [eventoACompartir, setEventoACompartir] = useState<Evento | null>(null);
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState(false);
   const [eventosEliminados, setEventosEliminados] = useState<Set<string>>(new Set());
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -191,88 +195,244 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
     });
   };
 
-  const handleCompartirEvento = async (evento: Evento) => {
+  const getWebBaseUrl = (): string => {
+    if (typeof process !== 'undefined' && process.env?.REACT_APP_WEB_BASE_URL) {
+      return process.env.REACT_APP_WEB_BASE_URL;
+    }
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return window.location.origin;
+    }
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') {
+      return 'https://app.runskateroller.com';
+    }
+    return 'http://localhost:3000';
+  };
+
+  const isShareableImageUrl = (url?: string | null): boolean => {
+    if (!url) {
+      return false;
+    }
+    return /^(https?:|file:|content:)/.test(url);
+  };
+
+  const isDataUrl = (url?: string | null): boolean => {
+    if (!url) {
+      return false;
+    }
+    return /^data:image\//.test(url);
+  };
+
+  const uploadImageToCloudinary = async (dataUrl: string): Promise<string | null> => {
+    const cloudName = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !uploadPreset) {
+      return null;
+    }
     try {
-      // Formatear la fecha de manera compatible con Android
-      let fechaFormateada = 'Fecha no especificada';
-      if (evento.fecha) {
-        try {
-          const fecha = new Date(evento.fecha);
-          // Usar formato más compatible para Android
-          fechaFormateada = fecha.toLocaleDateString('es-ES', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
-        } catch (e) {
-          // Fallback si hay error con el formato
-          fechaFormateada = evento.fecha.toString();
-        }
-      }
-
-      // Construir el mensaje a compartir
-      let mensaje = `🎯 ${evento.titulo || 'Evento Roller'}\n\n`;
-      mensaje += `📅 Fecha: ${fechaFormateada}\n`;
-      
-      if (evento.hora) {
-        mensaje += `🕐 Hora: ${evento.hora}\n`;
-      }
-      
-      if (evento.salida) {
-        mensaje += `🚀 Salida: ${evento.salida}\n`;
-      }
-      
-      if (evento.nivel) {
-        mensaje += `⭐ Nivel: ${evento.nivel}\n`;
-      }
-      
-      if (evento.puntoSalida || evento.puntoEncuentroDireccion) {
-        mensaje += `📍 Punto de salida: ${evento.puntoSalida || evento.puntoEncuentroDireccion}\n`;
-      }
-      
-      if (evento.descripcion) {
-        mensaje += `\n${evento.descripcion}\n`;
-      }
-      
-      mensaje += `\n¡Únete a este recorrido en patines! 🛼`;
-
-      // Configurar opciones de compartir según la plataforma
-      const shareOptions = Platform.select({
-        android: {
-          message: mensaje,
-          // En Android, el título se incluye en el mensaje si es necesario
-        },
-        ios: {
-          message: mensaje,
-          title: evento.titulo || 'Evento Roller',
-        },
-        default: {
-          message: mensaje,
-          title: evento.titulo || 'Evento Roller',
-        },
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          file: dataUrl,
+          upload_preset: uploadPreset,
+          folder: 'eventos',
+        }),
       });
-
-      const result = await Share.share(shareOptions);
-
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          // Compartido con una actividad específica (iOS)
-          console.log('Compartido con:', result.activityType);
-        } else {
-          // Compartido exitosamente
-          console.log('Evento compartido exitosamente');
-        }
-      } else if (result.action === Share.dismissedAction) {
-        // Usuario canceló el compartir
-        console.log('Compartir cancelado');
+      if (!response.ok) {
+        return null;
       }
+      const data = await response.json();
+      return data.secure_url || null;
+    } catch (error) {
+      console.error('Error subiendo imagen a Cloudinary:', error);
+      return null;
+    }
+  };
+
+  const getShareImageUrl = async (evento: Evento): Promise<string | null> => {
+    if (!evento.lugarDestino) {
+      return null;
+    }
+    if (isShareableImageUrl(evento.lugarDestino)) {
+      return evento.lugarDestino;
+    }
+    if (!isDataUrl(evento.lugarDestino)) {
+      return null;
+    }
+    const cacheKey = evento.id || evento.tituloRuta || evento.titulo || 'evento';
+    if (uploadedImageUrls[cacheKey]) {
+      return uploadedImageUrls[cacheKey];
+    }
+    const uploadedUrl = await uploadImageToCloudinary(evento.lugarDestino);
+    if (uploadedUrl) {
+      setUploadedImageUrls(prev => ({...prev, [cacheKey]: uploadedUrl}));
+    }
+    return uploadedUrl;
+  };
+
+  const buildShareMessage = (evento: Evento, imageUrl?: string | null): string => {
+    let fechaFormateada = 'Fecha no especificada';
+    if (evento.fecha) {
+      try {
+        const fecha = new Date(evento.fecha);
+        fechaFormateada = fecha.toLocaleDateString('es-ES', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      } catch (e) {
+        fechaFormateada = evento.fecha.toString();
+      }
+    }
+
+    let mensaje = `🎯 ${evento.titulo || 'Evento Roller'}\n\n`;
+    mensaje += `📅 Fecha: ${fechaFormateada}\n`;
+
+    if (evento.hora) {
+      mensaje += `🕐 Hora: ${evento.hora}\n`;
+    }
+
+    if (evento.salida) {
+      mensaje += `🚀 Salida: ${evento.salida}\n`;
+    }
+
+    if (evento.nivel) {
+      mensaje += `⭐ Nivel: ${evento.nivel}\n`;
+    }
+
+    if (evento.puntoSalida || evento.puntoEncuentroDireccion) {
+      mensaje += `📍 Punto de salida: ${evento.puntoSalida || evento.puntoEncuentroDireccion}\n`;
+    }
+
+    if (evento.descripcion) {
+      mensaje += `\n${evento.descripcion}\n`;
+    }
+
+    if (imageUrl) {
+      mensaje += `\n🖼️ Imagen: ${imageUrl}`;
+    }
+
+    if (evento.id) {
+      const appLink = `runskateroller://evento/${evento.id}`;
+      const webLink = `${getWebBaseUrl()}/evento/${evento.id}`;
+      mensaje += `\n🔗 Ver detalles:\n${appLink}\n${webLink}`;
+    } else {
+      mensaje += `\n🔗 Ver detalles en la app`;
+    }
+
+    mensaje += `\n¡Únete a este recorrido en patines! 🛼`;
+    return mensaje;
+  };
+
+  const handleCompartirEvento = (evento: Evento) => {
+    setEventoACompartir(evento);
+    setShowShareModal(true);
+  };
+
+  const handleShareSystem = async () => {
+    if (!eventoACompartir) {
+      return;
+    }
+    const imageUrl = await getShareImageUrl(eventoACompartir);
+    const mensaje = buildShareMessage(eventoACompartir, imageUrl);
+    try {
+      const shareOptions = Platform.select({
+        android: imageUrl ? {message: mensaje, url: imageUrl} : {message: mensaje},
+        ios: imageUrl
+          ? {message: mensaje, title: eventoACompartir.titulo || 'Evento Roller', url: imageUrl}
+          : {message: mensaje, title: eventoACompartir.titulo || 'Evento Roller'},
+        default: imageUrl
+          ? {message: mensaje, title: eventoACompartir.titulo || 'Evento Roller', url: imageUrl}
+          : {message: mensaje, title: eventoACompartir.titulo || 'Evento Roller'},
+      });
+      await Share.share(shareOptions);
     } catch (error) {
       console.error('Error al compartir evento:', error);
       Alert.alert(
         'Error',
         'No se pudo compartir el evento. Por favor, intenta nuevamente.',
       );
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!eventoACompartir) {
+      return;
+    }
+    const imageUrl = await getShareImageUrl(eventoACompartir);
+    const mensaje = encodeURIComponent(buildShareMessage(eventoACompartir, imageUrl));
+    const whatsappAppUrl = `whatsapp://send?text=${mensaje}`;
+    const whatsappWebUrl = `https://wa.me/?text=${mensaje}`;
+
+    try {
+      if (Platform.OS === 'web') {
+        await Linking.openURL(whatsappWebUrl);
+      } else {
+        const canOpen = await Linking.canOpenURL(whatsappAppUrl);
+        await Linking.openURL(canOpen ? whatsappAppUrl : whatsappWebUrl);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp para compartir.');
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleShareFacebook = async () => {
+    if (!eventoACompartir) {
+      return;
+    }
+    const imageUrl = await getShareImageUrl(eventoACompartir);
+    const mensaje = encodeURIComponent(buildShareMessage(eventoACompartir, imageUrl));
+    const webLink = eventoACompartir.id
+      ? encodeURIComponent(`${getWebBaseUrl()}/evento/${eventoACompartir.id}`)
+      : '';
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${webLink}&quote=${mensaje}`;
+    try {
+      await Linking.openURL(facebookUrl);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir Facebook para compartir.');
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleShareInstagram = async () => {
+    if (!eventoACompartir) {
+      return;
+    }
+    const imageUrl = await getShareImageUrl(eventoACompartir);
+    if (imageUrl) {
+      try {
+        await Linking.openURL(imageUrl);
+      } catch (error) {
+        console.warn('No se pudo abrir la imagen para copiar:', error);
+      }
+    }
+    const instagramAppUrl = 'instagram://app';
+    const instagramWebUrl = 'https://www.instagram.com/';
+    try {
+      if (Platform.OS === 'web') {
+        await Linking.openURL(instagramWebUrl);
+      } else {
+        const canOpen = await Linking.canOpenURL(instagramAppUrl);
+        if (canOpen) {
+          await Linking.openURL(instagramAppUrl);
+        } else {
+          await Linking.openURL(instagramWebUrl);
+        }
+      }
+      Alert.alert(
+        'Instagram',
+        'Se abrió Instagram. Pega el texto del evento en tu publicación o historia.',
+      );
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir Instagram para compartir.');
+    } finally {
+      setShowShareModal(false);
     }
   };
 
@@ -584,7 +744,7 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
                     <Image
                       source={{uri: evento.lugarDestino}}
                       style={styles.eventMainImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                     />
                     {/* Overlay oscuro para mejor legibilidad */}
                     <View style={styles.imageOverlay} />
@@ -812,6 +972,57 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
             </View>
           </View>
         </Modal>
+
+        {/* Modal de Compartir */}
+        <Modal
+          visible={showShareModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowShareModal(false)}>
+          <View style={styles.shareModalOverlay}>
+            <View style={styles.shareModalContainer}>
+              <Text style={styles.shareModalTitle}>Compartir evento</Text>
+              <Text style={styles.shareModalSubtitle}>
+                Elige una opción para compartir
+              </Text>
+
+              <View style={styles.shareOptions}>
+                <TouchableOpacity
+                  style={[styles.shareOptionButton, styles.shareOptionWhatsApp]}
+                  onPress={handleShareWhatsApp}
+                  activeOpacity={0.8}>
+                  <Text style={styles.shareOptionText}>WhatsApp</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.shareOptionButton, styles.shareOptionFacebook]}
+                  onPress={handleShareFacebook}
+                  activeOpacity={0.8}>
+                  <Text style={styles.shareOptionText}>Facebook</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.shareOptionButton, styles.shareOptionInstagram]}
+                  onPress={handleShareInstagram}
+                  activeOpacity={0.8}>
+                  <Text style={styles.shareOptionText}>Instagram</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.shareSystemButton}
+                onPress={handleShareSystem}
+                activeOpacity={0.8}>
+                <Text style={styles.shareSystemButtonText}>Más opciones</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareCancelButton}
+                onPress={() => setShowShareModal(false)}
+                activeOpacity={0.8}>
+                <Text style={styles.shareCancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </WithBottomTabBar>
   );
@@ -947,26 +1158,28 @@ const styles = StyleSheet.create({
   },
   eventImageWrapper: {
     width: '100%',
-    height: 200,
+    height: 240,
     position: 'relative',
     backgroundColor: '#2A2A3E',
+    padding: 8,
   },
   eventMainImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 12,
   },
   imageOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: 36,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)',
       },
       default: {
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: 'rgba(0,0,0,0.2)',
       },
     }),
   },
@@ -1432,6 +1645,80 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
+  },
+  shareModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  shareModalContainer: {
+    backgroundColor: '#1A1A2E',
+    borderRadius: 18,
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  shareModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  shareModalSubtitle: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#C7D0E0',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  shareOptions: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  shareOptionButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  shareOptionWhatsApp: {
+    backgroundColor: '#25D366',
+  },
+  shareOptionFacebook: {
+    backgroundColor: '#1877F2',
+  },
+  shareOptionInstagram: {
+    backgroundColor: '#C13584',
+  },
+  shareOptionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  shareSystemButton: {
+    marginTop: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#00D9FF',
+    alignItems: 'center',
+  },
+  shareSystemButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  shareCancelButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  shareCancelButtonText: {
+    color: '#C7D0E0',
+    fontSize: 13,
+    fontWeight: '600',
   },
   // Estilos del mini calendario (compacto)
   calendarContainer: {

@@ -89,6 +89,17 @@ export const ChatAttachment: React.FC<ChatAttachmentProps> = ({
 
   if (attachmentType === 'video') {
     const [videoError, setVideoError] = React.useState(false);
+    const nativeVideoContainerStyle = {
+      width: '100%',
+      maxWidth: compact ? 200 : 300,
+      marginTop: 8,
+    };
+    const nativeVideoStyle = {
+      width: '100%',
+      height: compact ? 150 : 200,
+      borderRadius: 12,
+      backgroundColor: '#000',
+    };
 
     return (
       <View style={[styles.videoContainer, compact && styles.videoContainerCompact]}>
@@ -107,10 +118,10 @@ export const ChatAttachment: React.FC<ChatAttachmentProps> = ({
             <Text style={styles.videoLabel}>Video adjunto</Text>
           </>
         ) : Video && !videoError ? (
-          <View style={styles.nativeVideoContainer}>
+          <View style={nativeVideoContainerStyle}>
             <Video
               source={{uri: attachmentUrl}}
-              style={styles.nativeVideo}
+              style={nativeVideoStyle}
               controls
               resizeMode="contain"
               onError={(error: any) => {
@@ -209,16 +220,5 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 24,
     fontWeight: 'bold',
-  },
-  nativeVideoContainer: {
-    width: '100%',
-    maxWidth: compact ? 200 : 300,
-    marginTop: 8,
-  },
-  nativeVideo: {
-    width: '100%',
-    height: compact ? 150 : 200,
-    borderRadius: 12,
-    backgroundColor: '#000',
   },
 });

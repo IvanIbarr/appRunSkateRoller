@@ -16,6 +16,19 @@
 	
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Necesitamos acceso al micrófono para grabar videos con audio</string>
+
+	<!-- Deep Links (runskateroller://evento/ID) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.runskateroller.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>runskateroller</string>
+			</array>
+		</dict>
+	</array>
 	
 	<!-- ... resto de configuraciones ... -->
 </dict>

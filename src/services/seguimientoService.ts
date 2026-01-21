@@ -31,6 +31,15 @@ export interface UserStats {
   recorridosMes: number;
 }
 
+export interface LeaderboardEntry {
+  userId: string;
+  email: string;
+  alias?: string | null;
+  avatar?: string | null;
+  totalKilometros: number;
+  totalRecorridos: number;
+}
+
 export interface LocationPoint {
   latitud: number;
   longitud: number;
@@ -135,6 +144,19 @@ class SeguimientoService {
       `${API_ENDPOINTS.SEGUIMIENTO.USER_STATS}?period=${period}`,
     );
     return response.data;
+  }
+
+  /**
+   * Obtiene leaderboard de usuarios por kilómetros recorridos
+   */
+  async getLeaderboard(
+    period: 'week' | 'month' | 'year' = 'week',
+    limit = 10,
+  ): Promise<LeaderboardEntry[]> {
+    const response = await apiService.get<{success: boolean; data: LeaderboardEntry[]}>(
+      `${API_ENDPOINTS.SEGUIMIENTO.LEADERBOARD}?period=${period}&limit=${limit}`,
+    );
+    return response.data || [];
   }
 }
 

@@ -194,9 +194,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
-    textShadowColor: 'rgba(255, 255, 255, 0.9)',
-    textShadowOffset: {width: 2, height: 2},
-    textShadowRadius: 4,
+    ...Platform.select({
+      web: {textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)'},
+      default: {
+        textShadowColor: 'rgba(255, 255, 255, 0.9)',
+        textShadowOffset: {width: 2, height: 2},
+        textShadowRadius: 4,
+      },
+    }),
     zIndex: 10,
   },
   form: {
@@ -213,11 +218,16 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.2)'},
+      default: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 8},
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 8,
+      },
+    }),
   },
   inputContainer: {
     width: '100%',
@@ -239,11 +249,16 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     borderRadius: 12,
     backgroundColor: '#007AFF',
-    shadowColor: '#007AFF',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Platform.select({
+      web: {boxShadow: '0px 4px 8px rgba(0, 122, 255, 0.3)'},
+      default: {
+        shadowColor: '#007AFF',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+      },
+    }),
   },
   loginButtonText: {
     fontSize: 16,
@@ -260,11 +275,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignSelf: 'center',
     minWidth: 280,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Platform.select({
+      web: {boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.15)'},
+      default: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+      },
+    }),
   },
   registerText: {
     fontSize: 14,

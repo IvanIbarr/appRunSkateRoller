@@ -13,7 +13,11 @@ import {
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
 import {AvatarCircle} from '../components/AvatarCircle';
 import authService from '../services/authService';
-import seguimientoService, {Seguimiento, UserStats} from '../services/seguimientoService';
+import seguimientoService, {
+  Seguimiento,
+  UserStats,
+  LeaderboardEntry,
+} from '../services/seguimientoService';
 import {Usuario} from '../types';
 
 interface HistorialScreenProps {
@@ -21,6 +25,7 @@ interface HistorialScreenProps {
 }
 
 type PeriodFilter = 'all' | 'week' | 'month' | 'year';
+type LeaderboardPeriod = 'week' | 'month' | 'year';
 
 export const HistorialScreen: React.FC<HistorialScreenProps> = ({
   navigation,
@@ -30,6 +35,8 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
   const [recorridos, setRecorridos] = useState<Seguimiento[]>([]);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('all');
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>('week');
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -49,6 +56,18 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
   useEffect(() => {
     loadHistorial();
   }, [selectedPeriod]);
+
+  useEffect(() => {
+    const loadLeaderboard = async () => {
+      try {
+        const data = await seguimientoService.getLeaderboard(leaderboardPeriod, 10);
+        setLeaderboard(data);
+      } catch (error) {
+        console.error('Error cargando leaderboard:', error);
+      }
+    };
+    loadLeaderboard();
+  }, [leaderboardPeriod]);
 
   const loadHistorial = async () => {
     try {
@@ -112,6 +131,16 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
     week: 'Semana',
     month: 'Mes',
     year: 'Año',
+  };
+
+  const leaderboardLabels: Record<LeaderboardPeriod, string> = {
+    week: 'Semana',
+    month: 'Mes',
+    year: 'Año',
+  };
+
+  const getDisplayName = (entry: LeaderboardEntry): string => {
+    return entry.alias || entry.email;
   };
 
   if (loading && !userStats) {
@@ -227,6 +256,76 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
               </View>
             </>
           )}
+
+          {/* Leaderboard */}
+          <View style={styles.leaderboardContainer}>
+            <View style={styles.leaderboardHeader}>
+              <Text style={styles.leaderboardTitle}>🏆 Top 10 por kilómetros</Text>
+              <Text style={styles.leaderboardSubtitle}>
+                Compite y motívate con otros usuarios
+              </Text>
+            </View>
+            <View style={styles.leaderboardFilters}>
+              {(Object.keys(leaderboardLabels) as LeaderboardPeriod[]).map(period => (
+                <TouchableOpacity
+                  key={period}
+                  style={[
+                    styles.leaderboardFilterButton,
+                    leaderboardPeriod === period && styles.leaderboardFilterButtonActive,
+                  ]}
+                  onPress={() => setLeaderboardPeriod(period)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.leaderboardFilterText,
+                      leaderboardPeriod === period && styles.leaderboardFilterTextActive,
+                    ]}>
+                    {leaderboardLabels[period]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {leaderboard.length === 0 ? (
+              <View style={styles.leaderboardEmpty}>
+                <Text style={styles.leaderboardEmptyText}>
+                  No hay datos para este período
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.leaderboardList}>
+                {leaderboard.map((entry, index) => (
+                  <View
+                    key={entry.userId}
+                    style={[
+                      styles.leaderboardItem,
+                      index === 0 && styles.leaderboardItemFirst,
+                    ]}>
+                    <View style={styles.leaderboardRank}>
+                      <Text style={styles.leaderboardRankText}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <AvatarCircle avatar={entry.avatar} size={40} />
+                    <View style={styles.leaderboardInfo}>
+                      <Text style={styles.leaderboardName} numberOfLines={1}>
+                        {getDisplayName(entry)}
+                      </Text>
+                      <Text style={styles.leaderboardMeta}>
+                        {entry.totalRecorridos} recorridos
+                      </Text>
+                    </View>
+                    <View style={styles.leaderboardKm}>
+                      <Text style={styles.leaderboardKmValue}>
+                        {entry.totalKilometros.toFixed(1)}
+                      </Text>
+                      <Text style={styles.leaderboardKmLabel}>km</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
 
           {/* Filtros Mejorados */}
           <View style={styles.filtersContainer}>
@@ -398,7 +497,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: '100%',
     height: '100%',
-    opacity: 0.3,
+    opacity: 0.45,
   },
   overlay: {
     position: 'absolute',
@@ -406,7 +505,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(15, 15, 30, 0.75)',
+    backgroundColor: 'rgba(15, 15, 30, 0.6)',
   },
   scrollView: {
     flex: 1,
@@ -505,17 +604,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   statCardValue: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   statCardUnit: {
     fontSize: 11,
     color: '#999',
     fontWeight: '500',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   additionalStats: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -540,6 +642,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#007AFF',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   statRow: {
     flexDirection: 'row',
@@ -575,11 +678,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#666',
     fontWeight: '500',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   statValue: {
     fontSize: 18,
     fontWeight: '700',
     color: '#007AFF',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   filtersContainer: {
     marginBottom: 20,
@@ -599,6 +704,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#333',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   filtersRow: {
     flexDirection: 'row',
@@ -626,13 +732,148 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   filterButtonTextActive: {
     color: '#FFF',
     fontWeight: '700',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   recorridosContainer: {
     marginBottom: 20,
+  },
+  leaderboardContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
+  },
+  leaderboardHeader: {
+    padding: 16,
+    backgroundColor: 'rgba(255, 149, 0, 0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 149, 0, 0.3)',
+  },
+  leaderboardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FF9500',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardFilters: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  leaderboardFilterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 149, 0, 0.3)',
+  },
+  leaderboardFilterButtonActive: {
+    backgroundColor: '#FF9500',
+    borderColor: '#FF9500',
+  },
+  leaderboardFilterText: {
+    fontSize: 12,
+    color: '#FF9500',
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardFilterTextActive: {
+    color: '#FFF',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardList: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  leaderboardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  leaderboardItemFirst: {
+    borderColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  leaderboardRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FF9500',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaderboardRankText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardInfo: {
+    flex: 1,
+  },
+  leaderboardName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardMeta: {
+    fontSize: 11,
+    color: '#666',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardKm: {
+    alignItems: 'flex-end',
+  },
+  leaderboardKmValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FF9500',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardKmLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  leaderboardEmpty: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  leaderboardEmptyText: {
+    fontSize: 13,
+    color: '#666',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   recorridosHeader: {
     flexDirection: 'row',
@@ -664,6 +905,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   emptyContainer: {
     padding: 48,
@@ -685,11 +927,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   emptySubtext: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   recorridoCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -729,6 +973,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     fontWeight: '500',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   recorridoArrow: {
     width: 36,
@@ -786,6 +1031,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     flex: 1,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   recorridoRouteDest: {
     color: '#FF3B30',
@@ -831,10 +1077,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   recorridoStatValue: {
     fontSize: 15,
     fontWeight: '700',
     color: '#007AFF',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
 });

@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Share,
   Linking,
+  Modal,
 } from 'react-native';
 import {Input} from '../components/Input';
 import {UberStyleSearchInput} from '../components/UberStyleSearchInput';
@@ -49,6 +50,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [seguimientoId, setSeguimientoId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   const trackingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastLocationUpdateRef = useRef<Date | null>(null);
 
@@ -277,41 +279,122 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
     }
   };
 
-  const handleShareUrl = async () => {
+  const buildShareMessage = (url: string): string => {
+    return `Sigue mi recorrido en tiempo real:\n${url}`;
+  };
+
+  const handleShareUrl = () => {
     if (!shareUrl) {
       Alert.alert('Error', 'No hay URL para compartir. Inicia un recorrido primero.');
       return;
     }
+    setShowShareModal(true);
+  };
 
+  const handleShareSystem = async () => {
+    if (!shareUrl) {
+      return;
+    }
+    try {
+      await Share.share({
+        message: buildShareMessage(shareUrl),
+        url: shareUrl,
+        title: 'Compartir Seguimiento',
+      });
+    } catch (error) {
+      console.error('Error compartiendo URL:', error);
+      Alert.alert('Error', 'No se pudo compartir la URL.');
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!shareUrl) {
+      return;
+    }
+    const mensaje = encodeURIComponent(buildShareMessage(shareUrl));
+    const whatsappAppUrl = `whatsapp://send?text=${mensaje}`;
+    const whatsappWebUrl = `https://wa.me/?text=${mensaje}`;
     try {
       if (Platform.OS === 'web') {
-        // En web, copiar al portapapeles
+        await Linking.openURL(whatsappWebUrl);
+      } else {
+        const canOpen = await Linking.canOpenURL(whatsappAppUrl);
+        await Linking.openURL(canOpen ? whatsappAppUrl : whatsappWebUrl);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp para compartir.');
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleShareFacebook = async () => {
+    if (!shareUrl) {
+      return;
+    }
+    const mensaje = encodeURIComponent(buildShareMessage(shareUrl));
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+      shareUrl,
+    )}&quote=${mensaje}`;
+    try {
+      await Linking.openURL(facebookUrl);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir Facebook para compartir.');
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleShareInstagram = async () => {
+    if (!shareUrl) {
+      return;
+    }
+    const instagramAppUrl = 'instagram://app';
+    const instagramWebUrl = 'https://www.instagram.com/';
+    try {
+      if (Platform.OS === 'web') {
+        await Linking.openURL(instagramWebUrl);
+      } else {
+        const canOpen = await Linking.canOpenURL(instagramAppUrl);
+        await Linking.openURL(canOpen ? instagramAppUrl : instagramWebUrl);
+      }
+      Alert.alert(
+        'Instagram',
+        'Se abrió Instagram. Pega el enlace del seguimiento en tu publicación o historia.',
+      );
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo abrir Instagram para compartir.');
+    } finally {
+      setShowShareModal(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) {
+      return;
+    }
+    try {
+      if (Platform.OS === 'web') {
         if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.clipboard) {
           await navigator.clipboard.writeText(shareUrl);
-          Alert.alert('URL Copiada', 'La URL del seguimiento ha sido copiada al portapapeles.');
         } else if (typeof document !== 'undefined') {
-          // Fallback para navegadores antiguos
           const textArea = document.createElement('textarea');
           textArea.value = shareUrl;
           document.body.appendChild(textArea);
           textArea.select();
           document.execCommand('copy');
           document.body.removeChild(textArea);
-          Alert.alert('URL Copiada', 'La URL del seguimiento ha sido copiada al portapapeles.');
-        } else {
-          Alert.alert('Error', 'No se puede acceder al portapapeles en este entorno.');
         }
+        Alert.alert('URL Copiada', 'La URL del seguimiento ha sido copiada al portapapeles.');
       } else {
-        // En móvil, usar Share API
-        await Share.share({
-          message: `Sigue mi recorrido en tiempo real: ${shareUrl}`,
-          url: shareUrl,
-          title: 'Compartir Seguimiento',
-        });
+        Alert.alert('Copiar enlace', shareUrl);
       }
     } catch (error) {
-      console.error('Error compartiendo URL:', error);
-      Alert.alert('Error', 'No se pudo compartir la URL.');
+      Alert.alert('Error', 'No se pudo copiar la URL.');
+    } finally {
+      setShowShareModal(false);
     }
   };
 
@@ -481,6 +564,64 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
         </View>
         </View>
         </ScrollView>
+
+        {/* Modal de Compartir Seguimiento */}
+        <Modal
+          visible={showShareModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowShareModal(false)}>
+          <View style={styles.shareModalOverlay}>
+            <View style={styles.shareModalContainer}>
+              <Text style={styles.shareModalTitle}>Compartir seguimiento</Text>
+              <Text style={styles.shareModalSubtitle}>
+                Elige una opción para compartir
+              </Text>
+
+              <View style={styles.shareOptions}>
+                <TouchableOpacity
+                  style={[styles.shareOptionButton, styles.shareOptionWhatsApp]}
+                  onPress={handleShareWhatsApp}
+                  activeOpacity={0.8}>
+                  <Text style={styles.shareOptionText}>WhatsApp</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.shareOptionButton, styles.shareOptionFacebook]}
+                  onPress={handleShareFacebook}
+                  activeOpacity={0.8}>
+                  <Text style={styles.shareOptionText}>Facebook</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.shareOptionButton, styles.shareOptionInstagram]}
+                  onPress={handleShareInstagram}
+                  activeOpacity={0.8}>
+                  <Text style={styles.shareOptionText}>Instagram</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.shareSystemButton}
+                onPress={handleShareSystem}
+                activeOpacity={0.8}>
+                <Text style={styles.shareSystemButtonText}>Más opciones</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareCopyButton}
+                onPress={handleCopyLink}
+                activeOpacity={0.8}>
+                <Text style={styles.shareCopyButtonText}>Copiar enlace</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareCancelButton}
+                onPress={() => setShowShareModal(false)}
+                activeOpacity={0.8}>
+                <Text style={styles.shareCancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </WithBottomTabBar>
   );
@@ -794,6 +935,94 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  shareModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  shareModalContainer: {
+    backgroundColor: '#1A1A2E',
+    borderRadius: 18,
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  shareModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  shareModalSubtitle: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#C7D0E0',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  shareOptions: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  shareOptionButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  shareOptionWhatsApp: {
+    backgroundColor: '#25D366',
+  },
+  shareOptionFacebook: {
+    backgroundColor: '#1877F2',
+  },
+  shareOptionInstagram: {
+    backgroundColor: '#C13584',
+  },
+  shareOptionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  shareSystemButton: {
+    marginTop: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#00D9FF',
+    alignItems: 'center',
+  },
+  shareSystemButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  shareCopyButton: {
+    marginTop: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  shareCopyButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  shareCancelButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  shareCancelButtonText: {
+    color: '#C7D0E0',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

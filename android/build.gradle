@@ -21,4 +21,9 @@ buildscript {
 apply plugin: "com.facebook.react.rootproject"
 
 allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "com.swmansion.rnscreens:react-native-screens:3.29.0"
+        }
+    }
 }

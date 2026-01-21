@@ -32,7 +32,6 @@ export const VistaPreviaEventoScreen: React.FC<VistaPreviaEventoScreenProps> = (
     cita,
     salida,
     nivel,
-    logoGrupo,
     lugarDestino,
   } = route.params || {};
 
@@ -78,7 +77,6 @@ export const VistaPreviaEventoScreen: React.FC<VistaPreviaEventoScreenProps> = (
         cita,
         salida,
         nivel,
-        logoGrupo: logoGrupo || null,
         lugarDestino: lugarDestino || null,
         organizadorId: currentUser.id,
       });
@@ -215,27 +213,8 @@ export const VistaPreviaEventoScreen: React.FC<VistaPreviaEventoScreenProps> = (
               </View>
             </View>
 
-            {/* Imágenes */}
+            {/* Imagen */}
             <View style={styles.imagesRow}>
-              {/* Logo del Grupo */}
-              <View style={styles.imageSection}>
-                <Text style={styles.imageLabel}>Logo del Grupo</Text>
-                {logoGrupo ? (
-                  <View style={styles.imageContainer}>
-                    <Image
-                      source={{uri: logoGrupo}}
-                      style={styles.image}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Text style={styles.placeholderText}>No hay imagen</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Lugar del Destino */}
               <View style={styles.imageSection}>
                 <Text style={styles.imageLabel}>Lugar del Destino</Text>
                 {lugarDestino ? (
@@ -430,11 +409,13 @@ const styles = StyleSheet.create({
   },
   imagesRow: {
     flexDirection: 'row',
-    gap: 16,
+    justifyContent: 'center',
     marginBottom: 20,
   },
   imageSection: {
-    flex: 1,
+    width: '100%',
+    maxWidth: 240,
+    alignSelf: 'center',
   },
   imageLabel: {
     fontSize: 14,

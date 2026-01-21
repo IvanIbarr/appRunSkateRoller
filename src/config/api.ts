@@ -62,6 +62,7 @@ export const API_ENDPOINTS = {
     HISTORY: `${API_BASE_URL}/seguimiento/history`,
     STATS: (id: string) => `${API_BASE_URL}/seguimiento/stats/${id}`,
     USER_STATS: `${API_BASE_URL}/seguimiento/user-stats`,
+    LEADERBOARD: `${API_BASE_URL}/seguimiento/leaderboard`,
     FINISH: (id: string) => `${API_BASE_URL}/seguimiento/${id}/finish`,
     ADD_LOCATION_POINT: `${API_BASE_URL}/seguimiento/location-point`,
   },
