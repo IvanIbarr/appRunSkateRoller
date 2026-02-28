@@ -47,6 +47,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
             <Text style={[styles.label, isActive && styles.labelActive]}>
               {tab.label}
             </Text>
+            <View style={[styles.activeDot, isActive && styles.activeDotActive]} />
           </TouchableOpacity>
         );
       })}
@@ -57,48 +58,68 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-    paddingHorizontal: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.96)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 12,
+    paddingHorizontal: Platform.OS === 'web' ? 0 : 8,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: -2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
-    height: Platform.OS === 'ios' ? 80 : 65,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 16,
+    height: Platform.OS === 'ios' ? 86 : 72,
     justifyContent: 'space-around',
+    borderRadius: Platform.OS === 'web' ? 0 : 24,
+    marginHorizontal: Platform.OS === 'web' ? 0 : 12,
+    marginBottom: Platform.OS === 'ios' ? 24 : 12,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    marginHorizontal: 6,
-    borderRadius: 14,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 16,
   },
   tabItemActive: {
-    backgroundColor: '#EEF6FF',
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
   },
   icon: {
-    fontSize: 22,
-    marginBottom: 2,
-    opacity: 0.75,
+    fontSize: 24,
+    marginBottom: 4,
+    opacity: 0.85,
   },
   iconActive: {
     opacity: 1,
-    transform: [{scale: 1.12}],
+    transform: [{scale: 1.15}],
   },
   label: {
     fontSize: 11,
-    color: '#666',
-    fontWeight: '500',
+    color: '#CBD5F5',
+    fontWeight: '600',
   },
   labelActive: {
-    color: '#0A84FF',
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontWeight: '700',
+    textShadowColor: 'rgba(56, 189, 248, 0.6)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 4,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 4,
+    backgroundColor: 'transparent',
+    opacity: 0,
+  },
+  activeDotActive: {
+    backgroundColor: '#38BDF8',
+    opacity: 1,
   },
 });
 

@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
     position: 'relative',
-    zIndex: 1, // Z-index más bajo para evitar conflictos
+    zIndex: 20,
   },
   label: {
     fontSize: 14,
@@ -615,14 +615,14 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
+    borderColor: '#1E293B',
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingRight: 40, // Espacio para el indicador de carga
     fontSize: 16,
-    backgroundColor: '#FFF',
-    color: '#333',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    color: '#F8FAFC',
   },
   inputError: {
     borderColor: '#FF3B30',
@@ -642,28 +642,29 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.98)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DDD',
-    maxHeight: 280, // Altura ajustada para no tapar campos siguientes
-    marginTop: 4,
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    maxHeight: 320,
+    marginTop: 6,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 10,
-    zIndex: 9999, // Alto z-index pero solo dentro de su contenedor
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 14,
+    zIndex: 9999,
   },
   suggestionItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: 'rgba(148, 163, 184, 0.18)',
   },
   suggestionText: {
     fontSize: 14,
-    color: '#333',
+    color: '#F8FAFC',
+    lineHeight: 18,
   },
   categoriesContainer: {
     flexDirection: 'row',

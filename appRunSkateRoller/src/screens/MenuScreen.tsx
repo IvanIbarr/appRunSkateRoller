@@ -348,6 +348,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   nombreGrupoButton: {
     backgroundColor: '#007AFF',
@@ -367,6 +368,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   logoutButton: {
     backgroundColor: '#FF3B30',
@@ -385,6 +387,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   aliasButton: {
     backgroundColor: '#FF9500',
@@ -424,6 +427,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   avatarContainer: {
     alignItems: 'center',
@@ -443,6 +447,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFF',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   avatarMessage: {
     marginTop: 8,

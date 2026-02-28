@@ -17,12 +17,16 @@ import {CambiarAliasScreen} from '../screens/CambiarAliasScreen';
 import {IntegrantesGrupoScreen} from '../screens/IntegrantesGrupoScreen';
 import {CrearEventoScreen} from '../screens/CrearEventoScreen';
 import {VistaPreviaEventoScreen} from '../screens/VistaPreviaEventoScreen';
+import {ForgotPasswordScreen} from '../screens/ForgotPasswordScreen';
+import {ResetPasswordScreen} from '../screens/ResetPasswordScreen';
 import {LanguageProvider} from '../contexts/LanguageContext';
 import authService from '../services/authService';
 
 export type RootStackParamList = {
   Login: undefined;
   Registro: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: {email?: string} | undefined;
   Home: undefined;
   Navegacion: undefined;
   Comunidad: undefined;
@@ -107,6 +111,8 @@ export const AppNavigator: React.FC = () => {
             }}>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Registro" component={RegistroScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Navegacion" component={NavegacionScreen} />
             <Stack.Screen name="Comunidad" component={ComunidadScreen} />

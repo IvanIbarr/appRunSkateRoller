@@ -47,6 +47,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
             <Text style={[styles.label, isActive && styles.labelActive]}>
               {tab.label}
             </Text>
+            <View style={[styles.activeDot, isActive && styles.activeDotActive]} />
           </TouchableOpacity>
         );
       })}
@@ -57,61 +58,75 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopWidth: 2,
-    borderTopColor: '#E0E0E0',
+    backgroundColor: 'rgba(15, 23, 42, 0.96)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     paddingVertical: Platform.OS === 'ios' ? 12 : 10,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    paddingHorizontal: 4,
+    paddingBottom: Platform.OS === 'ios' ? 22 : 12,
+    paddingHorizontal: Platform.OS === 'web' ? 0 : 8,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: -4},
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 12,
-    height: Platform.OS === 'ios' ? 85 : 70,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 16,
+    height: Platform.OS === 'ios' ? 86 : 72,
     justifyContent: 'space-around',
+    borderRadius: Platform.OS === 'web' ? 0 : 24,
+    marginHorizontal: Platform.OS === 'web' ? 0 : 12,
+    marginBottom: Platform.OS === 'ios' ? 24 : 12,
     backdropFilter: 'blur(10px)',
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 4,
-    borderRadius: 12,
-    marginHorizontal: 2,
+    borderRadius: 16,
+    marginHorizontal: 4,
     backgroundColor: 'transparent',
   },
   tabItemActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 122, 255, 0.3)',
+    borderColor: 'rgba(56, 189, 248, 0.4)',
   },
   icon: {
-    fontSize: 28,
-    marginBottom: 2,
-    opacity: 0.6,
+    fontSize: 24,
+    marginBottom: 4,
+    opacity: 0.85,
   },
   iconActive: {
     opacity: 1,
-    transform: [{scale: 1.2}],
+    transform: [{scale: 1.15}],
   },
   label: {
     fontSize: 11,
-    color: '#666',
+    color: '#CBD5F5',
     fontWeight: '600',
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
     textAlign: 'center',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   labelActive: {
-    color: '#007AFF',
+    color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 12,
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
-    textShadowColor: 'rgba(0, 122, 255, 0.4)',
+    textShadowColor: 'rgba(56, 189, 248, 0.6)',
     textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 3,
+    textShadowRadius: 4,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 4,
+    backgroundColor: 'transparent',
+    opacity: 0,
+  },
+  activeDotActive: {
+    backgroundColor: '#38BDF8',
+    opacity: 1,
   },
 });
 

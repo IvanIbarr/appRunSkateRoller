@@ -130,6 +130,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
               style={styles.loginButton}
               textStyle={styles.loginButtonText}
             />
+            <Text
+              style={styles.forgotPassword}
+              onPress={() => navigation.navigate('ForgotPassword')}>
+              Olvidé mi contraseña
+            </Text>
           </View>
 
           {/* Leyenda de registro fuera del formulario */}
@@ -227,6 +232,15 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontSize: 13, // Tamaño más legible
+  },
+  forgotPassword: {
+    marginTop: 12,
+    textAlign: 'center',
+    color: '#0A84FF',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 2,
   },
   registerContainer: {
     flexDirection: 'row',

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
 import {AvatarCircle} from '../components/AvatarCircle';
@@ -111,6 +112,13 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
     return `${hours} h ${rem} min`;
   };
 
+  const getCaloriesEstimate = (totalKm: number) => {
+    if (!totalKm || Number.isNaN(totalKm)) {
+      return 0;
+    }
+    return Math.round(totalKm * 50);
+  };
+
   const getDisplayName = (item: LeaderboardItem) => {
     if (item.alias && item.alias.trim()) {
       return item.alias;
@@ -146,7 +154,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
               <AvatarCircle avatar={currentUser?.avatar} size={50} />
               <View style={styles.headerTextContainer}>
                 <Text style={styles.title}>Historial</Text>
-                <Text style={styles.subtitle}>Tus recorridos anteriores</Text>
+                <Text style={styles.subtitle}>Resumen mensual</Text>
               </View>
             </View>
             {loading ? (
@@ -161,7 +169,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
             ) : (
               <>
                 <View style={styles.sectionBlock}>
-                  <Text style={styles.sectionTitle}>Cuadro de honor (año)</Text>
+                  <Text style={styles.sectionTitle}>Rating Roller</Text>
                   {leaderboard.length === 0 ? (
                     <Text style={styles.emptyText}>
                       Aún no hay datos suficientes para el ranking.
@@ -170,7 +178,15 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
                     <View style={styles.honorContent}>
                       <View style={styles.podiumContainer}>
                         <View style={styles.podiumColumn}>
-                          <Text style={styles.podiumMedal}>{getMedal(1)}</Text>
+                          <View style={[styles.podiumMedalWrapper, styles.podiumMedalSilver]}>
+                            <Text style={styles.podiumRibbon}>🎖️</Text>
+                          <View style={[styles.podiumAvatarRing, styles.podiumAvatarRingSilver]}>
+                              <AvatarCircle
+                                avatar={topThree[1]?.avatar || undefined}
+                                size={44}
+                              />
+                            </View>
+                          </View>
                           <Text style={styles.podiumName}>
                             {topThree[1] ? getDisplayName(topThree[1]) : '—'}
                           </Text>
@@ -184,7 +200,15 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
                           </View>
                         </View>
                         <View style={styles.podiumColumn}>
-                          <Text style={styles.podiumMedal}>{getMedal(0)}</Text>
+                          <View style={[styles.podiumMedalWrapper, styles.podiumMedalGold]}>
+                            <Text style={styles.podiumRibbon}>🎖️</Text>
+                          <View style={[styles.podiumAvatarRing, styles.podiumAvatarRingGold]}>
+                              <AvatarCircle
+                                avatar={topThree[0]?.avatar || undefined}
+                                size={48}
+                              />
+                            </View>
+                          </View>
                           <Text style={styles.podiumName}>
                             {topThree[0] ? getDisplayName(topThree[0]) : '—'}
                           </Text>
@@ -198,7 +222,15 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
                           </View>
                         </View>
                         <View style={styles.podiumColumn}>
-                          <Text style={styles.podiumMedal}>{getMedal(2)}</Text>
+                          <View style={[styles.podiumMedalWrapper, styles.podiumMedalBronze]}>
+                            <Text style={styles.podiumRibbon}>🎖️</Text>
+                          <View style={[styles.podiumAvatarRing, styles.podiumAvatarRingBronze]}>
+                              <AvatarCircle
+                                avatar={topThree[2]?.avatar || undefined}
+                                size={44}
+                              />
+                            </View>
+                          </View>
                           <Text style={styles.podiumName}>
                             {topThree[2] ? getDisplayName(topThree[2]) : '—'}
                           </Text>
@@ -214,6 +246,7 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
                       </View>
 
                       <View style={[styles.leaderList, isSmallScreen && styles.leaderListSmall]}>
+                        <Text style={styles.leaderListTitle}>Top 10</Text>
                         <ScrollView
                           contentContainerStyle={styles.leaderListContent}
                           showsVerticalScrollIndicator
@@ -242,25 +275,34 @@ export const HistorialScreen: React.FC<HistorialScreenProps> = ({
                 </View>
 
                 <View style={styles.sectionBlock}>
-                  <Text style={styles.sectionTitle}>Enero 2026</Text>
-                  <View style={styles.metricsRow}>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricValue}>{januaryStats.totalRecorridos}</Text>
-                      <Text style={styles.metricLabel}>Recorridos</Text>
+                  <Text style={styles.sectionTitle}>Resumen mensual</Text>
+                  <View style={styles.summaryRow}>
+                    <View style={styles.summaryCard}>
+                      <View style={styles.summaryHeader}>
+                        <Text style={styles.summaryLabel}>KM</Text>
+                        <Text style={styles.summaryIcon}>🛼</Text>
+                      </View>
+                      <Text style={styles.summaryValue}>
+                        {januaryStats.totalKm.toFixed(1)}
+                      </Text>
                     </View>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricValue}>{januaryStats.totalKm.toFixed(2)} km</Text>
-                      <Text style={styles.metricLabel}>Distancia</Text>
+                    <View style={styles.summaryCard}>
+                      <View style={styles.summaryHeader}>
+                        <Text style={styles.summaryLabel}>Tiempo</Text>
+                        <Text style={styles.summaryIcon}>⏱️</Text>
+                      </View>
+                      <Text style={styles.summaryValue}>
+                        {formatDuration(januaryStats.totalDuracion)}
+                      </Text>
                     </View>
-                  </View>
-                  <View style={styles.metricsRow}>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricValue}>{formatDuration(januaryStats.totalDuracion)}</Text>
-                      <Text style={styles.metricLabel}>Tiempo</Text>
-                    </View>
-                    <View style={styles.metricCard}>
-                      <Text style={styles.metricValue}>{januaryStats.velocidadPromedio.toFixed(2)} m/s</Text>
-                      <Text style={styles.metricLabel}>Vel. promedio</Text>
+                    <View style={styles.summaryCard}>
+                      <View style={styles.summaryHeader}>
+                        <Text style={styles.summaryLabel}>Calorías</Text>
+                        <Text style={styles.summaryIcon}>🔥</Text>
+                      </View>
+                      <Text style={styles.summaryValue}>
+                        {getCaloriesEstimate(januaryStats.totalKm)}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -331,90 +373,128 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.2)',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: {width: 0, height: 10},
+    elevation: 8,
   },
   headerTextContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#FFF',
-    marginBottom: 8,
+    marginBottom: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 3,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   subtitle: {
     fontSize: 16,
-    color: '#F2F2F2',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    color: '#67E8F9',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
   },
   sectionBlock: {
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    borderRadius: 18,
     padding: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.18)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: {width: 0, height: 10},
+    elevation: 6,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: '#F8FAFC',
     marginBottom: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
-  metricsRow: {
+  summaryRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 12,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
-    elevation: 2,
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111',
     marginBottom: 6,
+    flexWrap: 'nowrap',
   },
-  metricLabel: {
+  summaryCard: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 8,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  summaryLabel: {
     fontSize: 12,
-    color: '#555',
+    color: '#E5E7EB',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  summaryIcon: {
+    fontSize: 20,
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 2,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: {width: 0, height: 6},
+    elevation: 6,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#222',
+    color: '#F8FAFC',
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: '#666',
+    color: '#CBD5F5',
     marginBottom: 8,
   },
   cardStatsRow: {
@@ -423,7 +503,7 @@ const styles = StyleSheet.create({
   },
   cardStat: {
     fontSize: 12,
-    color: '#444',
+    color: '#E2E8F0',
   },
   honorContent: {
     flexDirection: 'row',
@@ -435,23 +515,62 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
   },
   podiumColumn: {
     flex: 1,
     alignItems: 'center',
   },
-  podiumMedal: {
-    fontSize: 34,
-    marginBottom: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: {width: 1, height: 1},
-    textShadowRadius: 3,
+  podiumMedalWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  podiumRibbon: {
+    fontSize: 18,
+    marginBottom: -6,
+    zIndex: 2,
+  },
+  podiumAvatarRing: {
+    padding: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  podiumAvatarRingGold: {
+    borderColor: '#FBBF24',
+  },
+  podiumAvatarRingSilver: {
+    borderColor: '#CBD5E1',
+  },
+  podiumAvatarRingBronze: {
+    borderColor: '#D9A25F',
+  },
+  podiumMedalGold: {
+    shadowColor: '#FBBF24',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+  },
+  podiumMedalSilver: {
+    shadowColor: '#CBD5E1',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+  },
+  podiumMedalBronze: {
+    shadowColor: '#D9A25F',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
   },
   podiumName: {
     fontSize: 15,
-    color: '#FFF',
+    color: '#F8FAFC',
     marginBottom: 6,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
@@ -466,15 +585,15 @@ const styles = StyleSheet.create({
   },
   podiumFirst: {
     height: 120,
-    backgroundColor: '#FFD54F',
+    backgroundColor: '#FBBF24',
   },
   podiumSecond: {
     height: 95,
-    backgroundColor: '#B0BEC5',
+    backgroundColor: '#CBD5E1',
   },
   podiumThird: {
     height: 85,
-    backgroundColor: '#D7A26D',
+    backgroundColor: '#D9A25F',
   },
   podiumFirstSmall: {
     height: 100,
@@ -488,20 +607,30 @@ const styles = StyleSheet.create({
   podiumPlace: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4A4A4A',
+    color: '#1F2937',
   },
   leaderList: {
     flex: 0.8,
     maxHeight: 240,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(148, 163, 184, 0.22)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   leaderListSmall: {
     maxHeight: 210,
+  },
+  leaderListTitle: {
+    fontSize: 12,
+    color: '#F8FAFC',
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   leaderListContent: {
     paddingBottom: 6,
@@ -512,7 +641,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 4,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   leaderRowSmall: {
     gap: 8,
@@ -531,7 +660,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   leaderName: {
-    color: '#FFF',
+    color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '600',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
@@ -539,7 +668,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   leaderMeta: {
-    color: '#EAEAEA',
+    color: '#CBD5F5',
     fontSize: 12,
   },
   centered: {

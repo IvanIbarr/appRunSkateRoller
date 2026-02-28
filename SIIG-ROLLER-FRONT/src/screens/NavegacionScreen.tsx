@@ -40,6 +40,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
   const [origenSeleccionado, setOrigenSeleccionado] = useState(false);
   const [loading, setLoading] = useState(false);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [routeRequested, setRouteRequested] = useState(false);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   
   // Estados para seguimiento GPS
@@ -66,6 +67,18 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
     loadUser();
   }, []);
 
+  useEffect(() => {
+    if (!origen.trim() || !destino.trim()) {
+      setRouteRequested(false);
+      setRouteData(null);
+      setLoading(false);
+      return;
+    }
+    setRouteRequested(false);
+    setRouteData(null);
+    setLoading(false);
+  }, [origen, destino]);
+
   // Limpiar tracking al desmontar
   useEffect(() => {
     return () => {
@@ -87,6 +100,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
     }
 
     setLoading(true);
+    setRouteRequested(true);
     setRouteData(null); // Limpiar datos anteriores
     // La ruta se calculará automáticamente cuando cambien origen y destino
     // y el componente MapboxMap la procesará
@@ -431,7 +445,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
         <View style={styles.formContainer}>
         {/* Mostrar campo de Origen solo si no está seleccionado */}
         {!origenSeleccionado ? (
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, styles.inputRowTop]}>
             <UberStyleSearchInput
               label="Origen"
               placeholder="Buscar dirección o lugar..."
@@ -464,7 +478,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
 
         {/* Mostrar campo de Destino solo si el origen está seleccionado */}
         {origenSeleccionado && (
-          <View style={styles.inputRow}>
+          <View style={[styles.inputRow, styles.inputRowBottom]}>
             <UberStyleSearchInput
               label="Destino"
               placeholder="Buscar dirección o lugar..."
@@ -496,7 +510,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
           />
         )}
 
-        {routeData && (
+        {routeRequested && routeData && (
           <View>
             <View style={styles.routeInfo}>
               <View style={styles.routeInfoItem}>
@@ -558,11 +572,12 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
             trackingPoints={trackingPoints}
             onRouteCalculate={(route) => {
               // Solo actualizar si hay datos válidos (distancia > 0)
-              if (route && route.distance > 0) {
+              if (routeRequested && route && route.distance > 0) {
                 setRouteData(route);
               }
-              // Siempre desactivar loading cuando se recibe respuesta
-              setLoading(false);
+              if (routeRequested) {
+                setLoading(false);
+              }
             }}
           />
         </View>
@@ -704,6 +719,14 @@ const styles = StyleSheet.create({
     zIndex: 20, // Z-index muy alto para que las sugerencias se vean
     elevation: 20, // Para Android
   },
+  inputRowTop: {
+    zIndex: 80,
+    elevation: 25,
+  },
+  inputRowBottom: {
+    zIndex: 30,
+    elevation: 10,
+  },
   input: {
     width: '100%',
   },
@@ -717,11 +740,12 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
     minHeight: 56,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 400,
+    zIndex: 1,
   },
   calculateButtonText: {
     fontSize: 18,
@@ -739,7 +763,8 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 1,
+    zIndex: 1,
   },
   routeInfoItem: {
     alignItems: 'center',
@@ -766,11 +791,12 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
     minHeight: 56,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 400,
+    zIndex: 1,
   },
   startRouteButtonText: {
     fontSize: 18,
@@ -788,11 +814,12 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
     minHeight: 56,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 400,
+    zIndex: 1,
   },
   trackingInfo: {
     marginTop: 16,

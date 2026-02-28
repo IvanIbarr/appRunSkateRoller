@@ -250,6 +250,82 @@ class AuthService {
     }
   }
 
+  async requestPasswordReset(
+    email: string,
+  ): Promise<{success: boolean; message?: string; devCode?: string}> {
+    try {
+      const response = await apiService.post<{success: boolean; message?: string; devCode?: string}>(
+        API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+        {email},
+      );
+      return response;
+    } catch (error) {
+      // Fallback en web para flujo de prueba sin backend
+      if (isWeb) {
+        return {
+          success: true,
+          message: 'Código enviado (modo demo).',
+          devCode: '1234',
+        };
+      }
+      console.error('Error en requestPasswordReset:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Error al solicitar código',
+      };
+    }
+  }
+
+  async verifyResetCode(
+    email: string,
+    code: string,
+  ): Promise<{success: boolean; resetToken?: string; error?: string}> {
+    try {
+      const response = await apiService.post<{success: boolean; resetToken?: string; error?: string}>(
+        API_ENDPOINTS.AUTH.VERIFY_RESET_CODE,
+        {email, code},
+      );
+      return response;
+    } catch (error) {
+      if (isWeb) {
+        if (code === '1234') {
+          return {success: true, resetToken: 'mock-reset-token'};
+        }
+        return {success: false, error: 'Código incorrecto'};
+      }
+      console.error('Error en verifyResetCode:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al verificar código',
+      };
+    }
+  }
+
+  async resetPassword(
+    email: string,
+    resetToken: string,
+    newPassword: string,
+  ): Promise<{success: boolean; message?: string; error?: string}> {
+    try {
+      const response = await apiService.post<{success: boolean; message?: string; error?: string}>(
+        API_ENDPOINTS.AUTH.RESET_PASSWORD,
+        {email, resetToken, newPassword},
+      );
+      return response;
+    } catch (error) {
+      if (isWeb) {
+        if (resetToken === 'mock-reset-token') {
+          return {success: true, message: 'Contraseña actualizada (modo demo).'};
+        }
+      }
+      console.error('Error en resetPassword:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al restablecer contraseña',
+      };
+    }
+  }
+
   /**
    * Actualiza el avatar del usuario
    */

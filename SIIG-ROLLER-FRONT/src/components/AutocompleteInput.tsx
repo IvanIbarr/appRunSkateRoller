@@ -534,14 +534,14 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
+    borderColor: '#1E293B',
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingRight: 40, // Espacio para el indicador de carga
     fontSize: 16,
-    backgroundColor: '#FFF',
-    color: '#333',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    color: '#F8FAFC',
   },
   inputError: {
     borderColor: '#FF3B30',
@@ -561,24 +561,24 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.98)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DDD',
-    maxHeight: 280, // Altura ajustada para no tapar campos siguientes
-    marginTop: 4,
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    maxHeight: 320,
+    marginTop: 6,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 30, // Elevación muy alta para Android
-    zIndex: 10000, // Z-index muy alto para estar por encima de todo
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 30,
+    zIndex: 10000,
   },
   suggestionItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: 'rgba(148, 163, 184, 0.18)',
   },
   suggestionContent: {
     flexDirection: 'row',
@@ -593,13 +593,13 @@ const styles = StyleSheet.create({
   },
   suggestionMainText: {
     fontSize: 15,
-    color: '#333',
+    color: '#F8FAFC',
     fontWeight: '500',
     marginBottom: 2,
   },
   suggestionAddressText: {
     fontSize: 13,
-    color: '#666',
+    color: '#CBD5F5',
   },
   categoriesContainer: {
     flexDirection: 'row',

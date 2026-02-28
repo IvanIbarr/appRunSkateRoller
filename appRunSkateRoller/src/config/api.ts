@@ -35,6 +35,9 @@ export const API_ENDPOINTS = {
     LOGIN: `${API_BASE_URL}/auth/login`,
     REGISTRO: `${API_BASE_URL}/auth/registro`,
     ME: `${API_BASE_URL}/auth/me`,
+    FORGOT_PASSWORD: `${API_BASE_URL}/auth/forgot-password`,
+    VERIFY_RESET_CODE: `${API_BASE_URL}/auth/verify-reset-code`,
+    RESET_PASSWORD: `${API_BASE_URL}/auth/reset-password`,
   },
   CHAT: {
     GET_MESSAGES: (chatType: string) => `${API_BASE_URL}/chat/${chatType}`,

@@ -271,6 +271,11 @@ const buildMailer = () => {
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
+  const rejectUnauthorizedEnv = process.env.SMTP_TLS_REJECT_UNAUTHORIZED;
+  const rejectUnauthorized =
+    rejectUnauthorizedEnv === undefined
+      ? true
+      : rejectUnauthorizedEnv !== 'false';
 
   if (!host || !user || !pass) {
     return null;
@@ -283,6 +288,9 @@ const buildMailer = () => {
     auth: {
       user,
       pass,
+    },
+    tls: {
+      rejectUnauthorized,
     },
   });
 };

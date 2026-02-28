@@ -820,6 +820,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFF',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   avatarMessage: {
     marginTop: 8,
@@ -850,6 +851,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   profileChoiceTextActive: {
     color: '#007AFF',
@@ -873,5 +875,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FF3B30',
     fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
 });

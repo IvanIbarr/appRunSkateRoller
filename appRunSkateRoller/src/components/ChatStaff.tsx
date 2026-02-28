@@ -166,7 +166,7 @@ export const ChatStaff: React.FC<ChatStaffProps> = ({
           isSystemMessage && styles.systemMessageContainer,
         ]}>
         {!isSystemMessage && (
-          <Text style={styles.userName}>
+          <Text style={[styles.userName, isOwnMessage && styles.ownUserName]}>
             {isOwnMessage ? 'Tú' : item.userName}
           </Text>
         )}
@@ -178,7 +178,13 @@ export const ChatStaff: React.FC<ChatStaffProps> = ({
           ]}>
           {item.text}
         </Text>
-        <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
+        <Text
+          style={[
+            styles.timestamp,
+            isOwnMessage && styles.ownTimestamp,
+          ]}>
+          {formatTime(item.timestamp)}
+        </Text>
       </View>
     );
   };
@@ -255,60 +261,79 @@ const styles = StyleSheet.create({
   },
   messagesList: {
     padding: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   messageContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    maxWidth: '80%',
+    backgroundColor: 'rgba(248, 250, 252, 0.96)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+    maxWidth: '82%',
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
   },
   ownMessageContainer: {
-    backgroundColor: '#34C759',
+    backgroundColor: 'rgba(34, 197, 94, 0.92)',
     alignSelf: 'flex-end',
+    borderColor: 'rgba(74, 222, 128, 0.5)',
+    borderTopRightRadius: 6,
   },
   systemMessageContainer: {
-    backgroundColor: 'rgba(255, 243, 205, 0.95)',
+    backgroundColor: 'rgba(15, 23, 42, 0.18)',
     alignSelf: 'center',
     maxWidth: '90%',
     borderWidth: 1,
-    borderColor: '#FFC107',
+    borderColor: 'rgba(148, 163, 184, 0.5)',
+    paddingVertical: 8,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
   },
   userName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
+    color: '#475569',
+    marginBottom: 3,
+    letterSpacing: 0.2,
+  },
+  ownUserName: {
+    color: 'rgba(226, 232, 240, 0.95)',
   },
   messageText: {
     fontSize: 16,
-    color: '#333',
-    marginBottom: 4,
+    color: '#0F172A',
+    marginBottom: 6,
+    lineHeight: 21,
   },
   ownMessageText: {
-    color: '#FFF',
+    color: '#F8FAFC',
   },
   systemMessageText: {
-    color: '#856404',
+    color: '#E2E8F0',
     fontWeight: '500',
     textAlign: 'center',
   },
   timestamp: {
     fontSize: 10,
-    color: '#999',
+    color: '#64748B',
     alignSelf: 'flex-end',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
+  },
+  ownTimestamp: {
+    color: 'rgba(240, 253, 244, 0.9)',
+    backgroundColor: 'rgba(15, 23, 42, 0.25)',
   },
   inputContainer: {
     flexDirection: 'row',

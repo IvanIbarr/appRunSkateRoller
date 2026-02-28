@@ -33,6 +33,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
   const [destino, setDestino] = useState('');
   const [loading, setLoading] = useState(false);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [routeRequested, setRouteRequested] = useState(false);
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
 
   React.useEffect(() => {
@@ -47,6 +48,18 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
     loadUser();
   }, []);
 
+  React.useEffect(() => {
+    if (!origen.trim() || !destino.trim()) {
+      setRouteRequested(false);
+      setRouteData(null);
+      setLoading(false);
+      return;
+    }
+    setRouteRequested(false);
+    setRouteData(null);
+    setLoading(false);
+  }, [origen, destino]);
+
   // Mapbox ya se carga desde index.html, no necesita carga adicional
 
   const handleCalcularRuta = () => {
@@ -56,6 +69,8 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
     }
 
     setLoading(true);
+    setRouteRequested(true);
+    setRouteData(null);
     // La ruta se calculará automáticamente cuando cambien origen y destino
     // y el componente MapboxMap la procesará
   };
@@ -104,7 +119,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
         </View>
 
         <View style={styles.formContainer}>
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, styles.inputRowTop]}>
           <AutocompleteInput
             label="Origen"
             placeholder="Ej: Lic. Primo Verdad, Col. Jardines, CDMX"
@@ -118,7 +133,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
           />
         </View>
 
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, styles.inputRowBottom]}>
           <AutocompleteInput
             label="Destino"
             placeholder="Ej: Xitla, Col. Arenal 4ta Sección, CDMX"
@@ -140,7 +155,7 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
           textStyle={styles.calculateButtonText}
         />
 
-        {routeData && (
+        {routeRequested && routeData && (
           <View>
             <View style={styles.routeInfo}>
               <View style={styles.routeInfoItem}>
@@ -173,8 +188,10 @@ export const NavegacionScreen: React.FC<NavegacionScreenProps> = ({navigation}) 
             origin={origen}
             destination={destino}
             onRouteCalculate={(route) => {
-              setRouteData(route);
-              setLoading(false);
+              if (routeRequested) {
+                setRouteData(route);
+                setLoading(false);
+              }
             }}
           />
         </View>
@@ -249,10 +266,21 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 20,
     // Sin fondo para que resalte la imagen de atrás
+    zIndex: 1,
   },
   inputRow: {
     marginBottom: 16,
     position: 'relative',
+    zIndex: 50,
+    elevation: 20,
+  },
+  inputRowTop: {
+    zIndex: 80,
+    elevation: 25,
+  },
+  inputRowBottom: {
+    zIndex: 30,
+    elevation: 10,
   },
   input: {
     width: '100%',
@@ -267,11 +295,12 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
     minHeight: 56,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 400,
+    zIndex: 1,
   },
   calculateButtonText: {
     fontSize: 18,
@@ -285,6 +314,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'space-around',
+    zIndex: 1,
+    elevation: 1,
   },
   routeInfoItem: {
     alignItems: 'center',
@@ -309,11 +340,12 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
     minHeight: 56,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 400,
+    zIndex: 1,
   },
   startRouteButtonText: {
     fontSize: 18,
