@@ -1,0 +1,51 @@
+==============================================
+  INICIO RÁPIDO - PROBAR EN WEB
+==============================================
+
+1. TERMINAL 1 - Backend:
+   ----------------------
+   cd "D:\curso kotlin\recursos de la app roller\SIIG-ROLLER-BACKEND"
+   npm run dev
+
+   Espera ver: "Servidor corriendo en http://localhost:3001"
+
+
+2. TERMINAL 2 - Frontend:
+   -----------------------
+   cd "D:\curso kotlin\recursos de la app roller\SIIG-ROLLER-FRONT"
+   npm run web
+
+   Espera ver: "webpack compiled successfully"
+
+
+3. ABRIR NAVEGADOR:
+   ----------------
+   Ve a: http://localhost:3000
+
+
+4. PROBAR LOGIN:
+   -------------
+   Email: admin@roller.com
+   Password: admin123
+
+   Deberías ver la pantalla Home con el perfil del administrador.
+
+
+5. PROBAR REGISTRO:
+   ----------------
+   - Haz clic en "Regístrate"
+   - Completa el formulario
+   - Crea una cuenta nueva
+   - Verifica que funcione el login con el nuevo usuario
+
+
+==============================================
+  TROUBLESHOOTING
+==============================================
+
+- Si el backend no inicia: Verifica que PostgreSQL esté corriendo
+- Si hay error CORS: Verifica que el backend esté en puerto 3001
+- Si hay error de conexión: Abre la consola del navegador (F12) y revisa los errores
+
+==============================================
+
