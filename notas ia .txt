@@ -1,0 +1,89 @@
+
+Me ayudas a realizar un analisis de implementacion del siguiente proyecto, no generes codigo solo necisito el diagrama de arquitectura, recomendaciones tecnologicas
+
+1. Objetivo General
+Desarrollar una aplicación móvil multiplataforma (Android e iOS) llamada RunSkateRoller diseñada para la comunidad de patinadores y ciclistas, que permita la planificación de rutas, el seguimiento en tiempo real y el fomento del comercio especializado dentro de la comunidad.
+
+2. Funcionalidades Principales
+
+A. logueo 
+1. Permitir registro con user contraseña donde ambos datos se encuentran en un mock
+Solicitar datos 
+-edad
+-cumpleaños
+-sexo - ambos
+-correo
+-Nacionalidad - ingles y español
+
+2. Tener dos perfiles de administrador, liderdegrupo, roller
+crear una base de datos en firebase con los datos dados
+
+3. incluir logo 
+
+B. Navegación y Medición
+1. Planificador de Ruta: Cálculo de distancia tras ingresar origen y destino en el mapa.
+2. Seguimiento en Tiempo Real: Visualización del progreso durante el recorrido mediante GPS.
+3. Transmisión en Vivo: El administrador u "Owner" de una ruta podrá compartir su ubicación exacta en tiempo real para que otros usuarios se unan a la rodada.
+
+C. Registro e Historial
+1. Estadísticas de Usuario: Registro automático de kilómetros recorridos.
+2. Dashboard de Historial: Visualización detallada de recorridos con filtros por semana, mes o año.
+
+D. Social y Comunidad
+Integración con Redes Sociales: Botón directo para compartir logros, mapas de ruta y tiempos en Facebook e Instagram Stories/Feed.
+Calendario de Eventos: Sección dedicada para consultar fechas, horas y puntos de encuentro de rutas oficiales o comunitarias.
+
+E. Módulo de Comercio (Marketplace)
+Sección de Ventas: Espacio habilitado para la compra/venta de equipo, accesorios y refacciones para patines y bicicletas.
+
+3. Diferenciadores Técnicos
+Multiplataforma: Desarrollo optimizado para los dos sistemas operativos principales.
+Modo "Líder de Ruta": Funcionalidad única para que los grupos grandes no se pierdan, siguiendo al líder en el mapa.
+Gamificación: Sistema de logros basado en el historial semanal para incentivar el uso de la app.
+Sugerencias adicionales para tu redacción:
+Si vas a buscar programadores: Te sugiero mencionar que necesitas integración con las API de Google Maps o Mapbox.
+Para el diseño: Puedes explorar estilos visuales en sitios como Dribbble para ver cómo se ven otras apps de deporte y decidir el color de la tuya.
+
+
+notas
+del analisis de implementacion para el apartado 3.1 Frontend Móvil usaremos la Opción 1: React Native (Recomendada), para el apartado  3.2 Backend usaremos Node.js + Express (Simplicidad),para el apartado de la bd
+usaremos PostgreSQL, para apartado de Servicios de Mapas en la etapa de startup usaremos Mapbox con una fase 2 migraremos a googlemaps Platform.
+
+Necesito una pantalla de creaer cuenta donde se pidan datos 
+
+PASO 3 
+Vamos a iniciar con la capa de presentacion en el flujo de autentificacion . ayudame a crear el proyecto capa de presentacion, el proyecto se llamara SIIG-ROLLER-FRONT dentro del cual se guardara el 
+codigo para : (copiar la fase a implentar)
+
+paso 4
+
+Próximos pasos
+Instalar dependencias: npm install
+Ejecutar la app: npm run android o npm run ios
+Probar con los usuarios mock incluidos
+El proyecto está listo para desarrollo. El código sigue buenas prácticas de React Native con TypeScript y está estructurado para escalar cuando se integre con el backend real.
+
+paso 5 despliegue web
+http://localhost:3000/
+
+Usuarios de prueba
+Puedes probar la aplicación con estos usuarios:
+Administrador: admin@roller.com / admin123
+Líder de Grupo: lider@roller.com / lider123
+Roller: roller@roller.com / roller123
+
+paso 5 
+Vamos a seguir con la capa de presentacion en el flujo de autentificacion . ayudame a implementar la base datos de manera local
+para Tres tipos de perfil: administraor, liderGrupo y roller
+Base de datos en PostgreSQL
+
+puedes generar el diagrama de entidad relacional de las tablas que vamos a necesitar
+
+
+
+
+
+
+
+
+ 
