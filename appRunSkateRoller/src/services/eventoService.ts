@@ -302,17 +302,42 @@ class EventoService {
       // Buscar el evento a actualizar
       const eventoIndex = eventos.findIndex(e => e.id === data.id);
       
-      if (eventoIndex === -1) {
-        return {
-          success: false,
-          error: 'Evento no encontrado',
-        };
-      }
-
       // Parsear la fecha
       const fechaEvento = this.parseFecha(data.fechaInicio);
 
-      // Actualizar el evento
+      if (eventoIndex === -1) {
+        // Si no existe en almacenamiento local, crear/insertar (upsert)
+        const nuevoEvento: Evento = {
+          id: data.id,
+          titulo: data.tituloRuta,
+          fecha: fechaEvento,
+          hora: data.cita,
+          puntoEncuentroLat: 0,
+          puntoEncuentroLng: 0,
+          puntoEncuentroDireccion: data.puntoSalida,
+          organizadorId: 'local',
+          tituloRuta: data.tituloRuta,
+          puntoSalida: data.puntoSalida,
+          fechaInicio: data.fechaInicio,
+          cita: data.cita,
+          salida: data.salida,
+          nivel: data.nivel,
+          logoGrupo: data.logoGrupo,
+          lugarDestino: data.lugarDestino,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        eventos.push(nuevoEvento);
+        await this.saveEventos(eventos);
+
+        return {
+          success: true,
+          evento: nuevoEvento,
+        };
+      }
+
+      // Actualizar el evento existente
       const eventoActualizado: Evento = {
         ...eventos[eventoIndex],
         titulo: data.tituloRuta,

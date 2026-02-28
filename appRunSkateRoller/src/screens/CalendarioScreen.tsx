@@ -27,7 +27,42 @@ interface CalendarioScreenProps {
 }
 
 // Datos de ejemplo para eventos (en producción vendría del backend)
-const eventosEjemplo: Evento[] = [];
+const generateEventosMarzo = (): Evento[] => {
+  const year = 2026;
+  const monthIndex = 2; // Marzo (0-based)
+  const eventos: Evento[] = [];
+  const titles = [
+    'Rodada nocturna',
+    'Ruta urbana',
+    'Patinaje recreativo',
+  ];
+  const niveles = ['Básico', 'Intermedio', 'Avanzado'];
+
+  let idCounter = 1;
+  for (let weekStart = 1; weekStart <= 31; weekStart += 7) {
+    for (let i = 0; i < 3; i += 1) {
+      const day = Math.min(weekStart + i * 2, 31);
+      const fecha = new Date(year, monthIndex, day);
+      eventos.push({
+        id: `marzo-${idCounter}`,
+        titulo: titles[i],
+        tituloRuta: `${titles[i]} - Semana ${Math.ceil(weekStart / 7)}`,
+        fecha,
+        hora: i === 0 ? '19:00' : i === 1 ? '07:30' : '18:00',
+        salida: i === 0 ? '19:30' : i === 1 ? '08:00' : '18:30',
+        cita: i === 0 ? '19:10' : i === 1 ? '07:45' : '18:10',
+        nivel: niveles[i],
+        puntoSalida: 'Parque Central',
+        descripcion: 'Evento de prueba para visualizar calendario.',
+      });
+      idCounter += 1;
+    }
+  }
+
+  return eventos;
+};
+
+const eventosEjemplo: Evento[] = generateEventosMarzo();
 
 export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   navigation,
@@ -65,7 +100,8 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
         );
         
         // Combinar eventos guardados con eventos de ejemplo filtrados
-        const todosEventos = [...eventosEjemploFiltrados, ...response.eventos];
+        // Priorizar eventos guardados para que sobrescriban los de ejemplo
+        const todosEventos = [...response.eventos, ...eventosEjemploFiltrados];
         
         // Filtrar eventos eliminados
         const eventosSinEliminados = todosEventos.filter(
@@ -184,9 +220,23 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   };
 
   const handleEditarEvento = (evento: Evento) => {
-    // Navegar al formulario de creación/edición con los datos del evento
+    // Navegar al formulario con datos serializables
+    const fechaSerializable =
+      typeof evento.fecha === 'string' ? evento.fecha : evento.fecha.toISOString();
+
     navigation.navigate('CrearEvento', {
-      eventoParaEditar: evento,
+      eventoParaEditar: {
+        ...evento,
+        fecha: fechaSerializable,
+        createdAt:
+          evento.createdAt instanceof Date
+            ? evento.createdAt.toISOString()
+            : evento.createdAt,
+        updatedAt:
+          evento.updatedAt instanceof Date
+            ? evento.updatedAt.toISOString()
+            : evento.updatedAt,
+      },
       esEdicion: true,
     });
   };
@@ -474,7 +524,7 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
         {/* Imagen de fondo */}
         <View style={styles.backgroundImageContainer}>
           <Image
-            source={require('../../assets/IMG_2675.jpeg')}
+            source={require('../../assets/patines-fondo-nuevo.jpeg')}
             style={styles.backgroundImage}
             resizeMode="cover"
           />
@@ -504,87 +554,89 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Mini Calendario */}
-          <View style={styles.calendarContainer}>
-            <View style={styles.calendarHeader}>
-              <TouchableOpacity
-                style={styles.calendarNavButton}
-                onPress={() => navigateMonth('prev')}
-                activeOpacity={0.7}>
-                <Text style={styles.calendarNavIcon}>‹</Text>
-              </TouchableOpacity>
-              <Text style={styles.calendarMonthText}>
-                {getMonthName(currentMonth).charAt(0).toUpperCase() + getMonthName(currentMonth).slice(1)}
-              </Text>
-              <TouchableOpacity
-                style={styles.calendarNavButton}
-                onPress={() => navigateMonth('next')}
-                activeOpacity={0.7}>
-                <Text style={styles.calendarNavIcon}>›</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.calendarGrid}>
+            {/* Mini Calendario */}
+            <View style={styles.calendarContainer}>
+              <View style={styles.calendarHeader}>
+                <TouchableOpacity
+                  style={styles.calendarNavButton}
+                  onPress={() => navigateMonth('prev')}
+                  activeOpacity={0.7}>
+                  <Text style={styles.calendarNavIcon}>‹</Text>
+                </TouchableOpacity>
+                <Text style={styles.calendarMonthText}>
+                  {getMonthName(currentMonth).charAt(0).toUpperCase() + getMonthName(currentMonth).slice(1)}
+                </Text>
+                <TouchableOpacity
+                  style={styles.calendarNavButton}
+                  onPress={() => navigateMonth('next')}
+                  activeOpacity={0.7}>
+                  <Text style={styles.calendarNavIcon}>›</Text>
+                </TouchableOpacity>
+              </View>
 
-            {/* Días de la semana */}
-            <View style={styles.calendarWeekDays}>
-              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day, index) => (
-                <View key={index} style={styles.weekDay}>
-                  <Text style={styles.weekDayText}>{day}</Text>
-                </View>
-              ))}
-            </View>
+              {/* Días de la semana */}
+              <View style={styles.calendarWeekDays}>
+                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day, index) => (
+                  <View key={index} style={styles.weekDay}>
+                    <Text style={styles.weekDayText}>{day}</Text>
+                  </View>
+                ))}
+              </View>
 
-            {/* Días del mes */}
-            <View style={styles.calendarDays}>
-              {Array.from({ length: getFirstDayOfMonth(currentMonth) }, (_, i) => (
-                <View key={`empty-${i}`} style={styles.calendarDay} />
-              ))}
-              {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => {
-                const day = i + 1;
-                const dayEvents = getEventsForDate(day);
-                const hasEvents = dayEvents.length > 0;
-                const today = isToday(day);
-                const past = isPastDate(day);
+              {/* Días del mes */}
+              <View style={styles.calendarDays}>
+                {Array.from({ length: getFirstDayOfMonth(currentMonth) }, (_, i) => (
+                  <View key={`empty-${i}`} style={styles.calendarDay} />
+                ))}
+                {Array.from({ length: getDaysInMonth(currentMonth) }, (_, i) => {
+                  const day = i + 1;
+                  const dayEvents = getEventsForDate(day);
+                  const hasEvents = dayEvents.length > 0;
+                  const today = isToday(day);
+                  const past = isPastDate(day);
 
-                return (
-                  <TouchableOpacity
-                    key={day}
-                    style={[
-                      styles.calendarDay,
-                      today && styles.calendarDayToday,
-                      hasEvents && styles.calendarDayWithEvents,
-                    ]}
-                    activeOpacity={0.7}>
-                    <Text
+                  return (
+                    <TouchableOpacity
+                      key={day}
                       style={[
-                        styles.calendarDayText,
-                        today && styles.calendarDayTextToday,
-                        past && styles.calendarDayTextPast,
-                        hasEvents && styles.calendarDayTextWithEvents,
-                      ]}>
-                      {day}
-                    </Text>
-                    {hasEvents && <View style={styles.calendarDayDot} />}
-                  </TouchableOpacity>
-                );
-              })}
+                        styles.calendarDay,
+                        today && styles.calendarDayToday,
+                        hasEvents && styles.calendarDayWithEvents,
+                      ]}
+                      activeOpacity={0.7}>
+                      <Text
+                        style={[
+                          styles.calendarDayText,
+                          today && styles.calendarDayTextToday,
+                          past && styles.calendarDayTextPast,
+                          hasEvents && styles.calendarDayTextWithEvents,
+                        ]}>
+                        {day}
+                      </Text>
+                      {hasEvents && <View style={styles.calendarDayDot} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          </View>
 
-          {/* Eventos */}
-          {eventos.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No hay eventos programados</Text>
-            </View>
-          ) : (
-            eventos.map((evento) => (
-              <View key={evento.id} style={styles.eventCard}>
+            {/* Eventos */}
+            <View style={styles.eventsColumn}>
+              {eventos.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No hay eventos programados</Text>
+                </View>
+              ) : (
+                eventos.map((evento) => (
+                  <View key={evento.id} style={styles.eventCard}>
                 {/* Imagen principal del evento */}
                 {evento.lugarDestino ? (
                   <View style={styles.eventImageWrapper}>
                     <Image
                       source={{uri: evento.lugarDestino}}
                       style={styles.eventMainImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                     />
                     {/* Overlay oscuro para mejor legibilidad */}
                     <View style={styles.imageOverlay} />
@@ -640,17 +692,16 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
                 {/* Contenido del evento */}
                 <View style={styles.eventContent}>
                   {/* Título principal - Grande y destacado */}
-                  <View style={styles.titleSection}>
-                    <Text style={styles.eventTitle} numberOfLines={2}>
-                      {evento.tituloRuta || evento.titulo}
-                    </Text>
-                  </View>
-
-                  {/* Fecha destacada */}
-                  <View style={styles.dateSection}>
-                    <Text style={styles.dateText}>
-                      {formatFechaRango(evento.fecha)}
-                    </Text>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.titleIcon}>📅</Text>
+                    <View style={styles.titleTextBlock}>
+                      <Text style={styles.eventTitle} numberOfLines={2}>
+                        {evento.tituloRuta || evento.titulo}
+                      </Text>
+                      <Text style={styles.dateText}>
+                        {formatFechaRango(evento.fecha)} {evento.hora ? `• ${evento.hora}` : ''}
+                      </Text>
+                    </View>
                   </View>
 
                   {/* Información de horarios */}
@@ -705,7 +756,7 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
                       style={styles.editButton}
                       onPress={() => handleEditarEvento(evento)}
                       activeOpacity={0.8}>
-                      <Text style={styles.editButtonText}>✏️ Editar</Text>
+                      <Text style={styles.editButtonText}>Editar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.registerButton}
@@ -717,13 +768,15 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
                       style={styles.shareButton}
                       onPress={() => handleCompartirEvento(evento)}
                       activeOpacity={0.8}>
-                      <Text style={styles.shareButtonText}>📤 Compartir</Text>
+                      <Text style={styles.shareButtonText}>Compartir</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
-            ))
-          )}
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
         </ScrollView>
 
         {/* Modal de Confirmación de Eliminación */}
@@ -838,7 +891,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: '100%',
     height: '100%',
-    opacity: 0.3,
+    opacity: 1,
   },
   overlay: {
     position: 'absolute',
@@ -846,7 +899,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(15, 15, 30, 0.85)', // Overlay oscuro para mejor contraste
+    backgroundColor: 'rgba(10, 12, 24, 0.55)', // Overlay suave para dejar ver el fondo
   },
   scrollView: {
     flex: 1,
@@ -854,6 +907,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
+  },
+  calendarGrid: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    gap: 18,
+    paddingHorizontal: 16,
+  },
+  eventsColumn: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -866,9 +927,9 @@ const styles = StyleSheet.create({
       default: 60,
     }),
     paddingBottom: 12,
-    backgroundColor: 'rgba(26, 26, 46, 0.6)',
+    backgroundColor: 'rgba(14, 16, 32, 0.7)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 217, 255, 0.2)',
+    borderBottomColor: 'rgba(138, 165, 255, 0.25)',
     ...Platform.select({
       ios: {
         // Mejoras visuales para iOS
@@ -914,12 +975,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 217, 255, 0.2)',
+    backgroundColor: 'rgba(108, 99, 255, 0.25)',
     borderWidth: 2,
-    borderColor: '#00D9FF',
+    borderColor: '#6C63FF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#00D9FF',
+    shadowColor: '#6C63FF',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.4,
     shadowRadius: 6,
@@ -927,7 +988,7 @@ const styles = StyleSheet.create({
   },
   addEventButtonIcon: {
     fontSize: 28,
-    color: '#00D9FF',
+    color: '#CFCBFF',
     fontWeight: '300',
     lineHeight: 28,
   },
@@ -942,24 +1003,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventCard: {
-    marginHorizontal: 20,
     marginBottom: 18,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: '#1A1A2E',
+    backgroundColor: 'rgba(18, 20, 40, 0.95)',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 217, 255, 0.1)',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(108, 99, 255, 0.5)',
   },
   eventImageWrapper: {
     width: '100%',
-    height: 200,
+    height: 520,
     position: 'relative',
-    backgroundColor: '#2A2A3E',
+    backgroundColor: '#1A1D2F',
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eventMainImage: {
     width: '100%',
@@ -973,10 +1036,10 @@ const styles = StyleSheet.create({
     height: 80,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)',
       },
       default: {
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: 'rgba(0,0,0,0.35)',
       },
     }),
   },
@@ -995,16 +1058,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 8,
+    width: 140,
+    height: 140,
+    backgroundColor: 'transparent',
+    borderRadius: 18,
+    padding: 0,
+    borderWidth: 0,
+    borderColor: 'transparent',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1039,17 +1104,30 @@ const styles = StyleSheet.create({
   },
   eventContent: {
     padding: 16,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: 'rgba(18, 20, 40, 0.95)',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  titleIcon: {
+    fontSize: 22,
+    color: '#22E6FF',
+  },
+  titleTextBlock: {
+    flex: 1,
   },
   titleSection: {
     marginBottom: 10,
   },
   eventTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
-    lineHeight: 28,
+    letterSpacing: 0.4,
+    lineHeight: 26,
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
     textTransform: 'uppercase',
   },
@@ -1057,12 +1135,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 215, 0, 0.2)',
+    borderBottomColor: 'rgba(108, 99, 255, 0.25)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateIcon: {
+    fontSize: 14,
   },
   dateText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#FFD700',
+    color: '#AEB5D6',
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
   },
   infoSection: {
@@ -1092,13 +1176,13 @@ const styles = StyleSheet.create({
   },
   levelBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#6C63FF',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#FF8C5A',
-    shadowColor: '#FF6B35',
+    borderColor: '#8A7FFF',
+    shadowColor: '#6C63FF',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.4,
     shadowRadius: 4,
@@ -1149,7 +1233,7 @@ const styles = StyleSheet.create({
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    marginTop: 6,
+    marginTop: 8,
     ...Platform.select({
       web: {
         gap: 10,
@@ -1162,22 +1246,22 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
-    backgroundColor: '#FFA500',
-    paddingVertical: 12,
+    backgroundColor: '#7A5CFF',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FFA500',
+    shadowColor: '#7A5CFF',
     shadowOffset: {width: 0, height: 3},
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
     borderWidth: 1.5,
-    borderColor: '#FFB84D',
+    borderColor: '#A38CFF',
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #FFA500 0%, #FFB84D 100%)',
+        background: 'linear-gradient(135deg, #7A5CFF 0%, #A38CFF 100%)',
       },
       default: {
         marginHorizontal: 5,
@@ -1193,16 +1277,16 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     flex: 1,
-    backgroundColor: '#00D9FF',
-    paddingVertical: 12,
+    backgroundColor: '#22E6FF',
+    paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#00D9FF',
+    shadowColor: '#22E6FF',
     shadowOffset: {width: 0, height: 3},
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
     elevation: 6,
     ...Platform.select({
       web: {
@@ -1222,20 +1306,20 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     flex: 1,
-    backgroundColor: '#9C27B0',
-    paddingVertical: 12,
+    backgroundColor: '#8F6BFF',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#9C27B0',
+    shadowColor: '#8F6BFF',
     shadowOffset: {width: 0, height: 3},
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
     elevation: 6,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #9C27B0 0%, #BA68C8 100%)',
+        background: 'linear-gradient(135deg, #7A5CFF 0%, #22E6FF 50%, #8F6BFF 100%)',
       },
       default: {
         marginHorizontal: 5,
@@ -1445,18 +1529,27 @@ const styles = StyleSheet.create({
   },
   // Estilos del mini calendario (compacto)
   calendarContainer: {
-    marginHorizontal: 20,
     marginBottom: 20,
-    backgroundColor: 'rgba(26, 26, 46, 0.95)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(14, 16, 32, 0.85)',
+    borderRadius: 22,
     padding: 12,
     borderWidth: 2,
-    borderColor: 'rgba(0, 217, 255, 0.4)',
-    shadowColor: '#00D9FF',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    borderColor: 'rgba(108, 99, 255, 0.65)',
+    shadowColor: '#6C63FF',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 10,
+    alignSelf: 'flex-start',
+    width: '100%',
+    ...Platform.select({
+      web: {
+        maxWidth: 380,
+      },
+      default: {
+        maxWidth: 320,
+      },
+    }),
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -1469,15 +1562,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0, 217, 255, 0.15)',
+    backgroundColor: 'rgba(108, 99, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(0, 217, 255, 0.5)',
+    borderColor: 'rgba(108, 99, 255, 0.55)',
   },
   calendarNavIcon: {
     fontSize: 20,
-    color: '#00D9FF',
+    color: '#B9B4FF',
     fontWeight: 'bold',
     lineHeight: 20,
   },
@@ -1493,6 +1586,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 6,
     paddingHorizontal: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 10,
+    paddingVertical: 6,
   },
   weekDay: {
     flex: 1,
@@ -1502,7 +1598,7 @@ const styles = StyleSheet.create({
   weekDayText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#8B9DC3',
+    color: '#AEB5D6',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
@@ -1514,23 +1610,22 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     padding: 2,
-    minHeight: 32,
-    maxHeight: 36,
+    borderRadius: 8,
   },
   calendarDayToday: {
-    backgroundColor: 'rgba(0, 217, 255, 0.25)',
+    backgroundColor: 'rgba(108, 99, 255, 0.28)',
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#00D9FF',
+    borderColor: '#6C63FF',
   },
   calendarDayWithEvents: {
-    backgroundColor: 'rgba(76, 175, 80, 0.15)',
-    borderRadius: 4,
+    backgroundColor: 'rgba(50, 213, 131, 0.18)',
+    borderRadius: 8,
   },
   calendarDayText: {
     fontSize: 12,
@@ -1539,7 +1634,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
   },
   calendarDayTextToday: {
-    color: '#00D9FF',
+    color: '#CFCBFF',
     fontWeight: '800',
     fontSize: 13,
   },
@@ -1548,15 +1643,15 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   calendarDayTextWithEvents: {
-    color: '#4CAF50',
+    color: '#32D583',
     fontWeight: '700',
   },
   calendarDayDot: {
     position: 'absolute',
     bottom: 2,
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#4CAF50',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#32D583',
   },
 });

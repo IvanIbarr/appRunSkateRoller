@@ -99,22 +99,31 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
         });
 
         if (response.success) {
+          setLoading(false);
+          const titulo = tituloRuta.trim() || 'Evento';
           Alert.alert(
-            '✅ Evento Actualizado',
-            `El evento "${tituloRuta}" ha sido actualizado exitosamente.`,
+            '✅ Actualizado con éxito',
+            `El evento "${titulo}" se actualizó correctamente.`,
             [
               {
                 text: 'OK',
                 onPress: () => {
-                  navigation.goBack();
+                  // Volver al calendario para ver cambios
+                  navigation.navigate('Calendario');
                 },
               },
-            ]
+            ],
+            {cancelable: false},
           );
         } else {
-          Alert.alert('Error', response.error || 'Error al actualizar el evento');
+          setLoading(false);
+          Alert.alert(
+            'Error',
+            response.error || 'Error al actualizar el evento',
+            [{text: 'OK'}],
+            {cancelable: true},
+          );
         }
-        setLoading(false);
       } else {
         // Crear nuevo evento - navegar a vista previa
         console.log('Creando evento:', eventoData);
@@ -123,7 +132,12 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Error', 'Ocurrió un error al procesar el evento');
+      Alert.alert(
+        'Error',
+        'Ocurrió un error al procesar el evento',
+        [{text: 'OK'}],
+        {cancelable: true},
+      );
       console.error('Error:', error);
     }
   };
