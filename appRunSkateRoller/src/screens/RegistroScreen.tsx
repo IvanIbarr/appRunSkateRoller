@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Image,
+  ImageBackground,
   TouchableOpacity,
 } from 'react-native';
 import {Button} from '../components/Button';
@@ -245,33 +246,39 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
-        <View style={styles.content}>
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../../assets/logo.jpeg')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.title}>{t('register.title')}</Text>
-            <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
-          </View>
+      <ImageBackground
+        source={require('../../assets/registro-bg.png')}
+        style={styles.backgroundImage}
+        imageStyle={styles.backgroundImageStyle}>
+        <View style={styles.backgroundOverlay} pointerEvents="none" />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.content}>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/logo.jpeg')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.title}>{t('register.title')}</Text>
+              <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
+            </View>
 
-          {/* Formulario */}
-          <View style={styles.form}>
-            <Input
-              label={t('register.email')}
-              placeholder="correo@ejemplo.com"
-              value={formData.email}
-              onChangeText={text => setFormData({...formData, email: text})}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+            {/* Formulario */}
+            <View style={styles.formCard}>
+              <View style={styles.form}>
+              <Input
+                label={t('register.email')}
+                placeholder="correo@ejemplo.com"
+                value={formData.email}
+                onChangeText={text => setFormData({...formData, email: text})}
+                error={errors.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
 
             {/* Campo de Alias */}
             <View style={styles.aliasSection}>
@@ -538,9 +545,11 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
                 {t('register.loginLink')}
               </Text>
             </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </ImageBackground>
 
       {/* Modal de Selección de Avatar */}
       <AvatarSelector
@@ -574,35 +583,78 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#0F172A',
+  },
+  backgroundImage: {
+    flex: 1,
+  },
+  backgroundImageStyle: {
+    resizeMode: 'cover',
+  },
+  backgroundOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(10, 12, 24, 0.55)',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 20,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: {width: 0, height: 6},
+    elevation: 6,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 16,
+    width: 86,
+    height: 86,
+    marginBottom: 12,
+    borderRadius: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#F8FAFC',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 13,
+    color: '#CBD5F5',
+    textAlign: 'center',
+  },
+  formCard: {
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    shadowOffset: {width: 0, height: 8},
+    elevation: 8,
+    maxWidth: 520,
+    alignSelf: 'center',
+    width: '100%',
   },
   form: {
     flex: 1,
@@ -613,7 +665,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#E2E8F0',
     marginBottom: 8,
   },
   sexoButtons: {
@@ -626,20 +678,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     alignItems: 'center',
   },
   sexoButtonActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E3F2FD',
+    borderColor: 'rgba(56, 189, 248, 0.8)',
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
   },
   sexoButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: '#CBD5F5',
   },
   sexoButtonTextActive: {
-    color: '#007AFF',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   nacionalidadButtons: {
@@ -652,20 +704,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     alignItems: 'center',
   },
   nacionalidadButtonActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E3F2FD',
+    borderColor: 'rgba(56, 189, 248, 0.8)',
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
   },
   nacionalidadButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: '#CBD5F5',
   },
   nacionalidadButtonTextActive: {
-    color: '#007AFF',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   perfilButtons: {
@@ -676,20 +728,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     alignItems: 'center',
   },
   perfilButtonActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E3F2FD',
+    borderColor: 'rgba(56, 189, 248, 0.8)',
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
   },
   perfilButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: '#CBD5F5',
   },
   perfilButtonTextActive: {
-    color: '#007AFF',
+    color: '#F8FAFC',
     fontWeight: '600',
   },
   registroButton: {
@@ -702,11 +754,11 @@ const styles = StyleSheet.create({
   },
   loginText: {
     fontSize: 14,
-    color: '#666',
+    color: '#CBD5F5',
   },
   loginLink: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#38BDF8',
     fontWeight: '600',
   },
   dateInputContainer: {
@@ -718,10 +770,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     fontSize: 16,
-    color: '#333',
+    color: '#F8FAFC',
     minHeight: 48,
   },
   dateButton: {
@@ -729,17 +781,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     minHeight: 48,
     justifyContent: 'center',
   },
   dateButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: '#F8FAFC',
   },
   dateButtonPlaceholder: {
-    color: '#999',
+    color: '#94A3B8',
   },
   errorText: {
     fontSize: 12,
@@ -751,8 +803,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     minHeight: 48,
   },
   avatarSelectorContent: {
@@ -762,7 +814,7 @@ const styles = StyleSheet.create({
   },
   avatarSelectorText: {
     fontSize: 16,
-    color: '#333',
+    color: '#E2E8F0',
   },
   aliasSection: {
     marginBottom: 16,

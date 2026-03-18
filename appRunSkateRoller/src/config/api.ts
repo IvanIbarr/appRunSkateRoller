@@ -58,6 +58,13 @@ export const API_ENDPOINTS = {
     AGREGAR: `${API_BASE_URL}/alias/agregar`,
     CAMBIAR: `${API_BASE_URL}/alias/cambiar`,
   },
+  ROLLERTIPS: {
+    CREATE: `${API_BASE_URL}/rollertips`,
+    LIST: `${API_BASE_URL}/rollertips`,
+    REACTIONS: (id: string) => `${API_BASE_URL}/rollertips/${id}/reactions`,
+    DELETE: (id: string) => `${API_BASE_URL}/rollertips/${id}`,
+    USER: (userId: string) => `${API_BASE_URL}/rollertips/user/${userId}`,
+  },
 };
 
 // Avatar endpoints

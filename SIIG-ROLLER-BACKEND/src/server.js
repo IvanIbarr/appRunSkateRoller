@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 require('dotenv').config();
 
 const {testConnection} = require('./config/database');
@@ -11,6 +12,7 @@ const staffRoutes = require('./routes/staffRoutes');
 const grupoRoutes = require('./routes/grupoRoutes');
 const aliasRoutes = require('./routes/aliasRoutes');
 const seguimientoRoutes = require('./routes/seguimientoRoutes');
+const rollertipsRoutes = require('./routes/rollertipsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +44,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({limit: '10mb'}));
 app.use(express.urlencoded({extended: true}));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Ruta de health check
 app.get('/health', async (req, res) => {
@@ -61,6 +64,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/grupo', grupoRoutes);
 app.use('/api/alias', aliasRoutes);
 app.use('/api/seguimiento', seguimientoRoutes);
+app.use('/api/rollertips', rollertipsRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {

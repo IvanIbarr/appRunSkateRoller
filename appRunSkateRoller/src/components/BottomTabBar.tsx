@@ -24,6 +24,7 @@ const tabs: TabItem[] = [
   {id: 'comunidad', label: 'Comunidad', icon: '💬', route: 'Comunidad'},
   {id: 'historial', label: 'Historial', icon: '🏆', route: 'Historial'},
   {id: 'calendario', label: 'Calendario', icon: '🗓️', route: 'Calendario'},
+  {id: 'rollertips', label: 'Rollertips', icon: '🎬', route: 'RollerTips'},
   {id: 'menu', label: 'Menú', icon: '☰', route: 'Menu'},
 ];
 

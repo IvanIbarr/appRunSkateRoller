@@ -247,6 +247,13 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
                 <Text style={styles.integrantesButtonText}>👥 Integrantes del Grupo</Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={styles.archivoButton}
+              onPress={() => navigation.navigate('RollerTipsArchive')}>
+              <Text style={styles.archivoButtonText}>📁 Mis archivos</Text>
+            </TouchableOpacity>
+
             
             <TouchableOpacity
               style={styles.logoutButton}
@@ -424,6 +431,26 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   integrantesButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  archivoButton: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  archivoButtonText: {
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',

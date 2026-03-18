@@ -25,6 +25,7 @@ export const WithBottomTabBar: React.FC<WithBottomTabBarProps> = ({
     currentRoute === 'Comunidad' ||
     currentRoute === 'Historial' ||
     currentRoute === 'Calendario' ||
+    currentRoute === 'RollerTips' ||
     currentRoute === 'Menu';
 
   return (

@@ -19,6 +19,9 @@ import {CrearEventoScreen} from '../screens/CrearEventoScreen';
 import {VistaPreviaEventoScreen} from '../screens/VistaPreviaEventoScreen';
 import {ForgotPasswordScreen} from '../screens/ForgotPasswordScreen';
 import {ResetPasswordScreen} from '../screens/ResetPasswordScreen';
+import {RollerTipsScreen} from '../screens/RollerTipsScreen';
+import {RollerTipsProfileScreen} from '../screens/RollerTipsProfileScreen';
+import {RollerTipsArchiveScreen} from '../screens/RollerTipsArchiveScreen';
 import {LanguageProvider} from '../contexts/LanguageContext';
 import authService from '../services/authService';
 
@@ -27,6 +30,9 @@ export type RootStackParamList = {
   Registro: undefined;
   ForgotPassword: undefined;
   ResetPassword: {email?: string} | undefined;
+  RollerTips: undefined;
+  RollerTipsProfile: {userId: string; displayName: string};
+  RollerTipsArchive: undefined;
   Home: undefined;
   Navegacion: undefined;
   Comunidad: undefined;
@@ -113,6 +119,9 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Registro" component={RegistroScreen} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+          <Stack.Screen name="RollerTips" component={RollerTipsScreen} />
+          <Stack.Screen name="RollerTipsProfile" component={RollerTipsProfileScreen} />
+          <Stack.Screen name="RollerTipsArchive" component={RollerTipsArchiveScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Navegacion" component={NavegacionScreen} />
             <Stack.Screen name="Comunidad" component={ComunidadScreen} />
