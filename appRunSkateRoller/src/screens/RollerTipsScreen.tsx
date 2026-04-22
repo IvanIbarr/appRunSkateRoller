@@ -16,7 +16,8 @@ import {launchImageLibrary} from 'react-native-image-picker';
 import Video from 'react-native-video';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
 import {Button} from '../components/Button';
-import {API_ENDPOINTS} from '../config/api';
+import {AvatarCircle} from '../components/AvatarCircle';
+import {API_ENDPOINTS, resolveApiUrl, resolveMediaUrl} from '../config/api';
 import authService from '../services/authService';
 import {Usuario} from '../types';
 import {useNavigation} from '@react-navigation/native';
@@ -53,6 +54,13 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
     uploaderName?: string | null;
     uploaderEmail?: string | null;
     uploaderAlias?: string | null;
+    comments?: Array<{
+      id: string;
+      text: string;
+      authorName?: string;
+      createdAt?: string;
+      reactions?: Record<string, number>;
+    }>;
   }>>([]);
   const [expandedTips, setExpandedTips] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
@@ -61,6 +69,23 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showCreators, setShowCreators] = useState(false);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [commentExpanded, setCommentExpanded] = useState<Record<string, boolean>>({});
+  const [commentSort, setCommentSort] = useState<Record<string, 'newest' | 'oldest'>>({});
+  const [reactionModal, setReactionModal] = useState<{
+    tipId: string;
+    commentId: string;
+  } | null>(null);
+  const [creatorModalUserId, setCreatorModalUserId] = useState<string | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<{
+    userId: string;
+    alias: string;
+    avatar?: string | null;
+    fotoPerfil?: string | null;
+    videoCount: number;
+    grupoTexto: string;
+  } | null>(null);
+  const [creatorProfileLoading, setCreatorProfileLoading] = useState(false);
 
   const remainingChars = useMemo(() => 1024 - tipText.length, [tipText]);
   const shouldTruncate = tipText.length > 125;
@@ -79,7 +104,9 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
   useEffect(() => {
     const loadTips = async () => {
       try {
-        const response = await fetch(`${API_ENDPOINTS.ROLLERTIPS.LIST}?scope=active`);
+        const response = await fetch(
+          resolveApiUrl(`${API_ENDPOINTS.ROLLERTIPS.LIST}?scope=active`),
+        );
         const data = await response.json();
         if (data?.success && Array.isArray(data.data)) {
           setTips(data.data);
@@ -115,6 +142,45 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
     loadUser();
   }, []);
 
+  useEffect(() => {
+    if (!creatorModalUserId) {
+      setCreatorProfile(null);
+      setCreatorProfileLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setCreatorProfileLoading(true);
+      try {
+        const response = await fetch(
+          resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.CREATOR(creatorModalUserId)),
+        );
+        const data = await response.json();
+        if (!cancelled) {
+          if (data?.success && data.data) {
+            setCreatorProfile(data.data);
+          } else {
+            setCreatorProfile(null);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCreatorProfile(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setCreatorProfileLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorModalUserId]);
+
+  const getTipPlayableUrl = (rawUrl: string) =>
+    Platform.OS === 'web' ? resolveApiUrl(rawUrl) : resolveMediaUrl(rawUrl);
+
   const reactionItems = [
     {id: 'like', label: '👍'},
     {id: 'corazon', label: '❤️'},
@@ -126,9 +192,13 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
 
   const handleReaction = async (tipId: string, reaction: string) => {
     try {
-      const response = await fetch(API_ENDPOINTS.ROLLERTIPS.REACTIONS(tipId), {
+      const token = await AsyncStorage.getItem('@auth:token');
+      const response = await fetch(resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.REACTIONS(tipId)), {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? {Authorization: `Bearer ${token}`} : {}),
+        },
         body: JSON.stringify({reaction}),
       });
       const data = await response.json();
@@ -136,10 +206,108 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
         setTips((prev) =>
           prev.map((tip) => (tip.id === tipId ? data.data : tip)),
         );
+      } else {
+        Alert.alert('RollerTips', data?.error || 'No se pudo registrar la reacción.');
       }
     } catch (error) {
       Alert.alert('RollerTips', 'No se pudo registrar la reacción.');
     }
+  };
+
+  const handleAddComment = async (tipId: string) => {
+    const text = (commentDrafts[tipId] || '').trim();
+    if (!text) {
+      Alert.alert('RollerTips', 'Escribe un comentario.');
+      return;
+    }
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    if (wordCount > 350) {
+      Alert.alert('RollerTips', 'El comentario excede 350 palabras.');
+      return;
+    }
+    try {
+      const response = await fetch(resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.COMMENTS(tipId)), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          text,
+          authorId: currentUser?.id || null,
+          authorName: currentUser?.alias || currentUser?.email || 'Usuario',
+        }),
+      });
+      const data = await response.json();
+      if (data?.success && data.data) {
+        setTips((prev) =>
+          prev.map((tip) => (tip.id === tipId ? data.data : tip)),
+        );
+        setCommentDrafts((prev) => ({...prev, [tipId]: ''}));
+      } else {
+        Alert.alert('RollerTips', data?.error || 'No se pudo comentar.');
+      }
+    } catch (error) {
+      Alert.alert('RollerTips', 'No se pudo comentar.');
+    }
+  };
+
+  const handleCommentReaction = async (tipId: string, commentId: string, reaction: string) => {
+    try {
+      const token = await AsyncStorage.getItem('@auth:token');
+      const response = await fetch(
+        resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.COMMENT_REACTIONS(tipId, commentId)),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? {Authorization: `Bearer ${token}`} : {}),
+          },
+          body: JSON.stringify({reaction}),
+        },
+      );
+      const data = await response.json();
+      if (data?.success && data.data) {
+        setTips((prev) =>
+          prev.map((tip) => (tip.id === tipId ? data.data : tip)),
+        );
+      } else {
+        Alert.alert('RollerTips', data?.error || 'No se pudo registrar la reacción.');
+      }
+    } catch (error) {
+      Alert.alert('RollerTips', 'No se pudo registrar la reacción.');
+    }
+  };
+
+  const handleDeleteComment = async (tipId: string, commentId: string) => {
+    Alert.alert(
+      'Eliminar comentario',
+      '¿Seguro que quieres eliminar este comentario?',
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('@auth:token');
+              const response = await fetch(
+                resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.COMMENT_DELETE(tipId, commentId)),
+                {
+                  method: 'DELETE',
+                  headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+                },
+              );
+              const data = await response.json().catch(() => null);
+              if (!response.ok || !data?.success) {
+                throw new Error(data?.error || 'No se pudo eliminar el comentario');
+              }
+              setTips((prev) => prev.map((tip) => (tip.id === tipId ? data.data : tip)));
+            } catch (error) {
+              Alert.alert('RollerTips', 'No se pudo eliminar el comentario.');
+            }
+          },
+        },
+      ],
+      {cancelable: true},
+    );
   };
 
   const handleDelete = async (tipId: string) => {
@@ -151,7 +319,7 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
         onPress: async () => {
           try {
             const token = await AsyncStorage.getItem('@auth:token');
-            const response = await fetch(API_ENDPOINTS.ROLLERTIPS.DELETE(tipId), {
+            const response = await fetch(resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.DELETE(tipId)), {
               method: 'DELETE',
               headers: token ? {Authorization: `Bearer ${token}`} : undefined,
             });
@@ -255,7 +423,7 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
 
       const data = await new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', API_ENDPOINTS.ROLLERTIPS.CREATE);
+        xhr.open('POST', resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.CREATE));
         if (token) {
           xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         }
@@ -347,6 +515,32 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
     );
   }, [tips, creatorQuery]);
 
+  const creatorModalTips = useMemo(
+    () => tips.filter((t) => t.uploadedBy && t.uploadedBy === creatorModalUserId),
+    [tips, creatorModalUserId],
+  );
+
+  const creatorModalDisplay = useMemo(() => {
+    if (!creatorModalUserId) {
+      return null;
+    }
+    if (creatorProfile) {
+      return creatorProfile;
+    }
+    if (creatorModalTips.length > 0) {
+      const t0 = creatorModalTips[0];
+      return {
+        userId: creatorModalUserId,
+        alias: getDisplayName(t0),
+        avatar: null,
+        fotoPerfil: null,
+        videoCount: creatorModalTips.length,
+        grupoTexto: 'Sin grupo roller asociado',
+      };
+    }
+    return null;
+  }, [creatorModalUserId, creatorProfile, creatorModalTips]);
+
   return (
     <WithBottomTabBar>
       <View style={styles.container}>
@@ -358,11 +552,22 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <View style={styles.headerCard}>
               <View style={styles.headerRow}>
-                <View style={styles.headerText}>
-                  <Text style={styles.title}>Rollertips</Text>
-                  <Text style={styles.subtitle}>
-                    Comparte tips en video con la comunidad
-                  </Text>
+                <View style={styles.headerLeftRow}>
+                  <View style={styles.headerAvatarWrap}>
+                    <AvatarCircle
+                      fotoPerfil={currentUser?.fotoPerfil}
+                      avatar={currentUser?.avatar}
+                      size={48}
+                    />
+                  </View>
+                  <View style={styles.headerText}>
+                    <Text style={[styles.title, styles.titleHeaderLeft]}>
+                      Rollertips
+                    </Text>
+                    <Text style={[styles.subtitle, styles.subtitleHeaderLeft]}>
+                      Comparte tips en video con la comunidad
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   style={styles.rulesIconButton}
@@ -495,7 +700,6 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
                     style={styles.videoPlayer}
                     resizeMode="cover"
                     controls
-                    paused
                   />
                 </View>
               )}
@@ -580,9 +784,16 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
                       <Text style={styles.emptyText}>Sin resultados.</Text>
                     ) : (
                       creators.map((creator) => (
-                        <Text key={creator.id} style={styles.creatorNameOnly}>
-                          {creator.name}
-                        </Text>
+                        <TouchableOpacity
+                          key={creator.id}
+                          style={styles.creatorRow}
+                          onPress={() => setCreatorModalUserId(creator.id)}
+                          activeOpacity={0.75}>
+                          <Text style={styles.creatorNameOnly}>{creator.name}</Text>
+                          <Text style={styles.creatorRowHint}>
+                            Toca para ver videos y detalles
+                          </Text>
+                        </TouchableOpacity>
                       ))
                     )}
                   </View>
@@ -631,17 +842,16 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
                       <View style={styles.reelVideo}>
                         {Platform.OS === 'web' ? (
                           <video
-                            src={tip.url}
+                            src={getTipPlayableUrl(tip.url)}
                             style={{width: '100%', height: '100%', objectFit: 'cover'}}
                             controls
                           />
                         ) : (
                           <Video
-                            source={{uri: tip.url}}
+                            source={{uri: getTipPlayableUrl(tip.url)}}
                             style={styles.videoPlayer}
                             resizeMode="cover"
                             controls
-                            paused
                           />
                         )}
                       </View>
@@ -677,12 +887,181 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
                           </TouchableOpacity>
                         ))}
                       </View>
+                      <View style={styles.commentSection}>
+                        <View style={styles.commentHeader}>
+                          <Text style={styles.commentTitle}>
+                            Comentarios ({(tip.comments || []).length})
+                          </Text>
+                          <View style={styles.commentHeaderActions}>
+                            <View style={styles.commentActionsPill}>
+                              <TouchableOpacity
+                                style={styles.commentAction}
+                                onPress={() =>
+                                  setCommentExpanded((prev) => ({
+                                    ...prev,
+                                    [tip.id]: !prev[tip.id],
+                                  }))
+                                }>
+                                <Text style={styles.commentActionText}>
+                                  {commentExpanded[tip.id]
+                                    ? 'Ocultar comentarios'
+                                    : 'Ver/ AgregarComentarios'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                        {commentExpanded[tip.id] && (
+                          <>
+                            <View style={styles.commentSortRow}>
+                              <TouchableOpacity
+                                style={styles.commentSortBadge}
+                                onPress={() =>
+                                  setCommentSort((prev) => ({
+                                    ...prev,
+                                    [tip.id]:
+                                      (prev[tip.id] || 'newest') === 'newest'
+                                        ? 'oldest'
+                                        : 'newest',
+                                  }))
+                                }>
+                                <Text style={styles.commentSortText}>
+                                  {commentSort[tip.id] === 'oldest' ? 'Antiguos' : 'Nuevos'}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                            <View style={styles.commentList}>
+                              {(tip.comments || []).length === 0 ? (
+                                <Text style={styles.emptyText}>Sin comentarios.</Text>
+                              ) : (
+                                [...(tip.comments || [])]
+                                  .sort((a, b) => {
+                                    const aTime = new Date(a.createdAt || 0).getTime();
+                                    const bTime = new Date(b.createdAt || 0).getTime();
+                                    return (commentSort[tip.id] || 'newest') === 'oldest'
+                                      ? aTime - bTime
+                                      : bTime - aTime;
+                                  })
+                                  .map((comment) => (
+                                  <View key={comment.id} style={styles.commentItem}>
+                                    <View style={styles.commentMeta}>
+                                      <Text style={styles.commentAuthor}>
+                                        {comment.authorName || 'Usuario'}
+                                      </Text>
+                                      <View style={styles.commentMetaActions}>
+                                        {currentUser?.id &&
+                                          currentUser.id === (comment as any).authorId && (
+                                            <TouchableOpacity
+                                              style={styles.commentDeleteButton}
+                                              onPress={() =>
+                                                handleDeleteComment(tip.id, comment.id)
+                                              }>
+                                              <Text style={styles.commentDeleteText}>Eliminar</Text>
+                                            </TouchableOpacity>
+                                          )}
+                                        <TouchableOpacity
+                                          style={styles.commentReactButton}
+                                          onPress={() =>
+                                            setReactionModal({
+                                              tipId: tip.id,
+                                              commentId: comment.id,
+                                            })
+                                          }>
+                                          <Text style={styles.commentReactText}>Reaccionar</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                    <Text style={styles.commentText}>{comment.text}</Text>
+                                    <View style={styles.commentReactionsRow}>
+                                      {reactionItems.map((item) => (
+                                        <TouchableOpacity
+                                          key={item.id}
+                                          style={styles.commentReaction}
+                                          onPress={() =>
+                                            handleCommentReaction(tip.id, comment.id, item.id)
+                                          }>
+                                          <Text style={styles.reactionIcon}>{item.label}</Text>
+                                          <Text style={styles.reactionCount}>
+                                            {comment.reactions?.[item.id] ?? 0}
+                                          </Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </View>
+                                  </View>
+                                ))
+                              )}
+                            </View>
+                            <View style={styles.commentComposer}>
+                              <TextInput
+                                style={styles.commentInput}
+                                placeholder="Escribe un comentario..."
+                                placeholderTextColor="rgba(203, 213, 245, 0.7)"
+                                value={commentDrafts[tip.id] || ''}
+                                onChangeText={(value) =>
+                                  setCommentDrafts((prev) => ({
+                                    ...prev,
+                                    [tip.id]: value,
+                                  }))
+                                }
+                                multiline
+                              />
+                              <Text style={styles.commentCounter}>
+                                {Math.max(
+                                  0,
+                                  350 - (commentDrafts[tip.id]?.split(/\s+/).filter(Boolean).length || 0),
+                                )}{' '}
+                                palabras restantes
+                              </Text>
+                              <TouchableOpacity
+                                style={styles.commentSend}
+                                onPress={() => handleAddComment(tip.id)}>
+                                <Text style={styles.commentSendText}>Enviar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </>
+                        )}
+                      </View>
                     </View>
                   );
                 })
               )}
             </View>
           </ScrollView>
+          <Modal
+            visible={Boolean(reactionModal)}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setReactionModal(null)}>
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Reaccionar</Text>
+                <View style={styles.modalReactionsRow}>
+                  {reactionItems.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.modalReactionButton}
+                      onPress={() => {
+                        if (reactionModal) {
+                          handleCommentReaction(
+                            reactionModal.tipId,
+                            reactionModal.commentId,
+                            item.id,
+                          );
+                          setReactionModal(null);
+                        }
+                      }}>
+                      <Text style={styles.reactionIcon}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setReactionModal(null)}>
+                  <Text style={styles.modalCloseText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
           <Modal
             visible={showRulesModal}
             transparent
@@ -718,6 +1097,86 @@ export const RollerTipsScreen: React.FC<RollerTipsScreenProps> = () => {
                 <TouchableOpacity
                   style={styles.modalCloseButton}
                   onPress={() => setShowRulesModal(false)}>
+                  <Text style={styles.modalCloseText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+          <Modal
+            visible={Boolean(creatorModalUserId)}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setCreatorModalUserId(null)}>
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalCardLarge}>
+                {creatorProfileLoading && !creatorModalDisplay ? (
+                  <Text style={styles.modalTitle}>Cargando…</Text>
+                ) : creatorModalDisplay ? (
+                  <ScrollView
+                    style={styles.creatorModalScroll}
+                    contentContainerStyle={styles.creatorModalScrollContent}
+                    showsVerticalScrollIndicator>
+                    <View style={styles.creatorModalHeader}>
+                      <AvatarCircle
+                        fotoPerfil={creatorModalDisplay.fotoPerfil}
+                        avatar={creatorModalDisplay.avatar}
+                        size={64}
+                      />
+                      <View style={styles.creatorModalHeaderText}>
+                        <Text style={styles.creatorModalAlias} numberOfLines={2}>
+                          {creatorModalDisplay.alias}
+                        </Text>
+                        <Text style={styles.creatorModalMeta}>
+                          {creatorModalDisplay.videoCount} video
+                          {creatorModalDisplay.videoCount === 1 ? '' : 's'}
+                        </Text>
+                        <Text style={styles.creatorModalGroup} numberOfLines={2}>
+                          {creatorModalDisplay.grupoTexto}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.creatorModalSectionTitle}>
+                      Videos de este creador
+                    </Text>
+                    {creatorModalTips.length === 0 ? (
+                      <Text style={styles.emptyText}>No hay videos activos.</Text>
+                    ) : (
+                      creatorModalTips.map((tip) => {
+                        const desc = (tip.description || '').trim();
+                        return (
+                          <View key={tip.id} style={styles.creatorModalReelBlock}>
+                            <View style={styles.creatorModalVideoWrap}>
+                              {Platform.OS === 'web' ? (
+                                <video
+                                  src={getTipPlayableUrl(tip.url)}
+                                  style={{width: '100%', height: 220, objectFit: 'cover'}}
+                                  controls
+                                />
+                              ) : (
+                                <Video
+                                  source={{uri: getTipPlayableUrl(tip.url)}}
+                                  style={styles.creatorModalVideo}
+                                  resizeMode="cover"
+                                  controls
+                                />
+                              )}
+                            </View>
+                            {desc ? (
+                              <Text style={styles.creatorModalDesc} numberOfLines={4}>
+                                {desc}
+                              </Text>
+                            ) : null}
+                          </View>
+                        );
+                      })
+                    )}
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.emptyText}>No se pudo cargar el perfil.</Text>
+                )}
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setCreatorModalUserId(null)}>
                   <Text style={styles.modalCloseText}>Cerrar</Text>
                 </TouchableOpacity>
               </View>
@@ -773,8 +1232,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
+  headerLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  headerAvatarWrap: {
+    marginRight: 12,
+  },
   headerText: {
     flex: 1,
+  },
+  titleHeaderLeft: {
+    textAlign: 'left',
+  },
+  subtitleHeaderLeft: {
+    textAlign: 'left',
   },
   rulesIconButton: {
     marginLeft: 12,
@@ -989,6 +1463,263 @@ const styles = StyleSheet.create({
     color: '#7DD3FC',
     fontWeight: '600',
   },
+  modalCardLarge: {
+    maxHeight: '88%',
+    backgroundColor: 'rgba(15, 23, 42, 0.98)',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  creatorModalScroll: {
+    maxHeight: 480,
+  },
+  creatorModalScrollContent: {
+    paddingBottom: 8,
+  },
+  creatorModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  creatorModalHeaderText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  creatorModalAlias: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginBottom: 4,
+  },
+  creatorModalMeta: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  creatorModalGroup: {
+    fontSize: 14,
+    color: '#7DD3FC',
+    fontWeight: '600',
+  },
+  creatorModalSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#E2E8F0',
+    marginBottom: 10,
+  },
+  creatorModalReelBlock: {
+    marginBottom: 20,
+  },
+  creatorModalVideoWrap: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#0f172a',
+  },
+  creatorModalVideo: {
+    width: '100%',
+    height: 220,
+  },
+  creatorModalDesc: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#CBD5F5',
+    lineHeight: 18,
+  },
+  creatorRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    marginBottom: 8,
+  },
+  creatorRowHint: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  modalReactionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  modalReactionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentSection: {
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  commentHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  commentTitle: {
+    fontSize: 13,
+    color: '#E2E8F0',
+    fontWeight: '700',
+  },
+  commentActionsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    overflow: 'hidden',
+  },
+  commentAction: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  commentActionText: {
+    fontSize: 11,
+    color: '#CBD5F5',
+    fontWeight: '600',
+  },
+  commentSortBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  commentSortText: {
+    fontSize: 11,
+    color: '#7DD3FC',
+    fontWeight: '700',
+  },
+  commentList: {
+    gap: 8,
+  },
+  commentSortRow: {
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  commentItem: {
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+  },
+  commentMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  commentMetaActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  commentAuthor: {
+    fontSize: 12,
+    color: '#F8FAFC',
+    fontWeight: '600',
+  },
+  commentDeleteButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.5)',
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+  },
+  commentDeleteText: {
+    fontSize: 11,
+    color: '#FCA5A5',
+    fontWeight: '600',
+  },
+  commentReactButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.5)',
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+  },
+  commentReactText: {
+    fontSize: 11,
+    color: '#7DD3FC',
+    fontWeight: '600',
+  },
+  commentText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#E2E8F0',
+    lineHeight: 17,
+  },
+  commentReactionsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  commentReaction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+  },
+  commentComposer: {
+    marginTop: 10,
+  },
+  commentInput: {
+    minHeight: 70,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.28)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    color: '#F8FAFC',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    fontSize: 12,
+  },
+  commentCounter: {
+    marginTop: 6,
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'right',
+  },
+  commentSend: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.5)',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+  },
+  commentSendText: {
+    fontSize: 12,
+    color: '#7DD3FC',
+    fontWeight: '600',
+  },
   reelsSection: {
     marginTop: 16,
   },
@@ -1005,12 +1736,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#F8FAFC',
     fontWeight: '600',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
   },
   searchInput: {
     minHeight: 44,

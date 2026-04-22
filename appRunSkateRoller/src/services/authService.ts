@@ -3,6 +3,7 @@ import {Platform} from 'react-native';
 import {Usuario, LoginCredentials, RegistroData, AuthResponse} from '../types';
 import apiService from './apiService';
 import {API_ENDPOINTS, AVATAR} from '../config/api';
+import adminUsersService from './adminUsersService';
 
 const STORAGE_KEY = '@auth:usuario';
 const MOCK_TOKEN = 'mock-token';
@@ -37,6 +38,17 @@ const MOCK_USERS: Array<Usuario & {password: string}> = [
     nacionalidad: 'español',
     tipoPerfil: 'roller',
   },
+  {
+    id: 'user-alex-azcapo',
+    email: 'alex.azcapo@roller.com',
+    password: 'alex123',
+    edad: 28,
+    cumpleaños: '1996-06-15',
+    sexo: 'masculino',
+    nacionalidad: 'español',
+    tipoPerfil: 'roller',
+    alias: 'Alex Azcapo',
+  },
 ];
 
 const isWeb = Platform.OS === 'web';
@@ -46,10 +58,14 @@ class AuthService {
    * Inicia sesión con email y contraseña
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    const payload = {
+      email: credentials.email.trim().toLowerCase(),
+      password: credentials.password,
+    };
     try {
       const response = await apiService.post<AuthResponse>(
         API_ENDPOINTS.AUTH.LOGIN,
-        credentials,
+        payload,
       );
 
       if (response.success && response.token && response.usuario) {
@@ -58,6 +74,7 @@ class AuthService {
 
         // Guardar usuario en AsyncStorage
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(response.usuario));
+        await adminUsersService.upsertFromAuthUser(response.usuario);
 
         return response;
       }
@@ -70,13 +87,14 @@ class AuthService {
       // Fallback en web cuando el backend no está disponible
       if (isWeb) {
         const matchedUser = MOCK_USERS.find(
-          user => user.email.toLowerCase() === credentials.email.toLowerCase(),
+          user => user.email.toLowerCase() === payload.email,
         );
 
-        if (matchedUser && matchedUser.password === credentials.password) {
+        if (matchedUser && matchedUser.password === payload.password) {
           const {password, ...usuario} = matchedUser;
           await apiService.saveToken(MOCK_TOKEN);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(usuario));
+          await adminUsersService.upsertFromAuthUser(usuario);
           return {
             success: true,
             usuario,
@@ -122,6 +140,7 @@ class AuthService {
 
         // Guardar usuario en AsyncStorage
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(response.usuario));
+        await adminUsersService.upsertFromAuthUser(response.usuario);
 
         return response;
       }
@@ -354,6 +373,40 @@ class AuthService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error al actualizar avatar',
+      };
+    }
+  }
+
+  /**
+   * Foto de perfil (data URL base64 o null para quitar).
+   * Backend: PUT /auth/foto-perfil
+   */
+  async updateFotoPerfil(
+    fotoPerfil: string | null,
+  ): Promise<{success: boolean; usuario?: Usuario; error?: string}> {
+    try {
+      const response = await apiService.put<{success: boolean; usuario: Usuario; message?: string}>(
+        AVATAR.UPDATE_FOTO_PERFIL,
+        {fotoPerfil},
+      );
+
+      if (response.success && response.usuario) {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(response.usuario));
+        return {
+          success: true,
+          usuario: response.usuario,
+        };
+      }
+
+      return {
+        success: false,
+        error: 'Error al actualizar la foto de perfil',
+      };
+    } catch (error) {
+      console.error('Error en updateFotoPerfil:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al actualizar la foto de perfil',
       };
     }
   }

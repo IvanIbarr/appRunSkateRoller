@@ -1,4 +1,5 @@
 const Seguimiento = require('../models/Seguimiento');
+const Usuario = require('../models/Usuario');
 
 /**
  * Crear una nueva sesión de seguimiento
@@ -49,10 +50,26 @@ const getSeguimiento = async (req, res) => {
     const puntos = await Seguimiento.getLocationPoints(id);
     const ultimoPunto = await Seguimiento.getLastLocationPoint(id);
 
+    // Datos públicos mínimos del usuario dueño (para UX de “Sígueme”)
+    let usuarioPublico = null;
+    try {
+      if (seguimiento?.usuario_id) {
+        const u = await Usuario.findById(seguimiento.usuario_id);
+        if (u) {
+          usuarioPublico = {
+            alias: u.alias || null,
+          };
+        }
+      }
+    } catch {
+      usuarioPublico = null;
+    }
+
     res.json({
       success: true,
       data: {
         ...seguimiento,
+        usuario: usuarioPublico,
         puntos,
         ultimoPunto,
       },

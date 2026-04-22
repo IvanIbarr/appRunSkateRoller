@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -8,6 +9,8 @@ import {
   FlatList,
   Platform,
   ActivityIndicator,
+  Keyboard,
+  Dimensions,
 } from 'react-native';
 import {MAPBOX_ACCESS_TOKEN, isExampleToken} from '../config/mapbox';
 
@@ -16,6 +19,8 @@ interface Suggestion {
   place_name: string;
   center: [number, number]; // [longitud, latitud]
 }
+
+type AreaScope = 'near' | 'state' | 'country';
 
 interface AutocompleteInputProps {
   label?: string;
@@ -27,14 +32,31 @@ interface AutocompleteInputProps {
   style?: any;
   labelStyle?: any;
   showCategories?: boolean; // Mostrar categorías rápidas
+  /** Oculta sugerencias (p. ej. cuando otro campo tiene foco; evita capas que bloquean toques en Safari). */
+  suppressSuggestions?: boolean;
+  onFocusInput?: () => void;
+  onBlurInput?: () => void;
+  /**
+   * En web, actualizar el estado del padre en cada tecla puede provocar pérdida de foco y "parpadeo"
+   * (especialmente con mapas/ScrollView). Si true, este input mantiene un valor interno y solo
+   * confirma el texto al seleccionar una sugerencia o al salir del campo.
+   */
+  deferParentUpdates?: boolean;
+  /** Proximity para mejorar relevancia (formato "lng,lat"). */
+  proximity?: string;
+  /** Idioma para sugerencias (default: 'es'). */
+  language?: string;
+  /**
+   * Para búsquedas por categoría (chips), Mapbox no expone un "radio" explícito en Geocoding v5.
+   * Lo más cercano es limitar resultados con `bbox` alrededor del GPS (km aproximados).
+   */
+  categorySearchRadiusKm?: number;
+  /** Contexto (estado/municipio) detectado por GPS (reverse geocode). */
+  geoContext?: {estado?: string; municipio?: string} | null;
 }
 
-const PLACE_CATEGORIES = [
-  {id: 'metro', label: '🚇 Metro', query: 'estación metro'},
-  {id: 'parque', label: '🌳 Parque', query: 'parque'},
-  {id: 'skatepark', label: '🛹 Skatepark', query: 'skatepark'},
-  {id: 'museo', label: '🏛️ Museo', query: 'museo'},
-];
+/** Fase 1: sin chips de categoría (metro/parque/museo); la búsqueda es por texto + ámbito (Cerca / estado / México). */
+const PLACE_CATEGORIES: Array<{id: string; label: string; query: string}> = [];
 
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   label,
@@ -46,14 +68,112 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   style,
   labelStyle,
   showCategories = true,
+  suppressSuggestions = false,
+  onFocusInput,
+  onBlurInput,
+  deferParentUpdates = false,
+  proximity,
+  language = 'es',
+  categorySearchRadiusKm,
+  geoContext,
 }) => {
+  const AREA_SCOPE_STORAGE_KEY = 'roller:places:areaScope';
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
+  const [draftValue, setDraftValue] = useState(value);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [areaScope, setAreaScope] = useState<AreaScope>('near');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [hintText, setHintText] = useState<string | null>(null);
+  const inputRef = useRef<TextInput | null>(null);
+
+  /** Safari móvil / Chrome: el teclado encoge visualViewport; limitamos la lista para que haga scroll dentro del hueco visible. */
+  const [visualViewportHeight, setVisualViewportHeight] = useState(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.visualViewport) {
+      return window.visualViewport.height;
+    }
+    return Dimensions.get('window').height;
+  });
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.visualViewport) {
+      return;
+    }
+    const vv = window.visualViewport;
+    const onVv = () => setVisualViewportHeight(vv.height);
+    vv.addEventListener('resize', onVv);
+    vv.addEventListener('scroll', onVv);
+    onVv();
+    return () => {
+      vv.removeEventListener('resize', onVv);
+      vv.removeEventListener('scroll', onVv);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      setKeyboardHeight(e.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const suggestionsMaxHeight = React.useMemo(() => {
+    if (Platform.OS === 'web') {
+      const h = visualViewportHeight;
+      return Math.max(120, Math.min(280, Math.floor(h * 0.36)));
+    }
+    const winH = Dimensions.get('window').height;
+    if (keyboardHeight > 0) {
+      const room = winH - keyboardHeight - 168;
+      return Math.max(120, Math.min(300, room));
+    }
+    return 300;
+  }, [visualViewportHeight, keyboardHeight]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(AREA_SCOPE_STORAGE_KEY);
+        if (raw === 'near' || raw === 'state' || raw === 'country') {
+          setAreaScope(raw);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void load();
+  }, []);
+
+  const persistAreaScope = async (next: AreaScope) => {
+    setAreaScope(next);
+    try {
+      await AsyncStorage.setItem(AREA_SCOPE_STORAGE_KEY, next);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    // Si el padre actualiza el valor (por ejemplo al seleccionar sugerencia desde fuera),
+    // sincronizamos el draft cuando no estamos editando activamente.
+    if (!isFocused) {
+      setDraftValue(value);
+    }
+  }, [value, isFocused]);
 
   useEffect(() => {
     // Limpiar timeout anterior
@@ -61,15 +181,17 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       clearTimeout(timeoutRef.current);
     }
 
+    const effectiveValue = deferParentUpdates ? draftValue : value;
+
     // Si el valor coincide con una sugerencia seleccionada y el campo no está enfocado, no mostrar sugerencias
-    if (selectedSuggestion && value === selectedSuggestion && !isFocused) {
+    if (selectedSuggestion && effectiveValue === selectedSuggestion && !isFocused) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
-    // Si el valor está vacío o tiene menos de 3 caracteres, no buscar
-    if (!value || value.trim().length < 3) {
+    // Si el valor está vacío o tiene menos de 2 caracteres, no buscar
+    if (!effectiveValue || effectiveValue.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       setSelectedSuggestion(null); // Reset si el usuario borra todo
@@ -77,16 +199,16 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     }
 
     // Solo buscar si el campo está enfocado o si el valor cambió (usuario está escribiendo)
-    if (!isFocused && value === selectedSuggestion) {
+    if (!isFocused && effectiveValue === selectedSuggestion) {
       setShowSuggestions(false);
       return;
     }
 
     // Debounce: esperar 300ms después de que el usuario deje de escribir
-    setLoading(true);
     timeoutRef.current = setTimeout(() => {
       if (isFocused) {
-        fetchSuggestions(value.trim());
+        setLoading(true);
+        fetchSuggestions(effectiveValue.trim(), activeCategory ?? undefined);
       }
     }, 300);
 
@@ -95,7 +217,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [value, isFocused, selectedSuggestion]);
+  }, [value, draftValue, deferParentUpdates, isFocused, selectedSuggestion]);
 
   // Limpiar timeouts al desmontar
   useEffect(() => {
@@ -109,11 +231,20 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (suppressSuggestions) {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    }
+  }, [suppressSuggestions]);
+
   const fetchSuggestions = async (query: string, category?: string) => {
     try {
+      setHintText(null);
       // Verificar que el token esté disponible
       if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === '') {
         console.warn('AutocompleteInput: Mapbox token no configurado');
+        setHintText('Búsqueda no disponible (falta token de Mapbox).');
         setLoading(false);
         return;
       }
@@ -123,183 +254,132 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         console.warn(
           'AutocompleteInput: Se está usando el token de ejemplo de Mapbox, que no permite usar las APIs. Por favor, configura tu propio token.',
         );
+        setHintText('Búsqueda no disponible (token de ejemplo).');
         setSuggestions([]);
         setShowSuggestions(false);
         setLoading(false);
         return;
       }
 
-      // Construir query con categoría si existe
-      let searchQuery = query;
-      const lowerQuery = query.toLowerCase();
+      // Construcción de búsqueda GLOBAL:
+      // - No forzamos "CDMX" ni restringimos por país.
+      // - Si tenemos GPS (proximity), Mapbox prioriza resultados cercanos como Google/Uber.
+      let searchQuery = query.trim();
       
-      // Verificar si ya incluye "Ciudad de México", "CDMX" o "Mexico City"
-      const hasCityContext = 
-        lowerQuery.includes('ciudad de méxico') || 
-        lowerQuery.includes('cdmx') || 
-        lowerQuery.includes('mexico city') ||
-        lowerQuery.includes('distrito federal') ||
-        lowerQuery.includes('df');
+      // Tipos estilo Uber/Google:
+      // - Acepta lo que el usuario escriba (POI, colonia/barrio, ciudad, estado, país, calle, CP).
+      // - Si viene de un botón de categoría, sesgamos hacia POIs (no calles).
+      const isCategoryPoi =
+        category === 'metro' || category === 'parque' || category === 'skatepark' || category === 'museo';
+
+      const types = isCategoryPoi
+        ? 'poi,poi.landmark,poi.attraction'
+        : 'poi,poi.landmark,poi.attraction,address,postcode,neighborhood,locality,place,region,country';
+
+      const buildCategoryQuery = (base: string, cat?: string): string => {
+        const estado = (geoContext?.estado || '').trim();
+        const municipio = (geoContext?.municipio || '').trim();
+        const loc = municipio || estado;
+        if (!isCategoryPoi || !cat) {
+          return base;
+        }
+        if (areaScope === 'country') {
+          // México como contexto amplio (sin amarrar a un estado).
+          return `${base}, México`;
+        }
+        if (areaScope === 'state' && loc) {
+          return `${base}, ${loc}, México`;
+        }
+        return base;
+      };
+      // Si hay categoría, la usamos como "sesgo" sin reemplazar lo que escribió el usuario.
+      const catPrefix = category
+        ? PLACE_CATEGORIES.find((c) => c.id === category)?.query?.trim()
+        : null;
+      if (isCategoryPoi && catPrefix && searchQuery.length > 0) {
+        const lower = searchQuery.toLowerCase();
+        const lowerPrefix = catPrefix.toLowerCase();
+        if (!lower.includes(lowerPrefix) && !lower.includes(category)) {
+          searchQuery = `${catPrefix} ${searchQuery}`.trim();
+        }
+      }
+      searchQuery = buildCategoryQuery(searchQuery, category);
+
+      const parseProximityLngLat = (raw?: string): {lng: number; lat: number} | null => {
+        if (!raw) {
+          return null;
+        }
+        const parts = String(raw)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (parts.length < 2) {
+          return null;
+        }
+        const lng = Number(parts[0]);
+        const lat = Number(parts[1]);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+          return null;
+        }
+        return {lng, lat};
+      };
+
+      const buildApproxBBoxKm = (
+        center: {lng: number; lat: number},
+        radiusKm: number,
+      ): string | null => {
+        if (!Number.isFinite(radiusKm) || radiusKm <= 0) {
+          return null;
+        }
+        // Aproximación suficiente para UI (no es geodesia exacta).
+        const latDelta = radiusKm / 111.32;
+        const cosLat = Math.cos((center.lat * Math.PI) / 180);
+        const safeCos = Math.min(1, Math.max(0.2, Math.abs(cosLat)));
+        const lngDelta = radiusKm / (111.32 * safeCos);
+        const minLon = center.lng - lngDelta;
+        const maxLon = center.lng + lngDelta;
+        const minLat = center.lat - latDelta;
+        const maxLat = center.lat + latDelta;
+        return `${minLon},${minLat},${maxLon},${maxLat}`;
+      };
+
+      const proximityCoord = parseProximityLngLat(proximity);
+      const categoryRadiusKm =
+        typeof categorySearchRadiusKm === 'number' && Number.isFinite(categorySearchRadiusKm)
+          ? categorySearchRadiusKm
+          : null;
+      const bboxForCategory =
+        areaScope === 'near' &&
+        isCategoryPoi &&
+        proximityCoord &&
+        categoryRadiusKm &&
+        categoryRadiusKm > 0
+          ? buildApproxBBoxKm(proximityCoord, categoryRadiusKm)
+          : null;
       
-      if (category) {
-        const categoryObj = PLACE_CATEGORIES.find(cat => cat.id === category);
-        if (categoryObj) {
-          // Si el query ya contiene el término de la categoría, usar solo el query
-          const lowerCategoryQuery = categoryObj.query.toLowerCase();
-          if (lowerQuery.includes(lowerCategoryQuery)) {
-            searchQuery = query.trim();
-          } else {
-            searchQuery = query.trim() ? `${categoryObj.query} ${query}`.trim() : categoryObj.query;
-          }
-          // Agregar contexto de Ciudad de México si no está presente
-          if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-            searchQuery = `${searchQuery} Ciudad de México`.trim();
-          }
-        }
-      } else {
-        // Detectar búsquedas de estaciones de metro (varios formatos)
-        // Formato 1: "metro [nombre]" o "metro pantitlan"
-        const metroMatch = query.trim().match(/^metro\s+(.+)$/i);
-        
-        if (metroMatch) {
-          // Usuario escribió "metro [nombre]" (ej: "metro mixcoac", "metro pantitlan")
-          const stationName = metroMatch[1].trim();
-          searchQuery = `Estación Metro ${stationName} Ciudad de México`.trim();
-        } else if (lowerQuery.includes('metro') || lowerQuery.includes('estación')) {
-          // Si contiene "metro" o "estación" pero no en formato "metro [nombre]"
-          if (!lowerQuery.includes('estación metro')) {
-            searchQuery = `estación metro ${query.replace(/(metro|estación)/gi, '').trim()}`.trim();
-          } else {
-            searchQuery = query.trim();
-          }
-          // Agregar contexto de Ciudad de México si no está presente
-          if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-            searchQuery = `${searchQuery} Ciudad de México`.trim();
-          }
-        } else if (lowerQuery.includes('skatepark') || lowerQuery.includes('skate park') || lowerQuery.includes('skate')) {
-          // Detectar si el usuario busca "skatepark [nombre]" o "[nombre] skatepark"
-          const skateparkMatch = query.trim().match(/^(?:skate\s*)?park\s+(.+)$/i) || 
-                                 query.trim().match(/^skatepark\s+(.+)$/i) ||
-                                 query.trim().match(/^skate\s+(.+)$/i);
-          
-          if (skateparkMatch) {
-            // Usuario escribió "skatepark [nombre]" o "skate park [nombre]", buscar específicamente
-            const parkName = skateparkMatch[1].trim();
-            searchQuery = `Skate Park ${parkName} Ciudad de México`.trim();
-          } else if (lowerQuery.includes('skatepark') || lowerQuery.includes('skate park')) {
-            // Si ya contiene "skatepark" o "skate park", mantenerlo y agregar contexto
-            searchQuery = query.trim();
-            if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-              searchQuery = `${searchQuery} Ciudad de México`.trim();
-            }
-          } else {
-            // Si solo contiene "skate", agregar "park" y contexto
-            searchQuery = `skatepark ${query.replace(/skate/gi, '').trim()}`.trim();
-            if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-              searchQuery = `${searchQuery} Ciudad de México`.trim();
-            }
-          }
-        } else if (lowerQuery.includes('museo') && !lowerQuery.startsWith('museo')) {
-          searchQuery = `museo ${query.replace(/museo/gi, '').trim()}`.trim();
-        } else if (lowerQuery.includes('parque') && !lowerQuery.startsWith('parque')) {
-          searchQuery = `parque ${query.replace(/parque/gi, '').trim()}`.trim();
-        } else if (lowerQuery.includes('bellas artes')) {
-          // Para "Bellas Artes", buscar específicamente el Palacio de Bellas Artes en Centro Histórico
-          if (!lowerQuery.includes('palacio')) {
-            // Si no menciona "palacio", buscar específicamente el Palacio de Bellas Artes
-            searchQuery = 'Palacio de Bellas Artes, Centro Histórico, Ciudad de México';
-          } else {
-            // Si ya menciona palacio, mantener y agregar contexto
-            searchQuery = query.trim();
-            if (!hasCityContext && !searchQuery.toLowerCase().includes('ciudad de méxico')) {
-              searchQuery = `${searchQuery} Centro Histórico Ciudad de México`.trim();
-            }
-          }
-        } else {
-          // Detectar lugares comunes y coloquiales
-          const trimmedQuery = query.trim();
-          
-          // Zócalo (varias formas)
-          if (/^zócalo|^zocalo/i.test(trimmedQuery)) {
-            if (/zócalo\s+de\s+la\s+cdmx|zocalo\s+de\s+la\s+cdmx|zócalo\s+cdmx|zocalo\s+cdmx/i.test(trimmedQuery)) {
-              searchQuery = 'Zócalo Ciudad de México';
-            } else {
-              searchQuery = 'Zócalo Ciudad de México';
-            }
-          }
-          // Liverpool (con ubicación o sin ella)
-          else if (/^liverpool/i.test(trimmedQuery)) {
-            if (/liverpool\s+insurgentes/i.test(trimmedQuery)) {
-              searchQuery = 'Liverpool Insurgentes Ciudad de México';
-            } else {
-              searchQuery = `${trimmedQuery} Ciudad de México`;
-            }
-          }
-          // Plaza (varios nombres)
-          else if (/^plaza/i.test(trimmedQuery)) {
-            if (/plaza\s+antena/i.test(trimmedQuery)) {
-              searchQuery = 'Plaza Antena Ciudad de México';
-            } else {
-              searchQuery = `${trimmedQuery} Ciudad de México`;
-            }
-          }
-          // Para otros lugares comunes sin dirección completa
-          else if (!hasCityContext) {
-            // Detectar si parece ser un nombre de lugar (no dirección completa)
-            const looksLikePlaceName = trimmedQuery.length < 50 && 
-                                      !trimmedQuery.match(/\d{5}/) && // Sin código postal
-                                      !trimmedQuery.match(/^\d+/) && // No empieza con número
-                                      (!trimmedQuery.includes(',') || trimmedQuery.split(',').length <= 2); // Máximo 2 comas
-            
-            if (looksLikePlaceName) {
-              // Agregar "Ciudad de México" para mejorar resultados
-              searchQuery = `${trimmedQuery} Ciudad de México`.trim();
-            } else {
-              searchQuery = trimmedQuery;
-            }
-          } else {
-            searchQuery = trimmedQuery;
-          }
-        }
+      // RN (Android/iOS) no siempre expone URLSearchParams igual que web.
+      // Construimos querystring manual para máxima compatibilidad.
+      const qp: string[] = [
+        `access_token=${encodeURIComponent(MAPBOX_ACCESS_TOKEN)}`,
+        `limit=10`,
+        `language=${encodeURIComponent(language)}`,
+        `types=${encodeURIComponent(types)}`,
+        `autocomplete=true`,
+        `fuzzyMatch=true`,
+        `routing=true`,
+      ];
+      if (areaScope === 'country') {
+        qp.push(`country=${encodeURIComponent('mx')}`);
+      }
+      // Para chips de categoría, preferimos bbox (radio aproximado) en vez de solo proximity.
+      if (bboxForCategory) {
+        qp.push(`bbox=${encodeURIComponent(bboxForCategory)}`);
+      } else if (proximity && proximity.trim().length > 0) {
+        qp.push(`proximity=${encodeURIComponent(proximity.trim())}`);
       }
 
-      // Coordenadas para proximity (mejora relevancia)
-      // Detectar búsquedas específicas y usar coordenadas más precisas
-      let proximity = '-99.1332,19.4326'; // Centro Histórico por defecto
-      
-      // Si es búsqueda de Bellas Artes, usar coordenadas específicas del Palacio
-      const lowerSearchQueryForProximity = searchQuery.toLowerCase();
-      if (lowerSearchQueryForProximity.includes('bellas artes') || lowerSearchQueryForProximity.includes('palacio de bellas artes')) {
-        proximity = '-99.1418092,19.4363936'; // Coordenadas exactas del Palacio de Bellas Artes
-      }
-      
-      // Detectar tipo de búsqueda para usar tipos específicos
-      const lowerSearchQuery = searchQuery.toLowerCase();
-      const isMetroSearch = lowerSearchQuery.includes('metro') || lowerSearchQuery.includes('estación metro');
-      const isSkateparkSearch = lowerSearchQuery.includes('skatepark') || lowerSearchQuery.includes('skate park');
-      const isBellasArtesSearch = lowerSearchQuery.includes('bellas artes') || lowerSearchQuery.includes('palacio de bellas artes');
-      const isZocaloSearch = lowerSearchQuery.includes('zócalo') || lowerSearchQuery.includes('zocalo');
-      const isPlaceSearch = lowerSearchQuery.includes('plaza') || lowerSearchQuery.includes('liverpool') || 
-                           lowerSearchQuery.includes('centro comercial') || lowerSearchQuery.includes('mall');
-      
-      let types;
-      if (isMetroSearch) {
-        types = 'poi,poi.landmark,address'; // Para metro, priorizar POIs y landmarks
-      } else if (isSkateparkSearch) {
-        types = 'poi,poi.landmark,poi.attraction,address'; // Para skatepark, priorizar POIs, landmarks y atracciones
-      } else if (isBellasArtesSearch) {
-        types = 'poi.landmark,poi.attraction,poi'; // Para Bellas Artes, SOLO POIs y landmarks (NO addresses)
-      } else if (isZocaloSearch || isPlaceSearch) {
-        types = 'poi.landmark,poi.attraction,poi,address'; // Para plazas y lugares conocidos, incluir POIs y landmarks
-      } else {
-        types = 'poi.landmark,poi.attraction,poi,address'; // Para otros, priorizar landmarks y atracciones
-      }
-      
-      // Priorizar landmarks y POIs importantes, aumentar límite para mejor selección
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          searchQuery,
-        )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=10&country=mx&language=es&types=${types}&proximity=${proximity}`,
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?${qp.join('&')}`,
       );
 
       if (!response.ok) {
@@ -307,6 +387,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           console.error(
             'AutocompleteInput: Token de Mapbox inválido o sin permisos. Por favor, configura tu propio token en .env o en src/config/mapbox.ts',
           );
+          setHintText('Búsqueda bloqueada (token Mapbox sin permisos para este dominio).');
           setSuggestions([]);
           setShowSuggestions(false);
           setLoading(false);
@@ -319,6 +400,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
       if (data.error) {
         console.error('AutocompleteInput: Error de Mapbox:', data.error);
+        setHintText('No se pudo buscar (Mapbox devolvió error).');
         setSuggestions([]);
         setShowSuggestions(false);
         setLoading(false);
@@ -326,7 +408,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       }
 
       if (data.features && data.features.length > 0) {
-        // Filtrar y priorizar resultados en Ciudad de México con mejor lógica
+        // Priorización GLOBAL: favorece POI/landmarks y coincidencia con query.
         const formattedSuggestions: Suggestion[] = data.features
           .map((feature: any, index: number) => {
             const placeName = feature.place_name || '';
@@ -334,14 +416,6 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
             
             // Calcular score de prioridad
             let priorityScore = feature.relevance || 0;
-            
-            // Priorizar lugares en Ciudad de México
-            if (lowerPlaceName.includes('ciudad de méxico') || 
-                lowerPlaceName.includes('cdmx') ||
-                lowerPlaceName.includes('mexico city') ||
-                lowerPlaceName.includes('centro histórico')) {
-              priorityScore += 10;
-            }
             
             // Priorizar estaciones de metro específicamente
             const isMetroStation = lowerPlaceName.includes('metro') || 
@@ -390,14 +464,6 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
               priorityScore -= 2;
             }
             
-            // Priorizar lugares en el Centro Histórico o zonas conocidas
-            if (lowerPlaceName.includes('centro histórico') || 
-                lowerPlaceName.includes('centro historico') ||
-                lowerPlaceName.includes('alameda') ||
-                lowerPlaceName.includes('zócalo') ||
-                lowerPlaceName.includes('zocalo')) {
-              priorityScore += 8;
-            }
             
             // Priorizar lugares conocidos específicos
             // originalQueryLower ya está declarado arriba, no redeclarar
@@ -427,11 +493,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
             
             const isPalacioBellasArtes = (lowerPlaceName.includes('palacio de bellas artes') ||
                                          (lowerPlaceName.includes('bellas artes') && 
-                                          !isStreet &&
-                                          (lowerPlaceName.includes('centro histórico') || 
-                                           lowerPlaceName.includes('alameda') ||
-                                           lowerPlaceName.includes('mexico city') ||
-                                           lowerPlaceName.includes('cdmx')))) &&
+                                          !isStreet)) &&
                                         !lowerPlaceName.includes('metro') &&
                                         !lowerPlaceName.includes('estación') &&
                                         !lowerPlaceName.includes('estacion');
@@ -476,17 +538,20 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
+        setHintText('Sin resultados. Prueba con menos palabras o sin calle/número.');
       }
     } catch (error) {
       console.error('Error obteniendo sugerencias:', error);
       setSuggestions([]);
       setShowSuggestions(false);
+      setHintText('No se pudo buscar (revisa tu conexión).');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSelectSuggestion = (suggestion: Suggestion) => {
+    setDraftValue(suggestion.place_name);
     onChangeText(suggestion.place_name);
     setSelectedSuggestion(suggestion.place_name);
     setShowSuggestions(false);
@@ -499,65 +564,146 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   };
 
   const handleChangeText = (text: string) => {
-    onChangeText(text);
+    if (deferParentUpdates) {
+      setDraftValue(text);
+      // Si el usuario borra todo, sí confirmamos al padre para limpiar estado dependiente.
+      if (text.trim().length === 0) {
+        onChangeText('');
+      }
+    } else {
+      onChangeText(text);
+    }
     // Si el usuario está editando, resetear la sugerencia seleccionada
     if (selectedSuggestion && text !== selectedSuggestion) {
       setSelectedSuggestion(null);
     }
-    // Solo mostrar sugerencias si el campo está enfocado y tiene al menos 3 caracteres
-    if (isFocused && text.trim().length >= 3) {
+    // UX móvil: arrancar sugerencias desde 2 caracteres
+    if (isFocused && text.trim().length >= 2) {
       setShowSuggestions(true);
+      setHintText(null);
     } else if (text.trim().length < 3) {
       setShowSuggestions(false);
     }
   };
 
   const handleCategoryPress = (category: typeof PLACE_CATEGORIES[0]) => {
-    const searchTerm = category.query;
-    onChangeText(searchTerm);
+    // La categoría funciona como filtro/sesgo: no reemplaza el texto del usuario.
+    const nextCategory = activeCategory === category.id ? null : category.id;
+    setActiveCategory(nextCategory);
     setSelectedSuggestion(null);
     setIsFocused(true);
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+    }
+    const currentText = (deferParentUpdates ? draftValue : value).trim();
+    // Si el usuario ya escribió algo, buscamos ese texto con el sesgo de la categoría.
+    // Si NO escribió nada, mostramos sugerencias "cerca" usando el query base de la categoría
+    // (ej: "estación metro", "skatepark") con proximity/bbox para listar lugares cercanos sin teclear.
+    const queryForFetch = currentText.length >= 2 ? currentText : category.query;
     setLoading(true);
-    // Buscar inmediatamente con la categoría
-    fetchSuggestions(searchTerm, category.id);
+    setShowSuggestions(true);
+    setSuggestions([]);
+    fetchSuggestions(queryForFetch, nextCategory ?? undefined);
+  };
+
+  const AreaScopeToggle: React.FC = () => {
+    const chip = (key: AreaScope, label: string) => {
+      const active = areaScope === key;
+      return (
+        <TouchableOpacity
+          key={key}
+          style={[styles.areaChip, active && styles.areaChipActive]}
+          onPress={() => {
+            void persistAreaScope(key);
+            const currentText = (deferParentUpdates ? draftValue : value).trim();
+            if (isFocused && currentText.length >= 2) {
+              setLoading(true);
+              fetchSuggestions(currentText, activeCategory ?? undefined);
+            }
+          }}
+          activeOpacity={0.85}>
+          <Text style={[styles.areaChipText, active && styles.areaChipTextActive]}>{label}</Text>
+        </TouchableOpacity>
+      );
+    };
+    return (
+      <View style={styles.areaRow}>
+        {chip('near', 'Cerca')}
+        {chip('state', 'Mi estado')}
+        {chip('country', 'México')}
+      </View>
+    );
   };
 
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[
+        styles.container,
+        // En pantallas móviles, un zIndex alto permanente puede bloquear toques en inputs inferiores.
+        // Solo elevamos cuando el input está activo / mostrando sugerencias.
+        {zIndex: suppressSuggestions ? 1 : isFocused || showSuggestions ? 60 : 1},
+        style,
+      ]}>
       {label && <Text style={[styles.label, labelStyle]}>{label}</Text>}
 
-      {showCategories && isFocused && (!value || value.trim().length === 0) && (
+      {showCategories && !suppressSuggestions && isFocused && (
         <View style={styles.categoriesContainer}>
-          {PLACE_CATEGORIES.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.categoryButton}
-              onPress={() => handleCategoryPress(category)}>
-              <Text style={styles.categoryButtonText}>{category.label}</Text>
-            </TouchableOpacity>
-          ))}
+          <AreaScopeToggle />
+          {(!value || value.trim().length === 0) &&
+            PLACE_CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={styles.categoryButton}
+                onPress={() => handleCategoryPress(category)}>
+                <Text style={styles.categoryButtonText}>{category.label}</Text>
+              </TouchableOpacity>
+            ))}
         </View>
       )}
 
       <View style={styles.inputContainer}>
         <TextInput
+          ref={inputRef}
           style={[styles.input, error && styles.inputError]}
           placeholder={placeholder}
           placeholderTextColor="#999"
-          value={value}
+          value={deferParentUpdates ? draftValue : value}
           onChangeText={handleChangeText}
+          // Desactivar autofill / barra del SO (llave, tarjeta, direcciones) lo máximo posible.
+          // RN: autoComplete "off" + iOS textContentType none + Android noExcludeDescendants.
+          autoComplete="off"
+          autoCorrect={false}
+          spellCheck={false}
+          {...(Platform.OS === 'ios' ? {textContentType: 'none' as const} : {})}
+          {...(Platform.OS === 'android'
+            ? {
+                importantForAutofill: 'noExcludeDescendants' as const,
+                disableFullscreenUI: true,
+              }
+            : {})}
           onFocus={() => {
             setIsFocused(true);
+            onFocusInput?.();
             // Si hay sugerencias y el valor no coincide con una seleccionada, mostrarlas
             if (suggestions.length > 0 && value !== selectedSuggestion) {
               setShowSuggestions(true);
+              setHintText(null);
             } else if (value && value.trim().length >= 3 && value !== selectedSuggestion) {
               // Si hay texto pero no hay sugerencias cargadas, buscar
-              fetchSuggestions(value.trim());
+              setLoading(true);
+              fetchSuggestions(value.trim(), activeCategory ?? undefined);
             }
           }}
           onBlur={() => {
             setIsFocused(false);
+            onBlurInput?.();
+            // En modo "defer", confirmamos al salir para sincronizar con el padre sin romper el foco mientras escribe.
+            if (deferParentUpdates) {
+              const committed = draftValue;
+              if (committed !== value) {
+                onChangeText(committed);
+              }
+            }
             // Retrasar el cierre para permitir que el usuario haga clic en una sugerencia
             if (blurTimeoutRef.current) {
               clearTimeout(blurTimeoutRef.current);
@@ -568,6 +714,31 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           }}
         />
 
+        {(deferParentUpdates ? draftValue : value).trim().length > 0 && !loading && (
+          <TouchableOpacity
+            style={styles.clearButton}
+            accessibilityRole="button"
+            accessibilityLabel="Borrar texto"
+            onPress={() => {
+              if (blurTimeoutRef.current) {
+                clearTimeout(blurTimeoutRef.current);
+              }
+              setHintText(null);
+              setSelectedSuggestion(null);
+              setSuggestions([]);
+              setShowSuggestions(false);
+              setDraftValue('');
+              onChangeText('');
+              // Mantener foco para seguir escribiendo (tipo navegador/Google Maps).
+              setIsFocused(true);
+              requestAnimationFrame(() => inputRef.current?.focus());
+            }}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+            activeOpacity={0.85}>
+            <Text style={styles.clearButtonText}>×</Text>
+          </TouchableOpacity>
+        )}
+
         {loading && (
           <View style={styles.loadingIndicator}>
             <ActivityIndicator size="small" color="#007AFF" />
@@ -576,22 +747,35 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
+      {!error && hintText && isFocused && <Text style={styles.hintText}>{hintText}</Text>}
 
-      {showSuggestions && suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={item => item.id}
-            renderItem={({item}) => (
-              <TouchableOpacity
-                style={styles.suggestionItem}
-                onPress={() => handleSelectSuggestion(item)}>
-                <Text style={styles.suggestionText}>{item.place_name}</Text>
-              </TouchableOpacity>
-            )}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-          />
+      {!suppressSuggestions && showSuggestions && (
+        <View style={[styles.suggestionsContainer, {maxHeight: suggestionsMaxHeight}]}>
+          {suggestions.length > 0 ? (
+            <FlatList
+              data={suggestions}
+              keyExtractor={item => item.id}
+              style={{maxHeight: suggestionsMaxHeight}}
+              renderItem={({item}) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectSuggestion(item)}>
+                  <Text style={styles.suggestionText}>{item.place_name}</Text>
+                </TouchableOpacity>
+              )}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="none"
+              showsVerticalScrollIndicator
+              removeClippedSubviews={false}
+            />
+          ) : (
+            <View style={styles.suggestionsEmpty}>
+              <Text style={styles.suggestionsEmptyText}>
+                {loading ? 'Buscando…' : hintText || 'Sin resultados.'}
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -632,10 +816,35 @@ const styles = StyleSheet.create({
     right: 12,
     top: 12,
   },
+  clearButton: {
+    position: 'absolute',
+    right: 10,
+    top: 6,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(148, 163, 184, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.28)',
+  },
+  clearButtonText: {
+    color: '#E2E8F0',
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: '900',
+    marginTop: -1,
+  },
   errorText: {
     color: '#FF3B30',
     fontSize: 12,
     marginTop: 4,
+  },
+  hintText: {
+    color: 'rgba(226,232,240,0.88)',
+    fontSize: 12,
+    marginTop: 6,
   },
   suggestionsContainer: {
     position: 'absolute',
@@ -646,8 +855,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.35)',
-    maxHeight: 320,
     marginTop: 6,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 10},
     shadowOpacity: 0.35,
@@ -666,10 +875,48 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     lineHeight: 18,
   },
+  suggestionsEmpty: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  suggestionsEmptyText: {
+    fontSize: 13,
+    color: 'rgba(226,232,240,0.88)',
+    lineHeight: 18,
+  },
   categoriesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 8,
+    width: '100%',
+  },
+  areaRow: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  areaChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    marginRight: 8,
+    marginBottom: 6,
+  },
+  areaChipActive: {
+    backgroundColor: '#38BDF8',
+    borderColor: '#38BDF8',
+  },
+  areaChipText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#E0F2FE',
+  },
+  areaChipTextActive: {
+    color: '#020617',
   },
   categoryButton: {
     backgroundColor: '#007AFF',

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {API_ENDPOINTS} from '../config/api';
+import {resolveApiUrl} from '../config/api';
+import {appLog} from '../utils/clientLogger';
 
 const TOKEN_KEY = '@auth:token';
 
@@ -61,20 +62,60 @@ class ApiService {
     };
 
     try {
-      const response = await fetch(url, config);
+      const response = await fetch(resolveApiUrl(url), config);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: 'Error en la petición',
-        }));
-        throw new Error(errorData.error || `Error ${response.status}`);
+        const text = await response.text();
+        let message = `HTTP ${response.status}`;
+        try {
+          const errorData = JSON.parse(text) as {error?: string; details?: unknown};
+          if (errorData.error) {
+            message = errorData.error;
+          } else if (Array.isArray(errorData.details) && errorData.details[0]) {
+            const d = errorData.details[0] as {msg?: string};
+            message = d.msg || message;
+          }
+        } catch {
+          const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 120);
+          if (snippet) {
+            message = `${message}: ${snippet}`;
+          } else {
+            message = `${message}. ¿Backend en puerto 3001 y proxy de webpack activo?`;
+          }
+        }
+        let pathHint = '';
+        try {
+          pathHint = new URL(resolveApiUrl(url)).pathname;
+        } catch {
+          pathHint = 'api';
+        }
+        appLog.error(`API HTTP ${response.status} ${String(config.method || 'GET')} ${pathHint}: ${message}`, {
+          screen: 'apiService',
+          context: {status: response.status, path: pathHint},
+        });
+        throw new Error(message);
       }
 
       return await response.json();
     } catch (error) {
+      let pathHint = '';
+      try {
+        pathHint = new URL(resolveApiUrl(url)).pathname;
+      } catch {
+        pathHint = 'api';
+      }
       if (error instanceof Error) {
+        if (!error.message.startsWith('HTTP ')) {
+          appLog.error(`API red ${String(config.method || 'GET')} ${pathHint}: ${error.message}`, {
+            screen: 'apiService',
+            context: {path: pathHint},
+          });
+        }
         throw error;
       }
+      appLog.error(`API conexión ${String(config.method || 'GET')} ${pathHint}`, {
+        screen: 'apiService',
+      });
       throw new Error('Error de conexión');
     }
   }
@@ -94,6 +135,50 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  /**
+   * POST multipart (sin Content-Type JSON; el boundary lo fija el runtime).
+   */
+  async postFormData<T>(url: string, formData: FormData): Promise<T> {
+    const token = await this.getToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    try {
+      const response = await fetch(resolveApiUrl(url), {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        let message = `HTTP ${response.status}`;
+        try {
+          const errorData = JSON.parse(text) as {error?: string};
+          if (errorData.error) {
+            message = errorData.error;
+          }
+        } catch {
+          const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 120);
+          if (snippet) {
+            message = `${message}: ${snippet}`;
+          }
+        }
+        appLog.error(`API multipart HTTP ${response.status}`, {screen: 'apiService'});
+        throw new Error(message);
+      }
+      return (await response.json()) as T;
+    } catch (error) {
+      if (error instanceof Error && !error.message.startsWith('HTTP ')) {
+        appLog.error(`API multipart: ${error.message}`, {screen: 'apiService'});
+      }
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Error de conexión');
+    }
   }
 
   /**

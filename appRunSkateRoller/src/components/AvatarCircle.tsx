@@ -1,17 +1,66 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet, Image} from 'react-native';
+import {resolveMediaUrl} from '../config/api';
 
 interface AvatarCircleProps {
+  /** Emoji o identificador corto */
   avatar?: string | null;
+  /**
+   * Imagen de perfil: data URL, https o ruta de API (`/uploads/...`) — prioridad sobre `avatar`.
+   */
+  fotoPerfil?: string | null;
   size?: number;
+}
+
+/** Convierte cualquier ruta almacenada en backend en URL cargable en Image. */
+function resolveFotoPerfilUrl(raw: string): string {
+  const v = raw.trim();
+  if (!v) {
+    return '';
+  }
+  if (
+    v.startsWith('data:image/') ||
+    v.startsWith('http://') ||
+    v.startsWith('https://') ||
+    v.startsWith('file://') ||
+    v.startsWith('blob:')
+  ) {
+    return v;
+  }
+  return resolveMediaUrl(v);
 }
 
 export const AvatarCircle: React.FC<AvatarCircleProps> = ({
   avatar,
+  fotoPerfil,
   size = 50,
 }) => {
+  const fp = fotoPerfil?.trim();
+  if (fp) {
+    const uri = resolveFotoPerfilUrl(fp);
+    if (uri) {
+      return (
+        <View
+          style={[
+            styles.container,
+            styles.photoWrapper,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+            },
+          ]}>
+          <Image
+            source={{uri}}
+            style={{width: size, height: size}}
+            resizeMode="cover"
+          />
+        </View>
+      );
+    }
+  }
+
   if (!avatar) {
-    // Si no hay avatar, mostrar un círculo gris con inicial
     return (
       <View
         style={[
@@ -22,9 +71,7 @@ export const AvatarCircle: React.FC<AvatarCircleProps> = ({
             borderRadius: size / 2,
           },
         ]}>
-        <Text style={[styles.placeholderText, {fontSize: size * 0.4}]}>
-          👤
-        </Text>
+        <Text style={[styles.placeholderText, {fontSize: size * 0.4}]}>👤</Text>
       </View>
     );
   }
@@ -40,9 +87,7 @@ export const AvatarCircle: React.FC<AvatarCircleProps> = ({
           borderRadius: size / 2,
         },
       ]}>
-      <Text style={[styles.avatarEmoji, {fontSize: size * 0.6}]}>
-        {avatar}
-      </Text>
+      <Text style={[styles.avatarEmoji, {fontSize: size * 0.6}]}>{avatar}</Text>
     </View>
   );
 };
@@ -60,6 +105,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  photoWrapper: {
+    overflow: 'hidden',
+    backgroundColor: '#1a1a2e',
+  },
   avatarContainer: {
     backgroundColor: '#F5F5F5',
   },
@@ -70,4 +119,3 @@ const styles = StyleSheet.create({
     color: '#999',
   },
 });
-

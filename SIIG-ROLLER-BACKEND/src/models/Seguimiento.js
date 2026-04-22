@@ -315,7 +315,7 @@ class Seguimiento {
   static async getTopUsersByKm(period = 'week', limit = 10) {
     const {pool} = require('../config/database');
     const usersResult = await pool.query(
-      'SELECT id, email, alias, avatar FROM usuarios',
+      'SELECT id, email, alias, avatar, foto_perfil FROM usuarios',
     );
     const users = usersResult.rows || [];
     const leaderboard = [];
@@ -340,6 +340,7 @@ class Seguimiento {
           email: user.email,
           alias: user.alias || null,
           avatar: user.avatar || null,
+          fotoPerfil: user.foto_perfil || null,
           totalKilometros: Math.round(totalKilometros * 100) / 100,
           totalRecorridos: seguimientos.length,
         });

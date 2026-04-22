@@ -1,3 +1,9 @@
 
 PostgreSQL/
 bds/
+
+# Subidas y builds locales (límite GitHub 100MB/archivo; no versionar)
+SIIG-ROLLER-BACKEND/uploads/
+appRunSkateRoller/web-build/
+SIIG-ROLLER-FRONT/web-build/
+appRunSkateRoller/android/hs_err_pid*.log

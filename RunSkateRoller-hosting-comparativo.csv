@@ -1,0 +1,4 @@
+Opcion,Front,API,DB,Total_MXN_mes
+Inicio,Cloudflare o Vercel,Railway o Render,Neon o Supabase o Render,0-450
+Un proveedor,Render static,Render,Render Postgres,450-750
+VPS,—,VPS,Postgres en VPS,120-350 + mantenimiento

@@ -1,18 +1,25 @@
 import React from 'react';
 import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {AppNavigator} from './src/navigation/AppNavigator';
+import {appLog} from './src/utils/clientLogger';
 
 const App: React.FC = () => {
-  console.log('App.web.tsx: Componente App renderizado');
+  appLog.info('App web iniciada', {screen: 'App.web'});
   
   try {
     return (
-      <View style={styles.container}>
-        <AppNavigator />
-      </View>
+      <SafeAreaProvider>
+        <View style={styles.container}>
+          <AppNavigator />
+        </View>
+      </SafeAreaProvider>
     );
   } catch (error) {
-    console.error('App.web.tsx: Error en renderizado:', error);
+    appLog.error(`Error en renderizado: ${error instanceof Error ? error.message : String(error)}`, {
+      screen: 'App.web',
+      context: {stack: error instanceof Error ? error.stack : undefined},
+    });
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Error al cargar la aplicación</Text>

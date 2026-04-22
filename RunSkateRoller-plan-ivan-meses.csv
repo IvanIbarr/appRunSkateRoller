@@ -1,0 +1,7 @@
+Mes,Etapa,Producto_meta,Total_MXN_mes,Incluye_filas_seccion8
+1,Beta prueba,Testers calendario auth,0-120,Neon free Railway min (esc A)
+2,Beta,Monitoreo free,0-120,Mismo o salto a mes3
+3,Publico suave,Render API+DB+dominio+front,300-330,Filas 1o2+3+4+9+11
+4,Produccion,Estabilidad,300-330,Pack fijo
+5,Produccion,Metricas,300-330,Pack fijo
+6,Ajuste,RAM si hace falta,300-450,Pack + opcional

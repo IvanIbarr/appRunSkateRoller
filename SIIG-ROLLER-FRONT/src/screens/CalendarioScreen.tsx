@@ -22,6 +22,9 @@ import authService from '../services/authService';
 import eventoService from '../services/eventoService';
 import {Usuario, Evento} from '../types';
 import {useFocusEffect} from '@react-navigation/native';
+import {eventoFechaToYmd, ymdToLocalDate} from '../utils/dateOnly';
+import {getRealtimeSocket} from '../services/realtimeService';
+import API_BASE_URL from '../config/api';
 
 interface CalendarioScreenProps {
   navigation: any;
@@ -73,14 +76,16 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
       const ahora = new Date();
       ahora.setHours(0, 0, 0, 0);
       const eventosSinVencidos = eventosApi.filter(evento => {
-        const fechaEvento = typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha;
+        const ymd = eventoFechaToYmd(evento.fecha);
+        const fechaEvento = (ymd ? ymdToLocalDate(ymd) : null) || (typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha);
         fechaEvento.setHours(0, 0, 0, 0);
         const diasDiferencia = Math.floor((ahora.getTime() - fechaEvento.getTime()) / (1000 * 60 * 60 * 24));
         return diasDiferencia <= 2;
       });
 
       const eventosVencidos = eventosApi.filter(evento => {
-        const fechaEvento = typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha;
+        const ymd = eventoFechaToYmd(evento.fecha);
+        const fechaEvento = (ymd ? ymdToLocalDate(ymd) : null) || (typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha);
         fechaEvento.setHours(0, 0, 0, 0);
         const diasDiferencia = Math.floor((ahora.getTime() - fechaEvento.getTime()) / (1000 * 60 * 60 * 24));
         return diasDiferencia > 2 && evento.id;
@@ -103,18 +108,18 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
           return index === self.findIndex(e => e.id === evento.id);
         }
         const titulo = evento.tituloRuta || evento.titulo;
-        const fecha = typeof evento.fecha === 'string' ? evento.fecha : evento.fecha.toISOString().split('T')[0];
+        const fecha = eventoFechaToYmd(evento.fecha) || '';
         return index === self.findIndex(e => {
           const eTitulo = e.tituloRuta || e.titulo;
-          const eFecha = typeof e.fecha === 'string' ? e.fecha : e.fecha.toISOString().split('T')[0];
+          const eFecha = eventoFechaToYmd(e.fecha) || '';
           return eTitulo === titulo && eFecha === fecha;
         });
       });
 
       eventosUnicos.sort((a, b) => {
-        const fechaA = typeof a.fecha === 'string' ? new Date(a.fecha) : a.fecha;
-        const fechaB = typeof b.fecha === 'string' ? new Date(b.fecha) : b.fecha;
-        return fechaA.getTime() - fechaB.getTime();
+        const ymdA = eventoFechaToYmd(a.fecha) || '';
+        const ymdB = eventoFechaToYmd(b.fecha) || '';
+        return ymdA.localeCompare(ymdB);
       });
       setEventos(eventosUnicos);
     } catch (error) {
@@ -126,6 +131,38 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
 
   useEffect(() => {
     loadEventos();
+  }, []);
+
+  // Suscripción en tiempo real: al crear/editar/eliminar se refresca sin desfase.
+  useEffect(() => {
+    let socket: ReturnType<typeof getRealtimeSocket> | null = null;
+    try {
+      socket = getRealtimeSocket(API_BASE_URL);
+    } catch (e) {
+      // Si el bundle/runtime falla al inicializar socket.io en web, no bloquear el calendario.
+      console.warn('Calendario: realtime no disponible', e);
+      return;
+    }
+
+    const onCreated = () => {
+      loadEventos();
+    };
+    const onUpdated = () => {
+      loadEventos();
+    };
+    const onDeleted = () => {
+      loadEventos();
+    };
+
+    socket.on('event_created', onCreated);
+    socket.on('event_updated', onUpdated);
+    socket.on('event_deleted', onDeleted);
+
+    return () => {
+      socket?.off('event_created', onCreated);
+      socket?.off('event_updated', onUpdated);
+      socket?.off('event_deleted', onDeleted);
+    };
   }, []);
 
   // Recargar eventos cuando la pantalla está enfocada
@@ -142,7 +179,10 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   };
 
   const formatFecha = (fecha: string | Date): string => {
-    const date = typeof fecha === 'string' ? new Date(fecha) : fecha;
+    const ymd = eventoFechaToYmd(fecha);
+    const date =
+      (ymd ? ymdToLocalDate(ymd) : null) ||
+      (typeof fecha === 'string' ? new Date(fecha) : fecha);
     const options: Intl.DateTimeFormatOptions = {
       day: 'numeric',
       month: 'long',
@@ -152,7 +192,10 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   };
 
   const formatFechaRango = (fecha: string | Date): string => {
-    const date = typeof fecha === 'string' ? new Date(fecha) : fecha;
+    const ymd = eventoFechaToYmd(fecha);
+    const date =
+      (ymd ? ymdToLocalDate(ymd) : null) ||
+      (typeof fecha === 'string' ? new Date(fecha) : fecha);
     const day = date.getDate();
     const month = date.toLocaleDateString('es-ES', {month: 'long'});
     return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
@@ -250,7 +293,8 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
       let fechaFormateada = 'Fecha no especificada';
       if (evento.fecha) {
         try {
-          const fecha = new Date(evento.fecha);
+          const ymd = eventoFechaToYmd(evento.fecha);
+          const fecha = (ymd ? ymdToLocalDate(ymd) : null) || new Date(evento.fecha as any);
           fechaFormateada = fecha.toLocaleDateString('es-ES', {
             weekday: 'long',
             year: 'numeric',
@@ -576,13 +620,12 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
 
   const getEventsForDate = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate(),
+    ).padStart(2, '0')}`;
     return eventos.filter(evento => {
-      const fechaEvento = typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha;
-      return (
-        fechaEvento.getDate() === date.getDate() &&
-        fechaEvento.getMonth() === date.getMonth() &&
-        fechaEvento.getFullYear() === date.getFullYear()
-      );
+      const fechaYmd = eventoFechaToYmd(evento.fecha);
+      return fechaYmd === ymd;
     });
   };
 

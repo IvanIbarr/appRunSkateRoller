@@ -9,6 +9,7 @@ import {
   Image,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {CommonActions} from '@react-navigation/native';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
@@ -17,6 +18,8 @@ import {AvatarCircle} from '../components/AvatarCircle';
 import authService from '../services/authService';
 import grupoService from '../services/grupoService';
 import {Usuario, TipoPerfil} from '../types';
+import adminGateService from '../services/adminGateService';
+import {getLaunchPhaseLabel, LAUNCH_PHASE} from '../config/launchPhase';
 
 interface MenuScreenProps {
   navigation: any;
@@ -30,6 +33,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
   const [avatarSelectorVisible, setAvatarSelectorVisible] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -39,6 +43,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
     try {
       const user = await authService.getCurrentUser();
       setCurrentUser(user);
+      setAdminUnlocked(await adminGateService.isUnlocked());
       
       // Si el usuario tiene perfil de líder, cargar el liderId del grupo
       if (user && (user.tipoPerfil === 'liderGrupo' || user.tipoPerfil === 'administrador')) {
@@ -82,61 +87,117 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
     
     return true;
   };
+  const performLogout = async () => {
+    try {
+      console.log('MenuScreen: Iniciando logout...');
+      await authService.logout();
+      console.log('MenuScreen: Logout completado, datos limpiados');
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{name: 'Login'}],
+        }),
+      );
+      console.log('MenuScreen: Navegación reseteada a Login');
+    } catch (error) {
+      console.error('MenuScreen: Error al cerrar sesión:', error);
+      try {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{name: 'Login'}],
+          }),
+        );
+      } catch (navError) {
+        console.error('MenuScreen: Error al resetear navegación:', navError);
+        try {
+          navigation.replace('Login');
+        } catch (replaceError) {
+          console.error('MenuScreen: Error al usar replace:', replaceError);
+        }
+      }
+    }
+  };
+
   const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('MenuScreen: Iniciando logout...');
-              
-              // Cerrar sesión: limpiar token y usuario del almacenamiento
-              await authService.logout();
-              console.log('MenuScreen: Logout completado, datos limpiados');
-              
-              // Resetear completamente el stack de navegación y redirigir a Login
-              // Esto limpia todo el historial de navegación y permite un inicio limpio
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{name: 'Login'}],
-                }),
-              );
-              
-              console.log('MenuScreen: Navegación reseteada a Login');
-            } catch (error) {
-              console.error('MenuScreen: Error al cerrar sesión:', error);
-              // Aun así, intentar resetear la navegación
-              try {
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{name: 'Login'}],
-                  }),
-                );
-              } catch (navError) {
-                console.error('MenuScreen: Error al resetear navegación:', navError);
-                // Último recurso: usar replace
-                try {
-                  navigation.replace('Login');
-                } catch (replaceError) {
-                  console.error('MenuScreen: Error al usar replace:', replaceError);
-                }
-              }
-            }
-          },
-        },
-      ],
-      {cancelable: true},
-    );
+    // En web, Alert con varios botones a veces no despacha bien onPress; usamos confirm nativo.
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.confirm('¿Cerrar sesión? Se limpiarán el token y los datos de sesión en este dispositivo.')) {
+        void performLogout();
+      }
+      return;
+    }
+    Alert.alert('Cerrar Sesión', '¿Estás seguro que deseas cerrar sesión?', [
+      {text: 'Cancelar', style: 'cancel'},
+      {
+        text: 'Cerrar Sesión',
+        style: 'destructive',
+        onPress: () => void performLogout(),
+      },
+    ], {cancelable: true});
+  };
+
+  // Admin MASTER de la app (solo este usuario ve el módulo administrativo).
+  const isMasterAdminUser = currentUser?.email === 'admin@roller.com';
+
+  const handleOpenAdminBuzon = async () => {
+    if (!isMasterAdminUser) {
+      Alert.alert('Acceso denegado', 'Esta sección es solo para administración.');
+      return;
+    }
+    const ok = await adminGateService.ensureUnlocked();
+    setAdminUnlocked(ok);
+    if (ok) {
+      navigation.navigate('AdminBuzon');
+    }
+  };
+
+  const handleOpenAdminUsuarios = async () => {
+    if (!isMasterAdminUser) {
+      Alert.alert('Acceso denegado', 'Esta sección es solo para administración.');
+      return;
+    }
+    const ok = await adminGateService.ensureUnlocked();
+    setAdminUnlocked(ok);
+    if (ok) {
+      navigation.navigate('AdminUsuarios');
+    }
+  };
+
+  const handleOpenAdminChats = async () => {
+    if (!isMasterAdminUser) {
+      Alert.alert('Acceso denegado', 'Esta sección es solo para administración.');
+      return;
+    }
+    const ok = await adminGateService.ensureUnlocked();
+    setAdminUnlocked(ok);
+    if (ok) {
+      navigation.navigate('AdminChats');
+    }
+  };
+
+  const handleOpenAdminReset = async () => {
+    if (!isMasterAdminUser) {
+      Alert.alert('Acceso denegado', 'Esta sección es solo para administración.');
+      return;
+    }
+    const ok = await adminGateService.ensureUnlocked();
+    setAdminUnlocked(ok);
+    if (ok) {
+      navigation.navigate('AdminResetPassword');
+    }
+  };
+
+  const handleOpenAdminVentas = async () => {
+    if (!isMasterAdminUser) {
+      Alert.alert('Acceso denegado', 'Esta sección es solo para administración.');
+      return;
+    }
+    const ok = await adminGateService.ensureUnlocked();
+    setAdminUnlocked(ok);
+    if (ok) {
+      navigation.navigate('AdminVentasGenerales');
+    }
   };
 
   const handleSelectAvatar = async (avatar: string) => {
@@ -161,6 +222,51 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
     } catch (error) {
       console.error('Error al actualizar avatar:', error);
       setAvatarMessage('⚠️ Error al actualizar avatar');
+    } finally {
+      setUpdatingAvatar(false);
+    }
+  };
+
+  const handleSelectFotoPerfil = async (dataUri: string) => {
+    setUpdatingAvatar(true);
+    setAvatarMessage('⏳ Subiendo foto…');
+    try {
+      const result = await authService.updateFotoPerfil(dataUri);
+      if (result.success && result.usuario) {
+        setCurrentUser(result.usuario);
+        setAvatarMessage('✓ Foto de perfil guardada');
+        setAvatarSelectorVisible(false);
+        setTimeout(() => setAvatarMessage(null), 2500);
+      } else {
+        setAvatarMessage('⚠️ No se pudo guardar la foto');
+      }
+    } catch (error) {
+      console.error('Error al subir foto de perfil:', error);
+      setAvatarMessage('⚠️ No se pudo guardar la foto');
+    } finally {
+      setUpdatingAvatar(false);
+    }
+  };
+
+  const handlePhotoPickStart = () => setUpdatingAvatar(true);
+  const handlePhotoPickCancel = () => setUpdatingAvatar(false);
+
+  const handleClearFotoPerfil = async () => {
+    setUpdatingAvatar(true);
+    setAvatarMessage(null);
+    try {
+      const result = await authService.updateFotoPerfil(null);
+      if (result.success && result.usuario) {
+        setCurrentUser(result.usuario);
+        setAvatarMessage('✓ Foto quitada');
+        setAvatarSelectorVisible(false);
+        setTimeout(() => setAvatarMessage(null), 2000);
+      } else {
+        setAvatarMessage('⚠️ No se pudo quitar la foto');
+      }
+    } catch (error) {
+      console.error('Error al quitar foto de perfil:', error);
+      setAvatarMessage('⚠️ No se pudo quitar la foto');
     } finally {
       setUpdatingAvatar(false);
     }
@@ -193,12 +299,18 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
 
           {/* Avatar en la parte superior izquierda */}
           <View style={styles.avatarContainer}>
-            <AvatarCircle avatar={currentUser?.avatar} size={60} />
+            <AvatarCircle
+              avatar={currentUser?.avatar}
+              fotoPerfil={currentUser?.fotoPerfil}
+              size={60}
+            />
             <TouchableOpacity
               style={styles.changeAvatarButton}
               onPress={() => setAvatarSelectorVisible(true)}>
               <Text style={styles.changeAvatarButtonText}>
-                {currentUser?.avatar ? '✏️ Modificar Avatar' : '➕ Agregar Avatar'}
+                {currentUser?.fotoPerfil || currentUser?.avatar
+                  ? '✏️ Modificar Avatar'
+                  : '➕ Agregar Avatar'}
               </Text>
             </TouchableOpacity>
             {avatarMessage && (
@@ -254,14 +366,78 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
               <Text style={styles.archivoButtonText}>📁 Mis archivos</Text>
             </TouchableOpacity>
 
-            
+            <TouchableOpacity
+              style={styles.helpButton}
+              onPress={() => navigation.navigate('SupportHelp')}>
+              <Text style={styles.helpButtonText}>🆘 Ayuda y Asistencia</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.subsButton}
+              onPress={() => navigation.navigate('MisSuscripciones')}>
+              <Text style={styles.subsButtonText}>🧾 Mis suscripciones</Text>
+            </TouchableOpacity>
+
+            {isMasterAdminUser && (
+              <>
+                <TouchableOpacity style={styles.adminButton} onPress={handleOpenAdminUsuarios}>
+                  <Text style={styles.adminButtonText}>
+                    👥 Usuarios (Admin){adminUnlocked ? '' : ' 🔒'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.adminButton} onPress={handleOpenAdminChats}>
+                  <Text style={styles.adminButtonText}>
+                    💬 Ver chats (Admin){adminUnlocked ? '' : ' 🔒'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.adminButton} onPress={handleOpenAdminReset}>
+                  <Text style={styles.adminButtonText}>
+                    🔑 Reset password (Admin){adminUnlocked ? '' : ' 🔒'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.adminButton} onPress={handleOpenAdminVentas}>
+                  <Text style={styles.adminButtonText}>
+                    📊 Ventas Generales (Admin){adminUnlocked ? '' : ' 🔒'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.adminButton} onPress={handleOpenAdminBuzon}>
+                  <Text style={styles.adminButtonText}>
+                    🧰 Buzón (Admin){adminUnlocked ? '' : ' 🔒'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.ventasButton}
+              onPress={() => navigation.navigate('MenuVentas')}>
+              <Text style={styles.ventasButtonText}>🛒 Ventas</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.logoutButton}
               onPress={handleLogout}>
               <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
             </TouchableOpacity>
+
+            {typeof __DEV__ !== 'undefined' && __DEV__ && (
+              <Text style={styles.launchPhaseDevHint} testID="launchPhaseDev">
+                Fase {LAUNCH_PHASE} — {getLaunchPhaseLabel()}
+                {'\n'}
+                (Web: REACT_APP_LAUNCH_PHASE; nativo: NATIVE_… en config/launchPhase)
+              </Text>
+            )}
           </View>
         </ScrollView>
+
+        {updatingAvatar && (
+          <View style={styles.uploadingOverlay} pointerEvents="auto">
+            <View style={styles.uploadingBox}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+              <Text style={styles.uploadingText}>Preparando o subiendo foto…</Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Modal de Selección de Avatar */}
@@ -270,12 +446,22 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
         onClose={() => setAvatarSelectorVisible(false)}
         onSelectAvatar={handleSelectAvatar}
         selectedAvatar={currentUser?.avatar || null}
+        fotoPerfil={currentUser?.fotoPerfil || null}
+        onSelectFotoPerfil={handleSelectFotoPerfil}
+        onClearFotoPerfil={handleClearFotoPerfil}
+        fotoBusy={updatingAvatar}
+        onPhotoPickStart={handlePhotoPickStart}
+        onPhotoPickCancel={handlePhotoPickCancel}
       />
     </WithBottomTabBar>
   );
 };
 
 const styles = StyleSheet.create({
+  // Tipografía de marca en web (en nativo usa fuente del sistema)
+  // Nota: en estilos de RN no podemos referenciar constantes fuera de StyleSheet de forma directa sin duplicar;
+  // aquí solo centralizamos el string para evitar divergencias entre botones.
+  // (RN-web acepta fontFamily con comillas).
   container: {
     flex: 1,
     position: 'relative',
@@ -293,6 +479,28 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: '100%',
     height: '100%',
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 40,
+  },
+  uploadingBox: {
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    paddingHorizontal: 28,
+    paddingVertical: 22,
+    borderRadius: 16,
+    alignItems: 'center',
+    maxWidth: 280,
+  },
+  uploadingText: {
+    marginTop: 14,
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   contentScroll: {
     flex: 1,
@@ -336,15 +544,20 @@ const styles = StyleSheet.create({
   },
   menuSection: {
     marginTop: 20,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   addStaffButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: '#16A34A',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -358,13 +571,15 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   nombreGrupoButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2563EB',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -378,12 +593,14 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   logoutButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#DC2626',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -397,13 +614,15 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   aliasButton: {
-    backgroundColor: '#FF9500',
+    backgroundColor: '#F59E0B',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -417,13 +636,15 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   integrantesButton: {
-    backgroundColor: '#9B59B6',
+    backgroundColor: '#7C3AED',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -437,13 +658,15 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
   },
   archivoButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#1D4ED8',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
@@ -451,6 +674,94 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   archivoButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  helpButton: {
+    backgroundColor: '#0EA5E9',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  helpButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  subsButton: {
+    backgroundColor: '#334155',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  subsButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  adminButton: {
+    backgroundColor: '#0B1220',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.26)',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  adminButtonText: {
+    color: '#E0F2FE',
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
+  },
+  ventasButton: {
+    backgroundColor: '#0F766E',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ventasButtonText: {
     color: '#FFF',
     fontSize: 18,
     fontWeight: '600',
@@ -481,5 +792,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#34C759',
     fontWeight: '600',
+  },
+  launchPhaseDevHint: {
+    marginTop: 20,
+    marginBottom: 8,
+    fontSize: 11,
+    lineHeight: 16,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+    maxWidth: 360,
+    alignSelf: 'center',
   },
 });

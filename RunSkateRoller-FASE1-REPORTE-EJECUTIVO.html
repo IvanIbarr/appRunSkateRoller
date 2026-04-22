@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RunSkateRoller — Reporte ejecutivo Fase 1 (Beta)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --warn: #f59e0b;
+      --bad: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.75rem; }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { font-size: 0.95rem; font-weight: 600; margin: 1.25rem 0 0.5rem; color: #cbd5e1; }
+    p { margin: 0.5rem 0; color: #cbd5e1; }
+    .lead { font-size: 1.05rem; color: #e2e8f0; }
+    .pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .pill-ok { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .pill-warn { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .pill-bad { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin: 0.75rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.6rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: #f1f5f9; font-weight: 600; }
+    tr:nth-child(even) td { background: rgba(15, 23, 42, 0.35); }
+    code, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.84em; }
+    ul { margin: 0.4rem 0; padding-left: 1.2rem; color: #cbd5e1; }
+    .kbd {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      .card, th, td { border-color: #ccc; }
+      th { background: #f0f0f0; }
+      :root { --text: #111; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>RunSkateRoller — Reporte ejecutivo · Fase 1 (Beta)</h1>
+    <p class="meta">
+      Documento para revisión de alcance, pruebas y riesgos operativos.
+      <br />
+      <span class="mono">Última actualización: 14 de abril de 2026</span> (sincronizado con cambios en repo: política de fase, qué falta, CI parcial)
+    </p>
+
+    <p class="lead">
+      La <strong>Fase 1</strong> está gobernada por <code>REACT_APP_LAUNCH_PHASE=1</code> (web) o
+      <code>NATIVE_LAUNCH_PHASE_FALLBACK</code> en <span class="mono">src/config/launchPhase.ts</span> (build nativo sin env).
+      La matriz de UI vive en <span class="mono">src/config/launchModulePolicy.ts</span> (una sola fuente de verdad).
+    </p>
+
+    <h2>1. Resumen ejecutivo</h2>
+    <div class="card">
+      <p style="margin-top:0">
+        <span class="pill pill-ok">Build web</span> Compilación producción con Fase 1: <strong>OK</strong> (warnings por tamaño de <code>bundle.js</code>).
+        <br />
+        <span class="pill pill-ok">Política fase (CI parcial)</span> <span class="kbd">npm run verify:policy</span>: typecheck acotado + Jest (6 pruebas) + ESLint en <code>launchPhase</code> / <code>launchModulePolicy</code> — <strong>OK</strong>.
+        <br />
+        <span class="pill pill-warn"><code>tsc</code> proyecto completo</span> Sigue con <strong>errores de tipos</strong> heredados en pantallas y servicios; no usar como gate global hasta corregir deuda. Alternativa: <span class="kbd">npm run typecheck:policy</span>.
+        <br />
+        <span class="pill pill-warn"><code>npm run lint</code> (todo el front)</span> No incluido aún en un gate verde; depende de formatear y alinear el resto de archivos (Prettier 2.8.8 + <span class="mono">.prettierrc.js</span> listos).
+        <br />
+        <span class="pill pill-ok">Smoke API</span> Con backend en <code>localhost:3001</code>, <span class="kbd">node scripts/smoke-api.mjs</span> — <strong>4/4 OK</strong>. Requiere API levantada; si PostgreSQL no responde, <code>/health</code> puede mostrar <code>database: disconnected</code> pero el servidor puede seguir atendiendo rutas.
+      </p>
+      <p style="margin-bottom:0">
+        Conclusión: la <strong>app compila</strong> y el <strong>comportamiento por fase</strong> está cubierto con tests de humo y política.
+        Sigue faltando: <strong>pruebas manuales</strong> de la matriz §3.1, <strong>PostgreSQL estable</strong> para health “connected”, y <strong>ampliar cobertura</strong> (E2E o más unitarios fuera de <code>config</code>).
+      </p>
+    </div>
+
+    <h2>2. Cómo levantar y verificar Fase 1 en local</h2>
+    <div class="card">
+      <ol style="margin:0; padding-left:1.2rem; color:#cbd5e1;">
+        <li>En <span class="mono">appRunSkateRoller</span>: copiar <span class="mono">.env.example</span> a <span class="mono">.env</span> (<code>REACT_APP_LAUNCH_PHASE=1</code>). Instalar dependencias: <span class="kbd">npm install --legacy-peer-deps</span> si npm marca conflictos de peers.</li>
+        <li>Web dev: <span class="kbd">npm run web</span>. Build: <span class="kbd">npm run web:build</span>.</li>
+        <li>API (carpeta <span class="mono">SIIG-ROLLER-BACKEND</span>): <span class="kbd">node src/server.js</span> o <span class="kbd">npm start</span>; puerto por defecto <strong>3001</strong>. Configurar variables <code>DB_*</code> según tu PostgreSQL.</li>
+        <li>Comprobación automática mínima (solo política de fase): <span class="kbd">npm run verify:policy</span>.</li>
+        <li>Comprobación API: con el servidor en marcha, <span class="kbd">node scripts/smoke-api.mjs</span> o <span class="kbd">SMOKE_API_BASE=http://host:3001 node scripts/smoke-api.mjs</span>.</li>
+        <li>Verificación visual: barra <strong>sin Marketing</strong> en F1; Ruta, Chat, Historial atenuados; cintas F1; botón <strong>Registrarse</strong> en calendario muestra aviso (no inscripción en F1).</li>
+      </ol>
+    </div>
+
+    <h2>3. Matriz de pruebas por pestaña (Fase 1) — simulación por perfiles</h2>
+    <p>
+      Perfiles de referencia (login web con backend caído: <strong>modo mock</strong> en
+      <span class="mono">authService</span> si el email coincide). Contraseñas: ver tabla siguiente.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario (email)</th>
+          <th>Contraseña</th>
+          <th>Perfil</th>
+          <th>Uso en pruebas F1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">admin@roller.com</td>
+          <td class="mono">admin123</td>
+          <td>administrador</td>
+          <td>Admin buzón, usuarios, chats, reset, ventas generales, marketing secundario vía menú; limitar a 1–2 staff en beta real.</td>
+        </tr>
+        <tr>
+          <td class="mono">lider@roller.com</td>
+          <td class="mono">lider123</td>
+          <td>liderGrupo</td>
+          <td>Chat staff, grupo, flujos de líder (cuando haya API).</td>
+        </tr>
+        <tr>
+          <td class="mono">roller@roller.com</td>
+          <td class="mono">roller123</td>
+          <td>roller</td>
+          <td>Usuario base: ruta, comunidad, historial, calendario, tips.</td>
+        </tr>
+        <tr>
+          <td class="mono">alex.azcapo@roller.com</td>
+          <td class="mono">alex123</td>
+          <td>roller (alias)</td>
+          <td>Validar UI con alias; mismo alcance F1 que roller.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>3.1 Comportamiento esperado por pestaña (stack principal)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Pestaña / módulo</th>
+          <th>Plan 3.a (F1)</th>
+          <th>Comportamiento UI (política actual)</th>
+          <th>Prueba sugerida (manual)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Ruta</strong> (Navegación)</td>
+          <td>Parc.</td>
+          <td>En barra; atenuado si inactivo; <strong>LaunchPhaseBanner</strong> “uso moderado”.</td>
+          <td>Origen/destino, mapa, sin picos nocturnos en producción; cold start (documentado en hosting).</td>
+        </tr>
+        <tr>
+          <td><strong>Chat</strong> (Comunidad)</td>
+          <td>Parc.</td>
+          <td>Idem atenuado + cinta F1.</td>
+          <td>General + staff solo admin/líder; vigilar socket y free tier con backend real.</td>
+        </tr>
+        <tr>
+          <td><strong>Historial</strong></td>
+          <td>Parc.</td>
+          <td>Idem + cinta.</td>
+          <td>Con API: km reales; en dev: <code>?demo=</code> (solo web dev) para datos ficticios.</td>
+        </tr>
+        <tr>
+          <td><strong>Calendario</strong></td>
+          <td>Núc.</td>
+          <td>Tratamiento <em>core</em>; cinta “prioridad / reportar fallos”. <strong>Registrarse</strong> en F1: <code>Alert</code> (no inscripción desde app; explícito para beta).</td>
+          <td>Crear evento, lista, compartir; validar con API. Pulsa Registrarse: debe aparecer el mensaje de Fase 1, no un flujo silencioso.</td>
+        </tr>
+        <tr>
+          <td><strong>Rollertips</strong></td>
+          <td>Sí (lectura)</td>
+          <td>Full; sin cinta de moderación F1 (no atenuar por política).</td>
+          <td>Listado desde <code>/api/rollertips</code> con backend en marcha.</td>
+        </tr>
+        <tr>
+          <td><strong>Marketing</strong></td>
+          <td>Post.</td>
+          <td><strong>Fuera de la barra</strong> en F1; accesible vía otras rutas; pantalla con cinta específica.</td>
+          <td>Menú → entradas a ventas/marketing: debe verse aviso; no forzar carga de tienda en beta.</td>
+        </tr>
+        <tr>
+          <td><strong>Menú</strong></td>
+          <td>Sí</td>
+          <td>Full; muestra fase (label en <span class="mono">MenuScreen</span>).</td>
+          <td>Cerrar sesión, soporte, ventas, admin solo <code>admin@roller.com</code> + gate.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. Sanidad automática (estado en repo)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Comando / chequeo</th>
+          <th>Estado</th>
+          <th>Nota</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>npm run web:build</code> (<code>REACT_APP_LAUNCH_PHASE=1</code>)</td>
+          <td><span class="pill pill-ok">OK</span></td>
+          <td>Warnings por tamaño de <code>bundle.js</code> (~1.5+ MiB).</td>
+        </tr>
+        <tr>
+          <td><code>npm test</code> (Jest)</td>
+          <td><span class="pill pill-warn">Parcial</span></td>
+          <td>6 pruebas en <span class="mono">src/config/__tests__/launchModulePolicy.test.ts</span> (matriz F1/F2, banners, barra). No cubre UI completa.</td>
+        </tr>
+        <tr>
+          <td><code>npm run verify:policy</code></td>
+          <td><span class="pill pill-ok">OK</span></td>
+          <td>Encadena <code>typecheck:policy</code> + Jest + ESLint en <code>launchPhase.ts</code>, <code>launchModulePolicy.ts</code> y el test. <strong>Recomendado en PR</strong> que toquen fases o política de pestañas.</td>
+        </tr>
+        <tr>
+          <td><code>npm run typecheck:policy</code></td>
+          <td><span class="pill pill-ok">OK</span></td>
+          <td>Usa <span class="mono">tsconfig.policy.json</span> (solo módulos de fase). El <code>tsc</code> de todo <span class="mono">src</span> sigue con deuda (ver §7).</td>
+        </tr>
+        <tr>
+          <td><code>npm run typecheck</code> (proyecto completo)</td>
+          <td><span class="pill pill-bad">Pendiente</span></td>
+          <td>Decenas de errores en pantallas/servicios (no bloquea si el PR no los toca; plan de corrección progresiva).</td>
+        </tr>
+        <tr>
+          <td><code>npm run lint</code> (todo el código)</td>
+          <td><span class="pill pill-warn">Pendiente</span></td>
+          <td>Prettier fijado a 2.8.8 y <span class="mono">.prettierrc.js</span>; hace falta formatear y pasar reglas en el resto de archivos para gate global.</td>
+        </tr>
+        <tr>
+          <td><code>node scripts/smoke-api.mjs</code></td>
+          <td><span class="pill pill-ok">Con API</span></td>
+          <td>4 checks (health, marketing sales, rollertips, raíz). Sin servidor: fallo de red. Con <span class="mono">SIIG-ROLLER-BACKEND</span> levantado: OK.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>5. Flujos y áreas aún no cerradas (dolor Fase 1)</h2>
+    <p>Prioriza: <strong>calendario y estabilidad</strong>; comercio y escala después. Lo <strong>acotado en UI</strong> ya no cuenta como “hueco silencioso” para el usuario.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Área</th>
+          <th>Estado / hallazgo</th>
+          <th>Prioridad F1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Calendario — registro a evento (backend)</td>
+          <td>En F1: <code>Alert</code> explica que <strong>no hay inscripción desde la app</strong>. En F2+ aviso de “en desarrollo” hasta existir endpoint e integración.</td>
+          <td>Media–Alta (producto F2+; F1 queda alineado al plan)</td>
+        </tr>
+        <tr>
+          <td>Marketing / panel principal</td>
+          <td>UI indica <strong>“Panel en construcción”</strong>; búsqueda y flujos parciales.</td>
+          <td>Baja (Post. en 3.a para beta)</td>
+        </tr>
+        <tr>
+          <td>Checkout Recap (video)</td>
+          <td>Pago: <strong>demo</strong>; comentario explícito de pasarela pendiente en <code>RecapCheckoutPagoScreen</code>.</td>
+          <td>Media (no bloquea beta si se desactiva promoción)</td>
+        </tr>
+        <tr>
+          <td>Compras marketing (envío / pago)</td>
+          <td>Flujos de pantallas existen; producción requiere pagos reales, soporte y métricas (F2+).</td>
+          <td>Baja F1 / Alta F2</td>
+        </tr>
+        <tr>
+          <td>MenuVentas — “depósito” tarjeta</td>
+          <td>Aviso legal: datos locales, no PCI; no sustituye cobro real.</td>
+          <td>Documentar expectativas con usuarios beta</td>
+        </tr>
+        <tr>
+          <td>Mapa / Mapbox / tracking</td>
+          <td>Depende de token, batería y horarios de prueba (ver doc hosting 3.1).</td>
+          <td>Alta (validación en campo, no solo escritorio)</td>
+        </tr>
+        <tr>
+          <td>Chat en tiempo real</td>
+          <td>Requiere backend + Socket; carga y límites de tier a validar con usuarios reales.</td>
+          <td>Alta (concurrencia moderada F1)</td>
+        </tr>
+        <tr>
+          <td>Automatización de pruebas + CI</td>
+          <td><strong>Mejorado:</strong> Jest + <code>verify:policy</code> para módulo de fase. <strong>Falta:</strong> lint/tsc en todo el repo, E2E o más unitarios (pantallas, servicios).</td>
+          <td>Alta (ampliar cobertura)</td>
+        </tr>
+        <tr>
+          <td>Autenticación en web</td>
+          <td>Fallback mock si API no responde: útil para UI, <strong>no</strong> sustituye validación con backend real.</td>
+          <td>Crítico antes de beta pública con datos reales</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. Próximos pasos (actualizado): hecho vs pendiente</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Tema</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>API + <code>smoke-api</code> + pruebas manuales matriz §3.1</td>
+          <td><span class="pill pill-warn">Parcial</span> Smoke y servidor — validado en entorno con API. <strong>Te falta</strong> recorrer manualmente cada fila con usuarios reales y PostgreSQL estable.</td>
+        </tr>
+        <tr>
+          <td>Registro a evento (expectativa F1)</td>
+          <td><span class="pill pill-ok">Acotado</span> Mensajes en UI; backend/inscripción = trabajo F2+.</td>
+        </tr>
+        <tr>
+          <td>Toolchain (Prettier, ESLint, TypeScript)</td>
+          <td><span class="pill pill-warn">Parcial</span> Prettier 2.8.8, <code>verify:policy</code>, <code>tsconfig</code> alineado RN + <code>tsconfig.policy.json</code>. <strong>Falta</strong> <code>npm run lint</code> y <code>tsc</code> a nivel proyecto completo.</td>
+        </tr>
+        <tr>
+          <td>Pruebas Jest (política de fase / barra)</td>
+          <td><span class="pill pill-ok">Listo</span> 6 tests; ejecutar <code>npm test</code> o <code>verify:policy</code>.</td>
+        </tr>
+        <tr>
+          <td>E2E o humo de UI (navegación real)</td>
+          <td><span class="pill pill-bad">Pendiente</span> No hay Detox/Playwright/Cypress en este informe; opcional F1+.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>7. Qué falta (checklist breve)</h2>
+    <ul>
+      <li><strong>Infra:</strong> PostgreSQL accesible y reflejado en <code>/health</code> como conectado (no solo API “a medias”).</li>
+      <li><strong>Validación humana F1:</strong> una pasada completa de la tabla §3.1 (Ruta, Chat, Historial, Calendario, Tips, Menú, Marketing vía menú) con anotación de incidencias.</li>
+      <li><strong>CI:</strong> añadir en pipeline (si existe) al menos <code>npm run verify:policy</code> y <code>npm run web:build</code>; ampliar después con <code>lint</code> completo y <code>tsc</code> global.</li>
+      <li><strong>Deuda de tipos:</strong> corregir errores de <code>npm run typecheck</code> por archivos o módulos (servicios, Registro, etc.).</li>
+      <li><strong>Registro a evento real:</strong> diseñar endpoint, modelo y UI F2+ cuando el calendario pase a “público” según plan.</li>
+      <li><strong>Comercio / Recap / pagos:</strong> siguen en modo demo o parcial; no son núcleo F1 (tabla 3.a).</li>
+    </ul>
+
+    <p class="meta" style="margin-top:2rem">
+      Referencias: <span class="mono">opciones-hosting-costos.md</span> §11,
+      <span class="mono">RunSkateRoller-hosting-VISUAL.html</span> (tabla 3.a),
+      <span class="mono">appRunSkateRoller/src/config/launchModulePolicy.ts</span>,
+      scripts: <span class="mono">package.json</span> (<code>verify:policy</code>, <code>smoke:api</code>).
+    </p>
+  </div>
+</body>
+</html>

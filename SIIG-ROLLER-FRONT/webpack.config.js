@@ -30,7 +30,9 @@ module.exports = {
     rules: [
       {
         test: /\.(js|jsx|ts|tsx)$/,
-        exclude: /node_modules\/(?!(react-native-web|@react-navigation)\/).*/,
+        // socket.io-client (y dependencias) deben transpilarse para web/LAN; si no, puede romper solo pantallas que lo importan (p.ej. Calendario).
+        exclude:
+          /node_modules\/(?!(react-native-web|@react-navigation|socket\.io-client|engine\.io-client|socket\.io-parser|ws)\/).*/,
         use: {
           loader: 'babel-loader',
           options: {

@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Video from 'react-native-video';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
-import {API_ENDPOINTS} from '../config/api';
+import {API_ENDPOINTS, resolveApiUrl, resolveMediaUrl} from '../config/api';
 
 interface RollerTipsProfileScreenProps {
   navigation: any;
@@ -27,12 +27,17 @@ export const RollerTipsProfileScreen: React.FC<RollerTipsProfileScreenProps> = (
 }) => {
   const {userId, displayName} = route.params;
   const [tips, setTips] = useState<Array<{id: string; url: string; description?: string}>>([]);
+
+  const getTipPlayableUrl = (rawUrl: string) =>
+    Platform.OS === 'web' ? resolveApiUrl(rawUrl) : resolveMediaUrl(rawUrl);
   const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     const loadTips = async () => {
       try {
-        const response = await fetch(`${API_ENDPOINTS.ROLLERTIPS.USER(userId)}?scope=active`);
+        const response = await fetch(
+          resolveApiUrl(`${API_ENDPOINTS.ROLLERTIPS.USER(userId)}?scope=active`),
+        );
         const data = await response.json();
         if (data?.success && Array.isArray(data.data)) {
           setTips(data.data);
@@ -98,17 +103,16 @@ export const RollerTipsProfileScreen: React.FC<RollerTipsProfileScreenProps> = (
                   <View style={styles.reelVideo}>
                     {Platform.OS === 'web' ? (
                       <video
-                        src={tip.url}
+                        src={getTipPlayableUrl(tip.url)}
                         style={{width: '100%', height: '100%', objectFit: 'cover'}}
                         controls
                       />
                     ) : (
                       <Video
-                        source={{uri: tip.url}}
+                        source={{uri: getTipPlayableUrl(tip.url)}}
                         style={styles.videoPlayer}
                         resizeMode="cover"
                         controls
-                        paused
                       />
                     )}
                   </View>

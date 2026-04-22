@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Video from 'react-native-video';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
-import {API_ENDPOINTS} from '../config/api';
+import {API_ENDPOINTS, resolveApiUrl, resolveMediaUrl} from '../config/api';
 import authService from '../services/authService';
 
 interface RollerTipsArchiveScreenProps {
@@ -24,6 +24,9 @@ export const RollerTipsArchiveScreen: React.FC<RollerTipsArchiveScreenProps> = (
 }) => {
   const [tips, setTips] = useState<Array<{id: string; url: string; description?: string}>>([]);
 
+  const getTipPlayableUrl = (rawUrl: string) =>
+    Platform.OS === 'web' ? resolveApiUrl(rawUrl) : resolveMediaUrl(rawUrl);
+
   useEffect(() => {
     const loadArchive = async () => {
       try {
@@ -33,7 +36,7 @@ export const RollerTipsArchiveScreen: React.FC<RollerTipsArchiveScreenProps> = (
         }
         const token = await AsyncStorage.getItem('@auth:token');
         const response = await fetch(
-          `${API_ENDPOINTS.ROLLERTIPS.USER(user.id)}?scope=archived`,
+          resolveApiUrl(`${API_ENDPOINTS.ROLLERTIPS.USER(user.id)}?scope=archived`),
           {headers: token ? {Authorization: `Bearer ${token}`} : undefined},
         );
         const data = await response.json();
@@ -56,7 +59,7 @@ export const RollerTipsArchiveScreen: React.FC<RollerTipsArchiveScreenProps> = (
         onPress: async () => {
           try {
             const token = await AsyncStorage.getItem('@auth:token');
-            const response = await fetch(API_ENDPOINTS.ROLLERTIPS.DELETE(tipId), {
+            const response = await fetch(resolveApiUrl(API_ENDPOINTS.ROLLERTIPS.DELETE(tipId)), {
               method: 'DELETE',
               headers: token ? {Authorization: `Bearer ${token}`} : undefined,
             });
@@ -107,17 +110,16 @@ export const RollerTipsArchiveScreen: React.FC<RollerTipsArchiveScreenProps> = (
                   <View style={styles.reelVideo}>
                     {Platform.OS === 'web' ? (
                       <video
-                        src={tip.url}
+                        src={getTipPlayableUrl(tip.url)}
                         style={{width: '100%', height: '100%', objectFit: 'cover'}}
                         controls
                       />
                     ) : (
                       <Video
-                        source={{uri: tip.url}}
+                        source={{uri: getTipPlayableUrl(tip.url)}}
                         style={styles.videoPlayer}
                         resizeMode="cover"
                         controls
-                        paused
                       />
                     )}
                   </View>

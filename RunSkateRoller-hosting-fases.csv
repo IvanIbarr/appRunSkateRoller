@@ -1,0 +1,4 @@
+Fase,Que_activas,Alcance_resumido,Objetivo,Ref_coste,MXN_mes_aprox,MXN_ano_aprox
+1 Beta,Free + pruebas cerradas,Pocos testers limites free bugs y flujos,Grupo cerrado,A sec9,0-90,0-1080
+2 Publico,API+DB dominio alertas,Postgres unificado publico,Descargas y feedback,B o C sec9,300-450,3500-5400
+3 Crecer,RAM email Mapbox metricas,Picos y costos variables,Escalar con datos,D parcial sec9,450-1080+,5400-13000+

@@ -1,0 +1,5 @@
+Escenario,Incluye,USD_mes,Total_MXN_mes,Total_MXN_ano
+A - Minimo free max,Cloudflare + Railway bajo + Neon free + email free,0-5,0-90,0-1080
+B - Equilibrado,Cloudflare + Render API + Render Postgres + dominio + email,15-17,270-310 + ~15-25 dominio,3200-3800 + 250-400 dominio
+C - Un solo panel,Render static + API + Postgres,16-25,290-450,3500-5400
+D - v1 con todo,Mapbox Cloudinary email pago,35-60,630-1080,7500-13000

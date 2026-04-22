@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   Platform,
   Image,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
+import {LaunchPhaseBanner} from '../components/LaunchPhaseBanner';
 import {ChatGeneral} from '../components/ChatGeneral';
 import {ChatStaff} from '../components/ChatStaff';
 import authService from '../services/authService';
@@ -29,6 +31,62 @@ export const ComunidadScreen: React.FC<ComunidadScreenProps> = ({
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [nombreGrupo, setNombreGrupo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [latestGeneralTs, setLatestGeneralTs] = useState(0);
+  const [latestStaffTs, setLatestStaffTs] = useState(0);
+  const seenGeneralRef = useRef(0);
+  const seenStaffRef = useRef(0);
+
+  // Verificar si el usuario puede ver el chat de staff
+  const canViewStaffChat = (tipoPerfil?: TipoPerfil): boolean => {
+    return tipoPerfil === 'administrador' || tipoPerfil === 'liderGrupo';
+  };
+
+  const canViewStaff = canViewStaffChat(currentUser?.tipoPerfil);
+  const userName = currentUser?.email ? currentUser.email.split('@')[0] : 'Usuario';
+
+  // Construir el texto del tab de staff con el nombre del grupo
+  const staffTabText = nombreGrupo ? `Chat Staff ${nombreGrupo}` : 'Chat Staff';
+
+  const hasNewGeneral = latestGeneralTs > (seenGeneralRef.current || 0);
+  const hasNewStaff = latestStaffTs > (seenStaffRef.current || 0);
+
+  const setActiveTabAndMarkSeen = (next: ChatTab) => {
+    setActiveTab(next);
+    if (next === 'general') {
+      seenGeneralRef.current = Math.max(seenGeneralRef.current, latestGeneralTs);
+    } else {
+      seenStaffRef.current = Math.max(seenStaffRef.current, latestStaffTs);
+    }
+  };
+
+  const panResponder = useMemo(() => {
+    if (!canViewStaff) {
+      return null;
+    }
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        const {dx, dy} = gestureState;
+        return Math.abs(dx) > 16 && Math.abs(dy) < 22;
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        const {dx, dy, vx} = gestureState;
+        if (Math.abs(dy) > 28) {
+          return;
+        }
+        const strongSwipe = Math.abs(dx) > 42 || Math.abs(vx) > 0.45;
+        if (!strongSwipe) {
+          return;
+        }
+        if (dx < 0) {
+          // swipe izquierda -> staff
+          setActiveTabAndMarkSeen('staff');
+        } else {
+          // swipe derecha -> general
+          setActiveTabAndMarkSeen('general');
+        }
+      },
+    });
+  }, [canViewStaff, latestGeneralTs, latestStaffTs]);
 
   useEffect(() => {
     loadUser();
@@ -68,11 +126,6 @@ export const ComunidadScreen: React.FC<ComunidadScreenProps> = ({
     }
   };
 
-  // Verificar si el usuario puede ver el chat de staff
-  const canViewStaffChat = (tipoPerfil: TipoPerfil): boolean => {
-    return tipoPerfil === 'administrador' || tipoPerfil === 'liderGrupo';
-  };
-
   if (loading) {
     return (
       <WithBottomTabBar>
@@ -98,14 +151,6 @@ export const ComunidadScreen: React.FC<ComunidadScreenProps> = ({
     );
   }
 
-  const canViewStaff = canViewStaffChat(currentUser.tipoPerfil);
-  const userName = currentUser.email.split('@')[0]; // Usar parte del email como nombre temporal
-  
-  // Construir el texto del tab de staff con el nombre del grupo
-  const staffTabText = nombreGrupo 
-    ? `Chat Staff ${nombreGrupo}`
-    : 'Chat Staff';
-
   return (
     <WithBottomTabBar>
       <View style={styles.container}>
@@ -121,11 +166,16 @@ export const ComunidadScreen: React.FC<ComunidadScreenProps> = ({
 
         {/* Contenido sobre el fondo */}
         <View style={styles.contentContainer}>
+          <LaunchPhaseBanner screenRouteName="Comunidad" />
           {/* Tabs de navegación */}
           <View style={styles.tabsContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'general' && styles.activeTab]}
-            onPress={() => setActiveTab('general')}>
+            style={[
+              styles.tab,
+              activeTab === 'general' && styles.activeTab,
+              hasNewGeneral && activeTab !== 'general' && styles.tabGlowGeneral,
+            ]}
+            onPress={() => setActiveTabAndMarkSeen('general')}>
             <Text
               style={[
                 styles.tabText,
@@ -142,8 +192,12 @@ export const ComunidadScreen: React.FC<ComunidadScreenProps> = ({
 
           {canViewStaff && (
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'staff' && styles.activeTab]}
-              onPress={() => setActiveTab('staff')}>
+              style={[
+                styles.tab,
+                activeTab === 'staff' && styles.activeTab,
+                hasNewStaff && activeTab !== 'staff' && styles.tabGlowStaff,
+              ]}
+              onPress={() => setActiveTabAndMarkSeen('staff')}>
               <Text
                 style={[
                   styles.tabText,
@@ -156,18 +210,46 @@ export const ComunidadScreen: React.FC<ComunidadScreenProps> = ({
           </View>
 
           {/* Contenido del chat activo */}
-          <View style={styles.chatContainer}>
-            {activeTab === 'general' ? (
+          <View
+            style={styles.chatContainer}
+            {...(panResponder ? panResponder.panHandlers : {})}>
+            {/* Montamos ambos para poder mostrar indicador de “nuevos” en tabs */}
+            <View
+              pointerEvents={activeTab === 'general' ? 'auto' : 'none'}
+              style={[
+                styles.chatPane,
+                activeTab === 'general' ? styles.chatPaneActive : styles.chatPaneHidden,
+              ]}>
               <ChatGeneral
                 currentUserId={currentUser.id}
                 currentUserName={userName}
+                onLatestTimestamp={(tsMs) => {
+                  setLatestGeneralTs(prev => (tsMs > prev ? tsMs : prev));
+                  if (activeTab === 'general') {
+                    seenGeneralRef.current = Math.max(seenGeneralRef.current, tsMs);
+                  }
+                }}
               />
-            ) : (
-              <ChatStaff
-                currentUserId={currentUser.id}
-                currentUserName={userName}
-              />
-            )}
+            </View>
+            {canViewStaff ? (
+              <View
+                pointerEvents={activeTab === 'staff' ? 'auto' : 'none'}
+                style={[
+                  styles.chatPane,
+                  activeTab === 'staff' ? styles.chatPaneActive : styles.chatPaneHidden,
+                ]}>
+                <ChatStaff
+                  currentUserId={currentUser.id}
+                  currentUserName={userName}
+                  onLatestTimestamp={(tsMs) => {
+                    setLatestStaffTs(prev => (tsMs > prev ? tsMs : prev));
+                    if (activeTab === 'staff') {
+                      seenStaffRef.current = Math.max(seenStaffRef.current, tsMs);
+                    }
+                  }}
+                />
+              </View>
+            ) : null}
           </View>
         </View>
       </View>
@@ -204,9 +286,10 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+    minHeight: 0,
     zIndex: 1,
-    paddingTop: Platform.OS === 'web' ? 12 : 6,
-    paddingBottom: Platform.OS === 'web' ? 0 : 8,
+    paddingTop: Platform.OS === 'web' ? 10 : 4,
+    paddingBottom: 0,
   },
   header: {
     padding: 20,
@@ -236,8 +319,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: 'rgba(20, 24, 38, 0.72)',
     borderRadius: 18,
-    marginHorizontal: 16,
-    marginTop: 14,
+    marginHorizontal: 10,
+    marginTop: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.16)',
     overflow: 'hidden',
@@ -255,6 +338,20 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: 'rgba(56, 189, 248, 0.18)',
+  },
+  tabGlowGeneral: {
+    shadowColor: '#38BDF8',
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  tabGlowStaff: {
+    shadowColor: '#34C759',
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
   },
   tabSeparator: {
     width: 1,
@@ -285,20 +382,30 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+    minHeight: 0,
     backgroundColor: 'rgba(12, 16, 28, 0.78)',
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 16,
+    marginHorizontal: 10,
+    marginTop: 6,
+    marginBottom: 0,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
-    padding: 8,
+    padding: 0,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 14},
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 12,
+    shadowOffset: {width: 0, height: 12},
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  chatPane: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  chatPaneActive: {
+    opacity: 1,
+  },
+  chatPaneHidden: {
+    opacity: 0,
   },
   loadingContainer: {
     flex: 1,

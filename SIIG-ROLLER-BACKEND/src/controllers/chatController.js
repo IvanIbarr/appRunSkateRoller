@@ -1,6 +1,37 @@
 const Mensaje = require('../models/Mensaje');
 const Usuario = require('../models/Usuario');
 
+const UPLOADS_CHAT_PREFIX = '/uploads/chat/';
+
+/**
+ * Sube un archivo de chat (imagen o video) y devuelve la URL relativa.
+ */
+const uploadChatMedia = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No se recibió archivo',
+      });
+    }
+
+    const relative = `${UPLOADS_CHAT_PREFIX}${req.file.filename}`;
+    const mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+
+    return res.json({
+      success: true,
+      url: relative,
+      mediaType,
+    });
+  } catch (error) {
+    console.error('Error en upload chat:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error al subir el archivo',
+    });
+  }
+};
+
 /**
  * Obtiene mensajes de un chat específico
  */
@@ -39,6 +70,8 @@ const getMessages = async (req, res) => {
         userName: mensaje.usuarioAlias || mensaje.usuarioEmail,
         timestamp: mensaje.createdAt,
         chatType: mensaje.chatType,
+        attachmentUrl: mensaje.attachmentUrl || null,
+        attachmentType: mensaje.attachmentType || null,
       };
     });
 
@@ -48,7 +81,6 @@ const getMessages = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener mensajes:', error);
-    // Si el error es que la tabla no existe, proporcionar un mensaje más útil
     if (error.message && error.message.includes('does not exist')) {
       return res.status(500).json({
         success: false,
@@ -65,14 +97,25 @@ const getMessages = async (req, res) => {
 };
 
 /**
+ * Valida que la URL de adjunto sea local (evita abusos).
+ */
+function isSafeChatMediaUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  return url.startsWith(UPLOADS_CHAT_PREFIX) && !url.includes('..');
+}
+
+/**
  * Crea un nuevo mensaje
  */
 const createMessage = async (req, res) => {
   try {
-    const {chatType, text} = req.body;
+    const {chatType, text, mediaUrl, mediaType} = req.body;
     const userId = req.user.id;
 
-    // Validaciones
+    const trimmedText = typeof text === 'string' ? text.trim() : '';
+
     if (!chatType || !['general', 'staff'].includes(chatType)) {
       return res.status(400).json({
         success: false,
@@ -80,17 +123,33 @@ const createMessage = async (req, res) => {
       });
     }
 
-    if (!text || text.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'El texto del mensaje es requerido',
-      });
-    }
-
-    if (text.length > 1000) {
+    if (trimmedText.length > 1000) {
       return res.status(400).json({
         success: false,
         error: 'El mensaje no puede exceder 1000 caracteres',
+      });
+    }
+
+    const hasMedia = mediaUrl && mediaType;
+    if (hasMedia) {
+      if (!['image', 'video'].includes(mediaType)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Tipo de adjunto inválido',
+        });
+      }
+      if (!isSafeChatMediaUrl(mediaUrl)) {
+        return res.status(400).json({
+          success: false,
+          error: 'URL de adjunto no válida',
+        });
+      }
+    }
+
+    if (!trimmedText && !hasMedia) {
+      return res.status(400).json({
+        success: false,
+        error: 'Escribe un mensaje o adjunta una imagen o video',
       });
     }
 
@@ -105,11 +164,12 @@ const createMessage = async (req, res) => {
       }
     }
 
-    // Crear mensaje
     const mensajeData = {
       chatType,
       usuarioId: userId,
-      texto: text.trim(),
+      texto: trimmedText,
+      adjuntoUrl: hasMedia ? mediaUrl : null,
+      adjuntoTipo: hasMedia ? mediaType : null,
     };
 
     const newMessage = await Mensaje.create(mensajeData);
@@ -129,6 +189,8 @@ const createMessage = async (req, res) => {
       userName: usuario.alias || usuario.email,
       timestamp: newMessage.created_at,
       chatType: newMessage.chat_type,
+      attachmentUrl: newMessage.adjunto_url || null,
+      attachmentType: newMessage.adjunto_tipo || null,
     };
 
     res.status(201).json({
@@ -137,9 +199,17 @@ const createMessage = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al crear mensaje:', error);
+    if (error.code === 'ADJUNTO_MIGRATION_REQUIRED') {
+      return res.status(503).json({
+        success: false,
+        error: error.message || 'Migración de chat pendiente',
+      });
+    }
+    const isDev = process.env.NODE_ENV !== 'production';
+    const hint = isDev && error.message ? ` (${error.message})` : '';
     res.status(500).json({
       success: false,
-      error: 'Error al crear mensaje',
+      error: `Error al crear mensaje${hint}`,
     });
   }
 };
@@ -147,5 +217,5 @@ const createMessage = async (req, res) => {
 module.exports = {
   getMessages,
   createMessage,
+  uploadChatMedia,
 };
-

@@ -318,7 +318,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
 
         // Calcular ruta
         const response = await fetch(
-          `https://api.mapbox.com/directions/v5/mapbox/driving/${originCoords[0]},${originCoords[1]};${destCoords[0]},${destCoords[1]}?geometries=geojson&access_token=${MAPBOX_TOKEN}`,
+          `https://api.mapbox.com/directions/v5/mapbox/cycling/${originCoords[0]},${originCoords[1]};${destCoords[0]},${destCoords[1]}?geometries=geojson&access_token=${MAPBOX_TOKEN}`,
         );
 
         if (!response.ok) {

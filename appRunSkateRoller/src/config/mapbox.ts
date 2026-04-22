@@ -31,5 +31,5 @@ export const isExampleToken = (): boolean => {
 export const MAPBOX_STYLE = 'mapbox://styles/mapbox/streets-v12';
 
 // Configuración de Mapbox Directions API
-export const MAPBOX_DIRECTIONS_API = 'https://api.mapbox.com/directions/v5/mapbox/driving';
+export const MAPBOX_DIRECTIONS_API = 'https://api.mapbox.com/directions/v5/mapbox/cycling';
 

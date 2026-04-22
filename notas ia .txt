@@ -1,5 +1,7 @@
 
-Me ayudas a realizar un analisis de implementacion del siguiente proyecto, no generes codigo solo necisito el diagrama de arquitectura, recomendaciones tecnologicas
+
+Me ayudas a realizar un analisis de implementacion del siguiente proyecto, no generes codigo 
+solo necisito el diagrama de arquitectura, recomendaciones tecnologicas
 
 1. Objetivo General
 Desarrollar una aplicación móvil multiplataforma (Android e iOS) llamada RunSkateRoller diseñada para la comunidad de patinadores y ciclistas, que permita la planificación de rutas, el seguimiento en tiempo real y el fomento del comercio especializado dentro de la comunidad.
@@ -79,11 +81,186 @@ Base de datos en PostgreSQL
 
 puedes generar el diagrama de entidad relacional de las tablas que vamos a necesitar
 
+user postgres
+pass admin123
+puerto 5432
+borrar log
+summary.installation.logfile: C:\Users\sacx2\AppData\Local\Temp\install-postgresql.log
+
+"SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+
+{
+  host: 'localhost',
+  port: 5432,
+  database: 'siig_roller_db',
+  user: 'postgres',
+  password: 'admin123'
+}
+
+paso 6 integración de autentificacion y perfiles con la base datos
+
+=== Estado de los Servidores ===
+
+Backend deber��a estar en: http://localhost:3001
+Frontend deber��a estar en: http://localhost:3000
+
+Verifica en tu navegador:
+  1. Backend: http://localhost:3001/health
+  2. Frontend: http://localhost:3000
+
+  Usuarios de prueba disponibles
+Credenciales admin (para guardarlas)
+Estas ya existen en tu proyecto (usuario demo):
+
+Usuario: 
+admin@roller.com
+Contraseña: 
+admin123
+(Está en src/services/authService.ts dentro de MOCK_USERS.)
+
+Líder: lider@roller.com / lider123
+
+Staff
+Roller: roller@roller.com / roller123
+
+perfil roller
+yunuem2018@gmail.com/Sacx2008
+ivanna@gmail.com/Sacx2008
+yunghappy@gmail.com/YunRoller
+anyahappy@gmail.com/Sacx2008
+
+¡Abre http://localhost:3000 en tu navegador y prueba la autenticación. 
+Si encuentras algún problema, avísame.
+
+admin@roller.com
+ivanna@gmail.com
+lider@roller.com
+roller@roller.com
+sacx2003@gmail.com
+yunuem2018@gmail.com
+yunghappy@gmail.com
+anyahappy@gmail.com
+anyaamelieibarrag@gmail.com
+
+correo de app
+roll3rskat3roll3r@gmail.com
+Sacx2008
+
+se corre vulnerabilidades 27-02-2026
+
+cuenta SendGrid
+roll3rskat3roll3r@gmail.com
+(contraseña: solo en .env o gestor, no en repo)
+codigo
+(código 2FA: solo en .env o gestor, no en repo)
+telefono aby
+https://console.twilio.com/?overrideTreatment=post-signup-dev
+
+liga real 
+https://app.sendgrid.com/settings/sender_auth/senders
+Create API Key → nombre (ej. siig-roller-app).
+Copie esta clave y guárdela en un lugar seguro.
+Por razones de seguridad no podemos volver a mostrártelo.
+
+https://app.sendgrid.com/settings/api_keys
+(SendGrid API key: poner en .env como SMTP_PASS; nunca en archivos commiteados)
+
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASS=TU_NUEVA_API_KEY
+SMTP_FROM=roll3rskat3roll3r@gmail.com
+
+Luego:
+Guarda .env
+Reinicia el backend (npm run dev)
+Prueba “Enviar código” desde la app
+
+Para hacerlo yo, dime estos valores:
+SMTP_PASS = tu nueva API Key
+SMTP_FROM = roll3rskat3roll3r@gmail.com (confirmo si quieres usar este)
 
 
+seccion de ventas MARKETING
 
+podemos agregar una nueva pestaña o pagina llamada Marketing, fijate que mi idiea es  
+que me propongas un modelo de ventas donde demos opcion a publicar venta de patines, 
+accesorios (kit de protecion/ropa, ruedas) ,ya sea nuevo o usado. 
+tener un carrito para validar y confirmar su venta, aqui necesito sugerencias, 
+para seguridad de app y tener ingreso estra, pense ligar el pago a mercado libre o paypal, pero tener yo una comision minima por la trasaccion desde app, tambien implemetar solo envios a domicilio con numero de guia de ellos de mercadolibre o otra empresa para que se el vendedor con la opcion de imprimir ya sus guia lleve el paquete a la paqueteria y se entregue a comprado de modo seguro, asi debemos implementar la forma de cobro, deposito de entrada de comision app y deposito de pago al vendedor.  me gustaria poner un baner de aununcios para dar entrada a proveedores para que ofrezcan sus productos con un cobro extra
 
-
+ (URLs red local y carpeta de logs: ver bloque "Inicio rápido" al principio de este archivo)
 
 
  
+--- Inicio rápido (otro dispositivo en la misma Wi‑Fi) ---
+  Front (web dev):  http://192.168.1.77:3000/
+  API (health):     http://192.168.1.77:3001/health
+  (la IP 192.168.1.77 es ejemplo; usa la IP local de tu PC en tu red)
+
+  Logs backend:     
+  :\curso kotlin\recursos de la app roller\SIIG-ROLLER-BACKEND\logs\
+--- fin inicio rápido ---
+
+comando powershell PS C:\Users\sacx2> 
+cloudflared tunnel --url http://localhost:3000 
+para sacar la ulr para ver en el movil
+
+npx --yes cloudflared tunnel --url http://localhost:3000
+
+
+podemos ya implementar bien la pag agregada y ya no como test para irle dando estilo y forma, adicional Funciones y Costos (Sugerencia para App Nueva y reglas)
+Diferencia de Funciones (Con precios finales)
+Función	Versión Básica ($0)	Versión Plus ($59/mes)
+Fotos por video	Hasta 5 fotos	Hasta 60 fotos
+Calidad de Imagen	720p (Estándar)	1080p (Alta Definición)
+Marca de Agua	Sí (Promociona tu app)	No (Video limpio)
+Tiempo de Tracking	Máximo 4 horas	Ilimitado
+Música de fondo	1 pista genérica	Biblioteca completa
+Edición	Solo al terminar	Ilimitada en el futuro
+Almacenamiento	Se borra en 15 días	Nube permanente
+
+Estrategia de monetización para mantenimiento: En la versión gratuita, 
+puedes mostrar un pequeño anuncio mientras el video se está generando (renderizado), lo que ayuda a costear el uso del servidor en ese momento.
+ podemos agregar un boton de compra de plus, y un icono con compra de haste plus,
+  Recomendación para no afectarte:
+Suscripción Anual: Te sugiero ponerla en $479.00 MXN. 
+Esto te deja unos $340 MXN netos de un solo golpe, lo cual es excelente para pagar por adelantado meses de servidor y asegurar que el usuario use tu app todo el año., Para que la aplicación sea sostenible y los costos de los servidores (especialmente el procesamiento de video 3D, que es caro) no te sobrepasen, la estrategia debe enfocarse en minimizar el gasto de los usuarios gratuitos y maximizar el flujo de los de pago.El "Pase Único" de $19 MXN: Esta es tu mejor herramienta para usuarios que solo hacen una ruta importante al mes. 
+Te genera ingreso directo sin que el usuario sienta el compromiso de una suscripción.
+
+nota 21/04/2026
+pasos en seguridad
+ el siguiente paso de endurecimiento, lo más rentable sería: 
+ revisar helmet/CORS/rate limiting en el backend, validar que nunca se suba .env 
+ al repo, y añadir .nvmrc + comprobación en CI de npm audit sin legacy donde 
+ sea posible. Puedo aplicar el cambio de JWT_SECRET estricto en el servidor 
+ en un paso aparte si lo indicas.
+Liga para ver las fases a lanzar 
+*** super importante esto**** 
+Alcance 
+file:///D:/curso%20kotlin/recursos%20de%20la%20app%20roller/RunSkateRoller-hosting-VISUAL.html
+
+Reporte y resumen fase 1 
+file:///D:/curso%20kotlin/recursos%20de%20la%20app%20roller/RunSkateRoller-hosting-VISUAL.html
+
+******
+ 1. Archivo src/config/launchPhase.ts
+Códigos: 1 = Beta (Fase 1) · 2 = Público (Fase 2) · 3 = Crecer (Fase 3) — alineado a tu documento de hosting.
+Exporta: LAUNCH_PHASE, getLaunchPhaseLabel(), isLaunchPhase(1|2|3), isBetaOrEarlier(), isPublicOrLater(), isGrowth().
+Web: lee process.env.REACT_APP_LAUNCH_PHASE (valores 1, 2 o 3). En webpack ya estaba (o quedó) inyectado con default '1'.
+Nativo (Android/iOS): si Metro no inyecta la variable, se usa NATIVE_LAUNCH_PHASE_FALLBACK en ese mismo archivo (ahora = 1). Cuando compiles un APK de “Fase 2”, cambiás solo esa constante o más adelante añadís react-native-config / babel para env.
+2. Cómo fijar la fase
+Entorno	Qué haces
+Web (dev/build)
+En .env: REACT_APP_LAUNCH_PHASE=1 (o 2, 3). Template en appRunSkateRoller/.env.example.
+Android / iOS
+Editar NATIVE_LAUNCH_PHASE_FALLBACK en src/config/launchPhase.ts antes de generar el binario.
+3. Dónde se usa ya
+MenuScreen: en modo desarrollo (__DEV__) aparece al final: Fase X — ... y una línea de ayuda.
+clientLogger: los eventos enviados al backend llevan launchPhase: 1|2|3 en el context (útil al revisar fallos en beta).
+4. Cómo seguir (cuando quieras)
+En cualquier pantalla o servicio:
+
+import {LAUNCH_PHASE, isPublicOrLater} from '../config/launchPhase';
+if (isPublicOrLater()) { /* … */ }
+No añadí flags por pantalla todavía (ruta, chat, etc.); eso sería el siguiente paso con if (LAUNCH_PHASE >= 2) o un mapa de módulos.

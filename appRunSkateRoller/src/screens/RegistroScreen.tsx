@@ -20,6 +20,7 @@ import authService from '../services/authService';
 import aliasService from '../services/aliasService';
 import {useLanguage} from '../contexts/LanguageContext';
 import {RegistroData, Sexo, Nacionalidad, TipoPerfil} from '../types';
+import {appLog} from '../utils/clientLogger';
 
 // Función para convertir de Date a formato dd/mm/yyyy
 const formatDateToDDMMYYYY = (date: Date): string => {
@@ -56,6 +57,19 @@ const parseDDMMYYYY = (dateString: string): Date | null => {
 interface RegistroScreenProps {
   navigation: any;
 }
+
+const mensajeErrorRed = (raw: string): string => {
+  const m = raw.toLowerCase();
+  if (
+    m.includes('failed to fetch') ||
+    m.includes('load failed') ||
+    m.includes('networkerror') ||
+    m.includes('network request failed')
+  ) {
+    return 'No se pudo conectar con el servidor. En el PC ejecuta el backend (puerto 3001), abre el firewall para ese puerto y, desde el móvil, usa la IP de tu PC (misma Wi‑Fi). Prueba en el navegador: http://TU-IP:3001/health';
+  }
+  return raw;
+};
 
 export const RegistroScreen: React.FC<RegistroScreenProps> = ({
   navigation,
@@ -188,6 +202,7 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
   const handleRegistro = async () => {
     // Validar formulario
     if (!validate()) {
+      appLog.warn('Validación de registro fallida', {screen: 'RegistroScreen'});
       return;
     }
 
@@ -203,16 +218,31 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
       const response = await authService.registro(formData);
 
       if (response.success && response.usuario) {
+        appLog.info('Registro de usuario exitoso', {
+          screen: 'RegistroScreen',
+          context: {withAliasAttempt: Boolean(alias.trim())},
+        });
         // Si hay alias ingresado, guardarlo después del registro
         if (alias.trim()) {
           try {
             const aliasResponse = await aliasService.agregarAlias(alias.trim());
             if (!aliasResponse.success) {
-              console.warn('No se pudo guardar el alias:', aliasResponse.error);
+              appLog.warn('Alias no guardado tras registro', {
+                screen: 'RegistroScreen',
+                context: {error: aliasResponse.error ?? 'unknown'},
+              });
               // No bloqueamos el registro si falla el alias
             }
           } catch (aliasError) {
-            console.error('Error al guardar alias:', aliasError);
+            appLog.error('Excepción al guardar alias tras registro', {
+              screen: 'RegistroScreen',
+              context: {
+                message:
+                  aliasError instanceof Error
+                    ? aliasError.message
+                    : String(aliasError),
+              },
+            });
             // No bloqueamos el registro si falla el alias
           }
         }
@@ -221,7 +251,13 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
         setShowWelcomeModal(true);
       } else {
         // Mostrar error
-        const errorMessage = response.error || 'Error al registrar usuario';
+        const errorMessage = mensajeErrorRed(
+          response.error || 'Error al registrar usuario',
+        );
+        appLog.warn('Registro rechazado o error de API', {
+          screen: 'RegistroScreen',
+          context: {message: errorMessage},
+        });
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
           alert(`Error: ${errorMessage}`);
         } else {
@@ -229,9 +265,13 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error en registro:', error);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Ocurrió un error inesperado';
+      const errorMessage = mensajeErrorRed(
+        error instanceof Error ? error.message : 'Ocurrió un error inesperado',
+      );
+      appLog.error('Excepción en flujo de registro', {
+        screen: 'RegistroScreen',
+        context: {message: errorMessage},
+      });
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         alert(`Error: ${errorMessage}`);
       } else {
@@ -269,192 +309,6 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
             {/* Formulario */}
             <View style={styles.formCard}>
               <View style={styles.form}>
-              <Input
-                label={t('register.email')}
-                placeholder="correo@ejemplo.com"
-                value={formData.email}
-                onChangeText={text => setFormData({...formData, email: text})}
-                error={errors.email}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-
-            {/* Campo de Alias */}
-            <View style={styles.aliasSection}>
-              <Input
-                label={t('register.alias')}
-                placeholder="Ej: RollerPro2024"
-                value={alias}
-                onChangeText={text => {
-                  setAlias(text);
-                  setAliasError('');
-                  setAliasSuccess('');
-                }}
-                error={aliasError}
-                maxLength={100}
-              />
-              {alias && (
-                <Button
-                  title={t('register.saveAlias')}
-                  onPress={handleGuardarAlias}
-                  variant="outline"
-                  style={styles.saveAliasButton}
-                />
-              )}
-              {aliasSuccess ? (
-                <Text style={styles.aliasSuccessText}>{aliasSuccess}</Text>
-              ) : null}
-            </View>
-
-            <Input
-              label={t('register.password')}
-              placeholder="Mínimo 6 caracteres"
-              value={formData.password}
-              onChangeText={text => setFormData({...formData, password: text})}
-              error={errors.password}
-              secureTextEntry
-              showPasswordToggle
-              autoCapitalize="none"
-            />
-
-            <Input
-              label={t('register.confirmPassword')}
-              placeholder="Repite tu contraseña"
-              value={formData.confirmPassword}
-              onChangeText={text =>
-                setFormData({...formData, confirmPassword: text})
-              }
-              error={errors.confirmPassword}
-              secureTextEntry
-              showPasswordToggle
-              autoCapitalize="none"
-            />
-
-            <Input
-              label={t('register.age')}
-              placeholder="18"
-              value={formData.edad.toString()}
-              onChangeText={text => {
-                const edad = parseInt(text, 10) || 0;
-                setFormData(prev => ({...prev, edad}));
-                
-                // Validar edad vs fecha cuando cambia la edad
-                if (fechaTexto && fechaTexto.length === 10) {
-                  const parsedDate = parseDDMMYYYY(fechaTexto);
-                  if (parsedDate) {
-                    const hoy = new Date();
-                    hoy.setHours(0, 0, 0, 0);
-                    const fechaComparar = new Date(parsedDate);
-                    fechaComparar.setHours(0, 0, 0, 0);
-                    
-                    if (fechaComparar <= hoy && edad > 0) {
-                      let edadCalculada =
-                        hoy.getFullYear() - fechaComparar.getFullYear();
-                      
-                      const mesActual = hoy.getMonth();
-                      const diaActual = hoy.getDate();
-                      const mesCumple = fechaComparar.getMonth();
-                      const diaCumple = fechaComparar.getDate();
-                      
-                      if (mesActual < mesCumple || (mesActual === mesCumple && diaActual < diaCumple)) {
-                        edadCalculada--;
-                      }
-                      
-                      // Si la edad no coincide, mostrar error
-                      if (edad !== edadCalculada) {
-                        const newErrors = {...errors};
-                        newErrors.edad = `La edad no coincide con la fecha de cumpleaños. Según la fecha, deberías tener ${edadCalculada} años`;
-                        newErrors.cumpleaños = `La fecha indica que tienes ${edadCalculada} años, pero ingresaste ${edad} años`;
-                        setErrors(newErrors);
-                      } else {
-                        // Limpiar errores si coinciden
-                        const newErrors = {...errors};
-                        if (newErrors.edad && newErrors.edad.includes('no coincide')) {
-                          delete newErrors.edad;
-                        }
-                        if (newErrors.cumpleaños && newErrors.cumpleaños.includes('indica que tienes')) {
-                          delete newErrors.cumpleaños;
-                        }
-                        setErrors(newErrors);
-                      }
-                    }
-                  }
-                }
-              }}
-              error={errors.edad}
-              keyboardType="number-pad"
-            />
-
-            {/* Fecha de Cumpleaños */}
-            <Input
-              label={t('register.birthday')}
-              placeholder="DD/MM/YYYY (ej: 15/01/1990)"
-              value={fechaTexto}
-              onChangeText={text => {
-                // Permitir solo números y barras
-                let cleaned = text.replace(/[^\d/]/g, '');
-                
-                // Formatear automáticamente mientras el usuario escribe
-                let formatted = cleaned;
-                if (cleaned.length > 2 && cleaned[2] !== '/') {
-                  formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
-                }
-                if (formatted.length > 5 && formatted[5] !== '/') {
-                  formatted = formatted.slice(0, 5) + '/' + formatted.slice(5);
-                }
-                // Limitar a 10 caracteres (DD/MM/YYYY)
-                if (formatted.length > 10) {
-                  formatted = formatted.slice(0, 10);
-                }
-
-                setFechaTexto(formatted);
-
-                // Si el formato es válido (10 caracteres), intentar parsear
-                if (formatted.length === 10) {
-                  const parsedDate = parseDDMMYYYY(formatted);
-                  if (parsedDate) {
-                    setFormData({
-                      ...formData,
-                      cumpleaños: parsedDate,
-                    });
-                    // Limpiar error si existe
-                    if (errors.cumpleaños) {
-                      const newErrors = {...errors};
-                      delete newErrors.cumpleaños;
-                      setErrors(newErrors);
-                    }
-                  }
-                }
-              }}
-              error={errors.cumpleaños}
-              keyboardType="numeric"
-            />
-
-            {/* Sexo */}
-            <View style={styles.pickerContainer}>
-              <Text style={styles.label}>{t('register.gender')}</Text>
-              <View style={styles.sexoButtons}>
-                {(['masculino', 'femenino', 'ambos'] as Sexo[]).map(sexo => (
-                  <TouchableOpacity
-                    key={sexo}
-                    style={[
-                      styles.sexoButton,
-                      formData.sexo === sexo && styles.sexoButtonActive,
-                    ]}
-                    onPress={() => setFormData({...formData, sexo})}>
-                    <Text
-                      style={[
-                        styles.sexoButtonText,
-                        formData.sexo === sexo && styles.sexoButtonTextActive,
-                      ]}>
-                      {t(`register.gender.${sexo}`)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             {/* Idioma */}
             <View style={styles.pickerContainer}>
               <Text style={styles.label}>{t('register.language')}</Text>
@@ -515,6 +369,198 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
               </View>
             </View>
 
+              <Input
+                label={t('register.email')}
+                placeholder="correo@ejemplo.com"
+                value={formData.email}
+                onChangeText={text => setFormData({...formData, email: text})}
+                error={errors.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                labelStyle={styles.inputLabelLight}
+              />
+
+            {/* Campo de Alias */}
+            <View style={styles.aliasSection}>
+              <Input
+                label={t('register.alias')}
+                placeholder="Ej: RollerPro2024"
+                value={alias}
+                onChangeText={text => {
+                  setAlias(text);
+                  setAliasError('');
+                  setAliasSuccess('');
+                }}
+                error={aliasError}
+                maxLength={100}
+                labelStyle={styles.inputLabelLight}
+              />
+              {alias && (
+                <Button
+                  title={t('register.saveAlias')}
+                  onPress={handleGuardarAlias}
+                  variant="outline"
+                  style={styles.saveAliasButton}
+                />
+              )}
+              {aliasSuccess ? (
+                <Text style={styles.aliasSuccessText}>{aliasSuccess}</Text>
+              ) : null}
+            </View>
+
+            <Input
+              label={t('register.password')}
+              placeholder="Mínimo 6 caracteres"
+              value={formData.password}
+              onChangeText={text => setFormData({...formData, password: text})}
+              error={errors.password}
+              secureTextEntry
+              showPasswordToggle
+              autoCapitalize="none"
+              labelStyle={styles.inputLabelLight}
+            />
+
+            <Input
+              label={t('register.confirmPassword')}
+              placeholder="Repite tu contraseña"
+              value={formData.confirmPassword}
+              onChangeText={text =>
+                setFormData({...formData, confirmPassword: text})
+              }
+              error={errors.confirmPassword}
+              secureTextEntry
+              showPasswordToggle
+              autoCapitalize="none"
+              labelStyle={styles.inputLabelLight}
+            />
+
+            {/* Fecha de Cumpleaños */}
+            <Input
+              label={t('register.birthday')}
+              placeholder="DD/MM/YYYY (ej: 15/01/1990)"
+              value={fechaTexto}
+              onChangeText={text => {
+                // Permitir solo números y barras
+                let cleaned = text.replace(/[^\d/]/g, '');
+                
+                // Formatear automáticamente mientras el usuario escribe
+                let formatted = cleaned;
+                if (cleaned.length > 2 && cleaned[2] !== '/') {
+                  formatted = cleaned.slice(0, 2) + '/' + cleaned.slice(2);
+                }
+                if (formatted.length > 5 && formatted[5] !== '/') {
+                  formatted = formatted.slice(0, 5) + '/' + formatted.slice(5);
+                }
+                // Limitar a 10 caracteres (DD/MM/YYYY)
+                if (formatted.length > 10) {
+                  formatted = formatted.slice(0, 10);
+                }
+
+                setFechaTexto(formatted);
+
+                // Si el formato es válido (10 caracteres), intentar parsear
+                if (formatted.length === 10) {
+                  const parsedDate = parseDDMMYYYY(formatted);
+                  if (parsedDate) {
+                    setFormData({
+                      ...formData,
+                      cumpleaños: parsedDate,
+                    });
+                    // Limpiar error si existe
+                    if (errors.cumpleaños) {
+                      const newErrors = {...errors};
+                      delete newErrors.cumpleaños;
+                      setErrors(newErrors);
+                    }
+                  }
+                }
+              }}
+              error={errors.cumpleaños}
+              keyboardType="numeric"
+              labelStyle={styles.inputLabelLight}
+            />
+
+            <Input
+              label={t('register.age')}
+              placeholder="18"
+              value={formData.edad.toString()}
+              onChangeText={text => {
+                const edad = parseInt(text, 10) || 0;
+                setFormData(prev => ({...prev, edad}));
+                
+                // Validar edad vs fecha cuando cambia la edad
+                if (fechaTexto && fechaTexto.length === 10) {
+                  const parsedDate = parseDDMMYYYY(fechaTexto);
+                  if (parsedDate) {
+                    const hoy = new Date();
+                    hoy.setHours(0, 0, 0, 0);
+                    const fechaComparar = new Date(parsedDate);
+                    fechaComparar.setHours(0, 0, 0, 0);
+                    
+                    if (fechaComparar <= hoy && edad > 0) {
+                      let edadCalculada =
+                        hoy.getFullYear() - fechaComparar.getFullYear();
+                      
+                      const mesActual = hoy.getMonth();
+                      const diaActual = hoy.getDate();
+                      const mesCumple = fechaComparar.getMonth();
+                      const diaCumple = fechaComparar.getDate();
+                      
+                      if (mesActual < mesCumple || (mesActual === mesCumple && diaActual < diaCumple)) {
+                        edadCalculada--;
+                      }
+                      
+                      // Si la edad no coincide, mostrar error
+                      if (edad !== edadCalculada) {
+                        const newErrors = {...errors};
+                        newErrors.edad = `La edad no coincide con la fecha de cumpleaños. Según la fecha, deberías tener ${edadCalculada} años`;
+                        newErrors.cumpleaños = `La fecha indica que tienes ${edadCalculada} años, pero ingresaste ${edad} años`;
+                        setErrors(newErrors);
+                      } else {
+                        // Limpiar errores si coinciden
+                        const newErrors = {...errors};
+                        if (newErrors.edad && newErrors.edad.includes('no coincide')) {
+                          delete newErrors.edad;
+                        }
+                        if (newErrors.cumpleaños && newErrors.cumpleaños.includes('indica que tienes')) {
+                          delete newErrors.cumpleaños;
+                        }
+                        setErrors(newErrors);
+                      }
+                    }
+                  }
+                }
+              }}
+              error={errors.edad}
+              keyboardType="number-pad"
+              labelStyle={styles.inputLabelLight}
+            />
+
+            {/* Sexo */}
+            <View style={styles.pickerContainer}>
+              <Text style={styles.label}>{t('register.gender')}</Text>
+              <View style={styles.sexoButtons}>
+                {(['masculino', 'femenino', 'ambos'] as Sexo[]).map(sexo => (
+                  <TouchableOpacity
+                    key={sexo}
+                    style={[
+                      styles.sexoButton,
+                      formData.sexo === sexo && styles.sexoButtonActive,
+                    ]}
+                    onPress={() => setFormData({...formData, sexo})}>
+                    <Text
+                      style={[
+                        styles.sexoButtonText,
+                        formData.sexo === sexo && styles.sexoButtonTextActive,
+                      ]}>
+                      {t(`register.gender.${sexo}`)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* Selección de Avatar */}
             <View style={styles.pickerContainer}>
               <Text style={styles.label}>{t('register.avatar')}</Text>
@@ -545,6 +591,12 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
                 {t('register.loginLink')}
               </Text>
             </View>
+
+            <Text
+              style={styles.marketingPublicLink}
+              onPress={() => navigation.navigate('Marketing')}>
+              Ver publicaciones de Marketing
+            </Text>
               </View>
             </View>
           </View>
@@ -567,6 +619,9 @@ export const RegistroScreen: React.FC<RegistroScreenProps> = ({
         visible={showWelcomeModal}
         onClose={() => {
           setShowWelcomeModal(false);
+          appLog.info('Bienvenida cerrada, navegación principal', {
+            screen: 'RegistroScreen',
+          });
           // Navegar a pantalla de navegación después de cerrar el modal
           navigation.reset({
             index: 0,
@@ -665,8 +720,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: '#FFFFFF',
     marginBottom: 8,
+  },
+  inputLabelLight: {
+    color: '#FFFFFF',
   },
   sexoButtons: {
     flexDirection: 'row',
@@ -761,6 +819,14 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
     fontWeight: '600',
   },
+  marketingPublicLink: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#38BDF8',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
   dateInputContainer: {
     width: '100%',
   },
@@ -814,7 +880,7 @@ const styles = StyleSheet.create({
   },
   avatarSelectorText: {
     fontSize: 16,
-    color: '#E2E8F0',
+    color: '#FFFFFF',
   },
   aliasSection: {
     marginBottom: 16,

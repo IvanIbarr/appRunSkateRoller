@@ -1,0 +1,11 @@
+Fila_Sec8,Componente,USD_mes,MXN_mes,Incluir_arranque
+1o2,Cloudflare o Vercel front,0,0,SI
+3,Render Web Service API,7,126,SI
+4,Render PostgreSQL,7,126,SI
+9,SendGrid free,0,0,SI
+11,Dominio prorrateo mental,1,18-25,SI al publico
+12,Mapbox,0,0,NO hasta fase3
+Suma,Total fijo,14,252+25,Pack Iván ~300-330 MXN
+Anual,API+DB 12m,14 USD x12,3024,MXN
+Anual,Domino 1x,,250-350,MXN
+Anual,Total anio1,,3300-3400,MXN aproximado

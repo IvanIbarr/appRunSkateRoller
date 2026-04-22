@@ -1,5 +1,5 @@
-import React, {useEffect, useState} from 'react';
-import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {View, Text, StyleSheet, ActivityIndicator, Platform} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {LoginScreen} from '../screens/LoginScreen';
@@ -65,19 +65,33 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const linking = {
-    prefixes: [
+  const linking = useMemo(() => {
+    const webOrigin =
+      Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : undefined;
+
+    const prefixes = [
       'runskateroller://',
       'https://app.runskateroller.com',
       'http://localhost:3000',
-    ],
-    config: {
-      screens: {
-        EventoDetalle: 'evento/:id',
-        SeguimientoCompartido: 'seguimiento/:seguimientoId',
+    ];
+
+    // Importante para pruebas por LAN (p.ej. http://192.168.1.77:3000): sin esto, el linking puede fallar en web.
+    if (webOrigin && !prefixes.includes(webOrigin)) {
+      prefixes.push(webOrigin);
+    }
+
+    return {
+      prefixes,
+      config: {
+        screens: {
+          EventoDetalle: 'evento/:id',
+          SeguimientoCompartido: 'seguimiento/:seguimientoId',
+        },
       },
-    },
-  };
+    };
+  }, []);
 
   useEffect(() => {
     console.log('AppNavigator: Iniciando verificación de autenticación...');

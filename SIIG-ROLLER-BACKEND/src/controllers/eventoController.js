@@ -1,4 +1,5 @@
 const Evento = require('../models/Evento');
+const {getIO} = require('../realtime/io');
 
 const getEventos = async (req, res) => {
   try {
@@ -17,6 +18,10 @@ const createEvento = async (req, res) => {
     if (!nuevoEvento) {
       return res.status(400).json({success: false, error: 'No se pudo crear el evento'});
     }
+    const io = getIO();
+    if (io) {
+      io.to('events').emit('event_created', Evento.mapToCamelCase(nuevoEvento));
+    }
     res.status(201).json({
       success: true,
       evento: Evento.mapToCamelCase(nuevoEvento),
@@ -34,6 +39,10 @@ const updateEvento = async (req, res) => {
     if (!actualizado) {
       return res.status(404).json({success: false, error: 'Evento no encontrado'});
     }
+    const io = getIO();
+    if (io) {
+      io.to('events').emit('event_updated', Evento.mapToCamelCase(actualizado));
+    }
     res.json({success: true, evento: Evento.mapToCamelCase(actualizado)});
   } catch (error) {
     console.error('Error al actualizar evento:', error);
@@ -47,6 +56,10 @@ const deleteEvento = async (req, res) => {
     const eliminado = await Evento.delete(id);
     if (!eliminado) {
       return res.status(404).json({success: false, error: 'Evento no encontrado'});
+    }
+    const io = getIO();
+    if (io) {
+      io.to('events').emit('event_deleted', {id});
     }
     res.json({success: true, message: 'Evento eliminado exitosamente'});
   } catch (error) {

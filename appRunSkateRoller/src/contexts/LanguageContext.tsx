@@ -47,7 +47,7 @@ const translations = {
     'register.aliasError': 'Error al validar alias',
     'register.gender.masculino': 'Masculino',
     'register.gender.femenino': 'Femenino',
-    'register.gender.ambos': 'Ambos',
+    'register.gender.ambos': 'Otro',
     'register.language.espanol': 'Español',
     'register.language.ingles': 'English',
     'register.profile.liderGrupo': 'Líder de Grupo',
@@ -72,8 +72,8 @@ const translations = {
     'navigation.origin': 'Origen',
     'navigation.destination': 'Destino',
     'navigation.calculate': 'Calcular Ruta',
-    // Comunidad
-    'community.title': 'Comunidad',
+    // Comunidad / Chat
+    'community.title': 'Chat',
     'community.subtitle': 'Conecta con otros rollers',
     'community.chatGeneral': 'Chat General',
     'community.chatStaff': 'Chat Staff',
@@ -130,7 +130,7 @@ const translations = {
     'register.aliasError': 'Error validating alias',
     'register.gender.masculino': 'Male',
     'register.gender.femenino': 'Female',
-    'register.gender.ambos': 'Both',
+    'register.gender.ambos': 'Other',
     'register.language.espanol': 'Spanish',
     'register.language.ingles': 'English',
     'register.profile.liderGrupo': 'Group Leader',
@@ -156,7 +156,7 @@ const translations = {
     'navigation.destination': 'Destination',
     'navigation.calculate': 'Calculate Route',
     // Community
-    'community.title': 'Community',
+    'community.title': 'Chat',
     'community.subtitle': 'Connect with other rollers',
     'community.chatGeneral': 'General Chat',
     'community.chatStaff': 'Staff Chat',

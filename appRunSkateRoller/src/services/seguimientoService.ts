@@ -1,5 +1,5 @@
 import apiService from './apiService';
-import API_BASE_URL from '../config/api';
+import {getApiBaseUrl} from '../config/api';
 
 export interface SeguimientoStats {
   distanciaTotal: number;
@@ -30,7 +30,10 @@ export interface LeaderboardItem {
   userId: string;
   email: string;
   alias: string | null;
+  /** Emoji o icono breve (legacy) */
   avatar: string | null;
+  /** Ruta `/uploads/...` o URL absoluta; prioridad en UI sobre `avatar` */
+  fotoPerfil?: string | null;
   totalKilometros: number;
   totalRecorridos: number;
 }
@@ -44,13 +47,13 @@ export interface LeaderboardResponse {
 class SeguimientoService {
   async getHistory(period: 'week' | 'month' | 'year' | 'all' = 'all') {
     return apiService.get<HistoryResponse>(
-      `${API_BASE_URL}/seguimiento/history?period=${period}`,
+      `${getApiBaseUrl()}/seguimiento/history?period=${period}`,
     );
   }
 
   async getLeaderboard(period: 'week' | 'month' | 'year' = 'month', limit = 10) {
     return apiService.get<LeaderboardResponse>(
-      `${API_BASE_URL}/seguimiento/leaderboard?period=${period}&limit=${limit}`,
+      `${getApiBaseUrl()}/seguimiento/leaderboard?period=${period}&limit=${limit}`,
     );
   }
 }

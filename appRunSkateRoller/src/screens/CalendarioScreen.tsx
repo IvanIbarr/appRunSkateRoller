@@ -13,14 +13,26 @@ import {
   Modal,
   ActivityIndicator,
   Share,
+  useWindowDimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
+import {LaunchPhaseBanner} from '../components/LaunchPhaseBanner';
 import {AvatarCircle} from '../components/AvatarCircle';
 import authService from '../services/authService';
 import eventoService from '../services/eventoService';
 import {Usuario, Evento} from '../types';
 import {useFocusEffect} from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {eventoFechaToYmd, ymdToLocalDate} from '../utils/dateOnly';
+import {getRealtimeSocket} from '../services/realtimeService';
+import getApiBaseUrl from '../config/api';
+import {
+  cancelEventoQuinceMinAntes,
+  scheduleEventoQuinceMinAntes,
+} from '../services/eventoRemindersService';
+
+const RSVP_EVENT_IDS_KEY = '@app:calendario:rsvp_event_ids';
 
 interface CalendarioScreenProps {
   navigation: any;
@@ -68,6 +80,7 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
+  const {width: windowWidth} = useWindowDimensions();
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [eventos, setEventos] = useState<Evento[]>(eventosEjemplo);
   const [refreshing, setRefreshing] = useState(false);
@@ -77,6 +90,33 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [eventosEliminados, setEventosEliminados] = useState<Set<string>>(new Set());
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  /** Eventos con recordatorio local (15 min) programado vía notifee. */
+  const [rsvpEventIds, setRsvpEventIds] = useState<Set<string>>(new Set());
+
+  const persistRsvpIds = useCallback(async (set: Set<string>) => {
+    try {
+      await AsyncStorage.setItem(
+        RSVP_EVENT_IDS_KEY,
+        JSON.stringify([...set]),
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const loadRsvpIds = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(RSVP_EVENT_IDS_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        if (Array.isArray(arr)) {
+          setRsvpEventIds(new Set(arr));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -112,7 +152,10 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
         const ahora = new Date();
         ahora.setHours(0, 0, 0, 0);
         const eventosSinVencidos = eventosSinEliminados.filter(evento => {
-          const fechaEvento = typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha;
+          const ymd = eventoFechaToYmd(evento.fecha);
+          const fechaEvento =
+            (ymd ? ymdToLocalDate(ymd) : null) ||
+            (typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha);
           fechaEvento.setHours(0, 0, 0, 0);
           const diasDiferencia = Math.floor((ahora.getTime() - fechaEvento.getTime()) / (1000 * 60 * 60 * 24));
           // Mantener solo eventos que no tengan más de 2 días de vencidos
@@ -121,7 +164,10 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
         
         // Eliminar automáticamente eventos vencidos del almacenamiento
         const eventosVencidos = eventosSinEliminados.filter(evento => {
-          const fechaEvento = typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha;
+          const ymd = eventoFechaToYmd(evento.fecha);
+          const fechaEvento =
+            (ymd ? ymdToLocalDate(ymd) : null) ||
+            (typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha);
           fechaEvento.setHours(0, 0, 0, 0);
           const diasDiferencia = Math.floor((ahora.getTime() - fechaEvento.getTime()) / (1000 * 60 * 60 * 24));
           return diasDiferencia > 2 && evento.id;
@@ -148,19 +194,19 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
           }
           // Si no hay ID, comparar por título y fecha
           const titulo = evento.tituloRuta || evento.titulo;
-          const fecha = typeof evento.fecha === 'string' ? evento.fecha : evento.fecha.toISOString().split('T')[0];
+          const fecha = eventoFechaToYmd(evento.fecha) || '';
           return index === self.findIndex(e => {
             const eTitulo = e.tituloRuta || e.titulo;
-            const eFecha = typeof e.fecha === 'string' ? e.fecha : e.fecha.toISOString().split('T')[0];
+            const eFecha = eventoFechaToYmd(e.fecha) || '';
             return eTitulo === titulo && eFecha === fecha;
           });
         });
         
         // Ordenar por fecha (más antiguos primero)
         eventosUnicos.sort((a, b) => {
-          const fechaA = typeof a.fecha === 'string' ? new Date(a.fecha) : a.fecha;
-          const fechaB = typeof b.fecha === 'string' ? new Date(b.fecha) : b.fecha;
-          return fechaA.getTime() - fechaB.getTime();
+          const ymdA = eventoFechaToYmd(a.fecha) || '';
+          const ymdB = eventoFechaToYmd(b.fecha) || '';
+          return ymdA.localeCompare(ymdB);
         });
         setEventos(eventosUnicos);
       } else {
@@ -181,14 +227,38 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   };
 
   useEffect(() => {
+    void loadRsvpIds();
+  }, [loadRsvpIds]);
+
+  useEffect(() => {
     loadEventos();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const socket = getRealtimeSocket(getApiBaseUrl());
+      const refresh = () => {
+        loadEventos();
+      };
+      socket.on('event_created', refresh);
+      socket.on('event_updated', refresh);
+      socket.on('event_deleted', refresh);
+      return () => {
+        socket.off('event_created', refresh);
+        socket.off('event_updated', refresh);
+        socket.off('event_deleted', refresh);
+      };
+    } catch (e) {
+      console.warn('Calendario: socket en tiempo real no disponible', e);
+    }
   }, []);
 
   // Recargar eventos cuando la pantalla está enfocada
   useFocusEffect(
     useCallback(() => {
+      void loadRsvpIds();
       loadEventos();
-    }, []),
+    }, [loadRsvpIds]),
   );
 
   const onRefresh = async () => {
@@ -197,8 +267,17 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
     setRefreshing(false);
   };
 
-  const formatFecha = (fecha: string | Date): string => {
-    const date = typeof fecha === 'string' ? new Date(fecha) : fecha;
+  const formatFecha = (fecha: string | Date | null | undefined): string => {
+    if (fecha == null) {
+      return '—';
+    }
+    const ymd = eventoFechaToYmd(fecha);
+    const date =
+      (ymd ? ymdToLocalDate(ymd) : null) ||
+      (typeof fecha === 'string' ? new Date(fecha) : fecha);
+    if (!date || Number.isNaN(date.getTime())) {
+      return '—';
+    }
     const options: Intl.DateTimeFormatOptions = {
       day: 'numeric',
       month: 'long',
@@ -207,22 +286,66 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
     return date.toLocaleDateString('es-ES', options);
   };
 
-  const formatFechaRango = (fecha: string | Date): string => {
-    const date = typeof fecha === 'string' ? new Date(fecha) : fecha;
+  const formatFechaRango = (fecha: string | Date | null | undefined): string => {
+    if (fecha == null) {
+      return '—';
+    }
+    const ymd = eventoFechaToYmd(fecha);
+    const date =
+      (ymd ? ymdToLocalDate(ymd) : null) ||
+      (typeof fecha === 'string' ? new Date(fecha) : fecha);
+    if (!date || Number.isNaN(date.getTime())) {
+      return '—';
+    }
     const day = date.getDate();
     const month = date.toLocaleDateString('es-ES', {month: 'long'});
     return `${day} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
   };
 
-  const handleRegistrarse = (eventoId: string) => {
-    // TODO: Implementar registro al evento
-    console.log('Registrarse al evento:', eventoId);
+  /**
+   * Fase 1: sin backend de asistencia; en móvil se programa notificación local 15 min antes de la cita.
+   */
+  const handleRegistrarse = async (evento: Evento) => {
+    if (Platform.OS === 'web') {
+      Alert.alert(
+        'Solo en la app móvil',
+        'El aviso 15 minutos antes del recorrido (notificación) se configura en Android o iOS. En la web, usa «Compartir» y añade el evento a tu calendario o recordatorio manual.',
+      );
+      return;
+    }
+    if (!evento.id) {
+      Alert.alert('Calendario', 'Falta el id del evento. Recarga e inténtalo de nuevo.');
+      return;
+    }
+    if (rsvpEventIds.has(evento.id)) {
+      await cancelEventoQuinceMinAntes(evento.id);
+      const next = new Set(rsvpEventIds);
+      next.delete(evento.id);
+      setRsvpEventIds(next);
+      await persistRsvpIds(next);
+      Alert.alert('Recordatorio', 'Se canceló el aviso 15 minutos antes de la cita.');
+      return;
+    }
+    const res = await scheduleEventoQuinceMinAntes(evento);
+    if (res.ok) {
+      const next = new Set(rsvpEventIds);
+      next.add(evento.id);
+      setRsvpEventIds(next);
+      await persistRsvpIds(next);
+      Alert.alert(
+        '¡Prepárate para rodar! 🛼',
+        'Te avisaremos 15 minutos antes de la hora de cita. Mantén activadas las notificaciones para la app.\n\nPulsa otra vez el mismo botón si quieres quitar el recordatorio.',
+      );
+    } else {
+      Alert.alert('No se pudo programar', res.error);
+    }
   };
 
   const handleEditarEvento = (evento: Evento) => {
     // Navegar al formulario con datos serializables
     const fechaSerializable =
-      typeof evento.fecha === 'string' ? evento.fecha : evento.fecha.toISOString();
+      eventoFechaToYmd(evento.fecha) ||
+      (typeof evento.fecha === 'string' ? evento.fecha : evento.fecha.toISOString());
 
     navigation.navigate('CrearEvento', {
       eventoParaEditar: {
@@ -247,7 +370,9 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
       let fechaFormateada = 'Fecha no especificada';
       if (evento.fecha) {
         try {
-          const fecha = new Date(evento.fecha);
+          const ymd = eventoFechaToYmd(evento.fecha);
+          const fecha =
+            (ymd ? ymdToLocalDate(ymd) : null) || new Date(evento.fecha as any);
           // Usar formato más compatible para Android
           fechaFormateada = fecha.toLocaleDateString('es-ES', {
             weekday: 'long',
@@ -490,13 +615,12 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
 
   const getEventsForDate = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+      date.getDate(),
+    ).padStart(2, '0')}`;
     return eventos.filter(evento => {
-      const fechaEvento = typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha;
-      return (
-        fechaEvento.getDate() === date.getDate() &&
-        fechaEvento.getMonth() === date.getMonth() &&
-        fechaEvento.getFullYear() === date.getFullYear()
-      );
+      const fechaYmd = eventoFechaToYmd(evento.fecha);
+      return fechaYmd === ymd;
     });
   };
 
@@ -518,6 +642,9 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
     return date < today;
   };
 
+  /** En web móvil, fila + calendario al 100% de ancho dejaba la lista de eventos sin espacio (pantalla “vacía”). */
+  const calendarWideWeb = Platform.OS === 'web' && windowWidth >= 900;
+
   return (
     <WithBottomTabBar>
       <View style={styles.container}>
@@ -536,12 +663,23 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            Platform.OS === 'web' ? undefined : (
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            )
           }>
+          <LaunchPhaseBanner
+            screenRouteName="Calendario"
+            emphasizeCoreInBeta
+          />
           {/* Header mejorado */}
           <View style={[styles.header, {paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 16) : 16}]}>
-            <AvatarCircle avatar={currentUser?.avatar} size={45} />
+            <AvatarCircle
+              avatar={currentUser?.avatar}
+              fotoPerfil={currentUser?.fotoPerfil}
+              size={45}
+            />
             <View style={styles.headerTextContainer}>
               <Text style={styles.pageTitle}>📅 Calendario</Text>
               <Text style={styles.pageSubtitle}>Eventos y rodadas programadas</Text>
@@ -554,9 +692,17 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.calendarGrid}>
+          <View
+            style={[
+              styles.calendarGrid,
+              {flexDirection: calendarWideWeb ? 'row' : 'column'},
+            ]}>
             {/* Mini Calendario */}
-            <View style={styles.calendarContainer}>
+            <View
+              style={[
+                styles.calendarContainer,
+                calendarWideWeb && styles.calendarContainerRowWeb,
+              ]}>
               <View style={styles.calendarHeader}>
                 <TouchableOpacity
                   style={styles.calendarNavButton}
@@ -628,8 +774,10 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
                   <Text style={styles.emptyText}>No hay eventos programados</Text>
                 </View>
               ) : (
-                eventos.map((evento) => (
-                  <View key={evento.id} style={styles.eventCard}>
+                eventos.map((evento, eventIndex) => (
+                  <View
+                    key={evento.id != null ? String(evento.id) : `ev-${eventIndex}`}
+                    style={styles.eventCard}>
                 {/* Imagen principal del evento */}
                 {evento.lugarDestino ? (
                   <View style={styles.eventImageWrapper}>
@@ -759,10 +907,19 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
                       <Text style={styles.editButtonText}>Editar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.registerButton}
-                      onPress={() => handleRegistrarse(evento.id)}
+                      style={[
+                        styles.registerButton,
+                        rsvpEventIds.has(String(evento.id)) && styles.registerButtonActive,
+                      ]}
+                      onPress={() => {
+                        void handleRegistrarse(evento);
+                      }}
                       activeOpacity={0.8}>
-                      <Text style={styles.registerButtonText}>Registrarse</Text>
+                      <Text style={styles.registerButtonText}>
+                        {rsvpEventIds.has(String(evento.id))
+                          ? 'Me apunto · aviso 15 min ✓'
+                          : 'Me apunto · aviso 15 min'}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.shareButton}
@@ -909,12 +1066,20 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   calendarGrid: {
-    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
     gap: 18,
     paddingHorizontal: 16,
   },
+  /** Sin flex:1 dentro de ScrollView (en iOS suele colapsar a altura 0). */
   eventsColumn: {
-    flex: 1,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  /** Solo con `calendarWideWeb`: ancho fijo para no empujar la columna de eventos fuera. */
+  calendarContainerRowWeb: {
+    width: 380,
+    maxWidth: '100%',
+    flexShrink: 0,
+    alignSelf: 'flex-start',
   },
   header: {
     flexDirection: 'row',
@@ -1036,7 +1201,7 @@ const styles = StyleSheet.create({
     height: 80,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)',
+        backgroundImage: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)',
       },
       default: {
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -1261,7 +1426,7 @@ const styles = StyleSheet.create({
     borderColor: '#A38CFF',
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #7A5CFF 0%, #A38CFF 100%)',
+        backgroundImage: 'linear-gradient(135deg, #7A5CFF 0%, #A38CFF 100%)',
       },
       default: {
         marginHorizontal: 5,
@@ -1290,18 +1455,29 @@ const styles = StyleSheet.create({
     elevation: 6,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #00D9FF 0%, #00A8CC 100%)',
+        backgroundImage: 'linear-gradient(135deg, #00D9FF 0%, #00A8CC 100%)',
       },
       default: {
         marginHorizontal: 5,
       },
     }),
   },
+  registerButtonActive: {
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#0D9488',
+    ...Platform.select({
+      web: {
+        backgroundImage: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)',
+      },
+    }),
+  },
   registerButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.3,
+    textAlign: 'center',
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
   },
   shareButton: {
@@ -1319,7 +1495,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #7A5CFF 0%, #22E6FF 50%, #8F6BFF 100%)',
+        backgroundImage: 'linear-gradient(135deg, #7A5CFF 0%, #22E6FF 50%, #8F6BFF 100%)',
       },
       default: {
         marginHorizontal: 5,
@@ -1517,7 +1693,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
+        backgroundImage: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
       },
     }),
   },

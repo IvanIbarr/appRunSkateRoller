@@ -5,8 +5,11 @@ class Usuario {
    * Busca un usuario por email
    */
   static async findByEmail(email) {
-    const query = 'SELECT * FROM usuarios WHERE email = $1';
-    const result = await pool.query(query, [email]);
+    const emailNorm = String(email || '')
+      .trim()
+      .toLowerCase();
+    const query = 'SELECT * FROM usuarios WHERE LOWER(TRIM(email)) = $1';
+    const result = await pool.query(query, [emailNorm]);
     return result.rows[0] || null;
   }
 
@@ -36,6 +39,10 @@ class Usuario {
       fotoPerfil,
     } = usuarioData;
 
+    const emailStored = String(email || '')
+      .trim()
+      .toLowerCase();
+
     const query = `
       INSERT INTO usuarios (
         email, 
@@ -54,7 +61,7 @@ class Usuario {
     `;
 
     const values = [
-      email,
+      emailStored,
       passwordHash,
       edad,
       cumpleaños,

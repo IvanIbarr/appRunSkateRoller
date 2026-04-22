@@ -1,0 +1,39 @@
+RunSkateRoller — checklist nativo (Marketing, compra, galería, ubicación)
+================================================================================
+
+ANDROID (carpeta android/ presente)
+-------------------------------------
+- Permisos en AndroidManifest principal:
+  INTERNET, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION
+- Debug: android/app/src/debug/AndroidManifest.xml incluye
+  android:usesCleartextTraffic="true" para llamar al API por HTTP (localhost o IP local).
+- Release: la URL de producción en src/config/api.ts usa HTTPS; no se requiere cleartext.
+- Teclado: MainActivity tiene windowSoftInputMode=adjustResize (formulario de compra).
+- Comando verificación: desde appRunSkateRoller ejecutar
+    npx react-native run-android
+
+IOS (este repo no incluye la carpeta ios/)
+------------------------------------------
+Si generas o añades el proyecto iOS con React Native CLI, configura:
+
+1) Info.plist — uso de ubicación (Marketing → Comprar → "Usar mi ubicación"):
+   Clave: NSLocationWhenInUseUsageDescription
+   Valor (ejemplo): "Usamos tu ubicación para sugerir tu dirección de entrega al comprar."
+
+2) Info.plist — API en desarrollo por HTTP (misma lógica que Android):
+   En ATS, permitir red local o usar solo HTTPS en producción.
+
+3) Pod install en ios/:
+    cd ios && pod install && cd ..
+
+4) Comando:
+    npx react-native run-ios
+
+CÓDIGO YA ACOPLADO A iOS Y ANDROID
+----------------------------------
+- SafeAreaView (react-native-safe-area-context) en flujo Comprar (envío, revisión, pago).
+- Modal de galería de fotos: statusBarTranslucent en Android, presentationStyle fullScreen en iOS,
+  márgenes con useSafeAreaInsets (notch / barra de estado).
+- KeyboardAvoidingView solo activo en iOS en pantalla de envío (Android usa adjustResize).
+- Geolocation: permisos Android en manifest; iOS requiere la clave NSLocation... arriba.
+- react-native-geolocation-service: enlazado por autolinking en builds nativos estándar.

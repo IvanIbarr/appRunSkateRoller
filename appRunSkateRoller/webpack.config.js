@@ -24,18 +24,33 @@ module.exports = {
       '@types': path.resolve(__dirname, 'src/types'),
       '@utils': path.resolve(__dirname, 'src/utils'),
       '@assets': path.resolve(__dirname, 'assets'),
+      '@notifee/react-native': path.resolve(
+        __dirname,
+        'src/shims/notifee.web.ts',
+      ),
     },
   },
   module: {
     rules: [
       {
         test: /\.(js|jsx|ts|tsx)$/,
-        exclude: /node_modules\/(?!(react-native-web|@react-navigation)\/).*/,
+        exclude:
+          /node_modules\/(?!(react-native-web|@react-navigation|react-native-screens)\/).*/,
         use: {
           loader: 'babel-loader',
           options: {
             presets: [
-              '@babel/preset-env',
+              [
+                '@babel/preset-env',
+                {
+                  targets: {
+                    ios: '14',
+                    safari: '14',
+                    android: '90',
+                    chrome: '90',
+                  },
+                },
+              ],
               '@babel/preset-react',
               '@babel/preset-typescript',
             ],
@@ -76,7 +91,9 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html',
-      inject: true,
+      // Por defecto el plugin usa defer en <head>; en Safari móvil a veces la app no monta. Bundle al final del body, síncrono.
+      inject: 'body',
+      scriptLoading: 'blocking',
     }),
     new Dotenv({
       path: './.env',
@@ -92,6 +109,23 @@ module.exports = {
       'process.env.NODE_ENV': JSON.stringify(
         process.env.NODE_ENV || 'development',
       ),
+      // Bitácora remota → POST /api/logs/client (ver SIIG-ROLLER-BACKEND .env CLIENT_LOG_INGEST)
+      'process.env.REACT_APP_CLIENT_LOGS': JSON.stringify(
+        process.env.REACT_APP_CLIENT_LOGS !== undefined
+          ? process.env.REACT_APP_CLIENT_LOGS
+          : process.env.NODE_ENV === 'production'
+            ? 'false'
+            : 'true',
+      ),
+      'process.env.REACT_APP_CLIENT_LOG_SECRET': JSON.stringify(
+        process.env.REACT_APP_CLIENT_LOG_SECRET || '',
+      ),
+      // 1 = Beta | 2 = Público | 3 = Crecer (ver src/config/launchPhase.ts)
+      'process.env.REACT_APP_LAUNCH_PHASE': JSON.stringify(
+        process.env.REACT_APP_LAUNCH_PHASE != null && String(process.env.REACT_APP_LAUNCH_PHASE) !== ''
+          ? String(process.env.REACT_APP_LAUNCH_PHASE)
+          : '1',
+      ),
     }),
   ],
   devServer: {
@@ -100,8 +134,22 @@ module.exports = {
     },
     compress: true,
     port: 3000,
-    hot: true,
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+    // HMR + cliente WS en Safari móvil / LAN suele dejar pantalla en blanco; recarga manual (F5) en desktop.
+    hot: false,
+    liveReload: false,
+    client: false,
     historyApiFallback: true,
+    // Webpack-dev-server 5: `proxy` debe ser un array con `context` (objeto { '/api': {...} } se ignora).
+    // Mismo origen :3000 → backend :3001 (Safari/iOS).
+    proxy: [
+      {
+        context: ['/api', '/uploads', '/health'],
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
+    ],
   },
 };
 

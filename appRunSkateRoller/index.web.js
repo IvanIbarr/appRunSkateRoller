@@ -3,6 +3,8 @@
  * Web entry point
  */
 
+import './src/web/polyfills.web';
+
 console.log('index.web.js: Iniciando aplicación...');
 
 import {AppRegistry} from 'react-native';

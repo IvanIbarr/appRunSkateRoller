@@ -13,11 +13,19 @@ const getApiBaseUrl = (): string => {
   // Para Android físico, necesitamos usar la IP de la red local en lugar de localhost
   // IMPORTANTE: Cambia esta IP por la IP de tu PC en tu red local
   // Para obtener tu IP: ejecuta 'ipconfig' en PowerShell y busca "Dirección IPv4"
+  // IMPORTANTE: Debe coincidir con la IP LAN de tu PC (ipconfig → IPv4).
   const LOCAL_IP = '192.168.1.76'; // IP de tu PC (obtenida con ipconfig)
 
   // En web, Platform.OS será 'web'
   if (Platform.OS === 'web') {
-    return 'http://localhost:3001/api'; // Desarrollo web
+    // Si abres la app por LAN (p.ej. http://192.168.1.77:3000), localhost apuntaría al dispositivo cliente, no al PC servidor.
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+      const h = window.location.hostname;
+      if (h && h !== 'localhost' && h !== '127.0.0.1') {
+        return `http://${h}:3001/api`;
+      }
+    }
+    return 'http://localhost:3001/api'; // Desarrollo web en la misma máquina
   }
 
   if (Platform.OS === 'android' && typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -85,3 +93,5 @@ export const AVATAR = {
 };
 
 export default API_BASE_URL;
+
+export const REALTIME_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');

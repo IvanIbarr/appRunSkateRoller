@@ -1,6 +1,6 @@
-import React, {useEffect, useState} from 'react';
-import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
+import React, {useEffect, useRef, useState} from 'react';
+import {View, Text, StyleSheet, ActivityIndicator, Platform, Linking} from 'react-native';
+import {NavigationContainer, createNavigationContainerRef} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {LoginScreen} from '../screens/LoginScreen';
 import {RegistroScreen} from '../screens/RegistroScreen';
@@ -22,45 +22,53 @@ import {ResetPasswordScreen} from '../screens/ResetPasswordScreen';
 import {RollerTipsScreen} from '../screens/RollerTipsScreen';
 import {RollerTipsProfileScreen} from '../screens/RollerTipsProfileScreen';
 import {RollerTipsArchiveScreen} from '../screens/RollerTipsArchiveScreen';
+import {MarketingScreen} from '../screens/MarketingScreen';
+import {MarketingSellSkatesScreen} from '../screens/MarketingSellSkatesScreen';
+import {MarketingSellSkatesStep3Screen} from '../screens/MarketingSellSkatesStep3Screen';
+import {MarketingSellSkatesStep4Screen} from '../screens/MarketingSellSkatesStep4Screen';
+import {MenuVentasScreen} from '../screens/MenuVentasScreen';
+import {CrearRecapScreen} from '../screens/RecapTestScreen';
+import {RecapCheckoutPlanScreen} from '../screens/recap/RecapCheckoutPlanScreen';
+import {RecapCheckoutDatosScreen} from '../screens/recap/RecapCheckoutDatosScreen';
+import {RecapCheckoutRevisionScreen} from '../screens/recap/RecapCheckoutRevisionScreen';
+import {RecapCheckoutPagoScreen} from '../screens/recap/RecapCheckoutPagoScreen';
+import {SupportHelpScreen} from '../screens/SupportHelpScreen';
+import {AdminBuzonScreen} from '../screens/AdminBuzonScreen';
+import {AdminUsuariosScreen} from '../screens/AdminUsuariosScreen';
+import {AdminChatsScreen} from '../screens/AdminChatsScreen';
+import {AdminResetPasswordScreen} from '../screens/AdminResetPasswordScreen';
+import {AdminVentasGeneralesScreen} from '../screens/AdminVentasGeneralesScreen';
+import {MySubscriptionsScreen} from '../screens/MySubscriptionsScreen';
 import {LanguageProvider} from '../contexts/LanguageContext';
 import authService from '../services/authService';
+import type {RootStackParamList} from './types';
+import {navigationLinking} from './linking';
+import {MarketingComprarEnvioScreen} from '../screens/MarketingComprarEnvioScreen';
+import {MarketingComprarRevisionScreen} from '../screens/MarketingComprarRevisionScreen';
+import {MarketingComprarPagoScreen} from '../screens/MarketingComprarPagoScreen';
 
-export type RootStackParamList = {
-  Login: undefined;
-  Registro: undefined;
-  ForgotPassword: undefined;
-  ResetPassword: {email?: string} | undefined;
-  RollerTips: undefined;
-  RollerTipsProfile: {userId: string; displayName: string};
-  RollerTipsArchive: undefined;
-  Home: undefined;
-  Navegacion: undefined;
-  Comunidad: undefined;
-  Historial: undefined;
-  Calendario: undefined;
-  Menu: undefined;
-  AgregarStaff: undefined;
-  NombreGrupo: undefined;
-  AgregarAlias: undefined;
-  CambiarAlias: undefined;
-  IntegrantesGrupo: undefined;
-  CrearEvento: undefined;
-  VistaPreviaEvento: {
-    tituloRuta: string;
-    puntoSalida: string;
-    fechaInicio: string;
-    cita: string;
-    salida: string;
-    nivel: string;
-    logoGrupo: string | null;
-    lugarDestino: string | null;
-  };
-};
+export type {RootStackParamList};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+function readSeguimientoIdFromUrl(): string | null {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('seguimiento');
+    return id && id.trim().length > 0 ? id.trim() : null;
+  } catch {
+    return null;
+  }
+}
 
 export const AppNavigator: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const deepLinkWebHandledRef = useRef(false);
+  const nativeHttpsInitialHandledRef = useRef(false);
 
   useEffect(() => {
     console.log('AppNavigator: Iniciando verificación de autenticación...');
@@ -93,6 +101,25 @@ export const AppNavigator: React.FC = () => {
     }
   };
 
+  // Enlaces https://...?seguimiento= mientras la app está abierta (Android / iOS).
+  useEffect(() => {
+    if (Platform.OS === 'web' || isAuthenticated === null) {
+      return;
+    }
+    const sub = Linking.addEventListener('url', (e) => {
+      const m = e.url.match(/[?&]seguimiento=([^&#]+)/);
+      if (!m?.[1] || !navigationRef.isReady()) {
+        return;
+      }
+      const seguimientoId = decodeURIComponent(m[1]);
+      navigationRef.reset({
+        index: 0,
+        routes: [{name: 'Navegacion', params: {seguimientoId}}],
+      });
+    });
+    return () => sub.remove();
+  }, [isAuthenticated]);
+
   if (isAuthenticated === null) {
     // Mostrar splash screen o loading
     console.log('AppNavigator: Mostrando pantalla de carga');
@@ -109,7 +136,46 @@ export const AppNavigator: React.FC = () => {
   try {
     return (
       <LanguageProvider>
-        <NavigationContainer>
+        <NavigationContainer
+          ref={navigationRef}
+          linking={Platform.OS === 'web' ? undefined : navigationLinking}
+          onReady={() => {
+            if (Platform.OS === 'web') {
+              const segId = readSeguimientoIdFromUrl();
+              if (!segId || deepLinkWebHandledRef.current) {
+                return;
+              }
+              deepLinkWebHandledRef.current = true;
+              // Sin sesión no forzar Navegación con seguimiento: provoca tabs con usuario null y errores en Chat/Historial.
+              if (!isAuthenticated) {
+                if (typeof window !== 'undefined') {
+                  const path = window.location.pathname || '/';
+                  window.history.replaceState({}, '', path);
+                }
+                return;
+              }
+              navigationRef.reset({
+                index: 0,
+                routes: [{name: 'Navegacion', params: {seguimientoId: segId}}],
+              });
+              return;
+            }
+            void Linking.getInitialURL().then((url) => {
+              if (!url || nativeHttpsInitialHandledRef.current) {
+                return;
+              }
+              const m = url.match(/[?&]seguimiento=([^&#]+)/);
+              if (!m?.[1]) {
+                return;
+              }
+              nativeHttpsInitialHandledRef.current = true;
+              const seguimientoId = decodeURIComponent(m[1]);
+              navigationRef.reset({
+                index: 0,
+                routes: [{name: 'Navegacion', params: {seguimientoId}}],
+              });
+            });
+          }}>
           <Stack.Navigator
             initialRouteName={isAuthenticated ? 'Navegacion' : 'Login'}
             screenOptions={{
@@ -122,12 +188,47 @@ export const AppNavigator: React.FC = () => {
           <Stack.Screen name="RollerTips" component={RollerTipsScreen} />
           <Stack.Screen name="RollerTipsProfile" component={RollerTipsProfileScreen} />
           <Stack.Screen name="RollerTipsArchive" component={RollerTipsArchiveScreen} />
+          <Stack.Screen name="Marketing" component={MarketingScreen} />
+          <Stack.Screen name="MarketingSellSkates" component={MarketingSellSkatesScreen} />
+          <Stack.Screen
+            name="MarketingSellSkatesStep3"
+            component={MarketingSellSkatesStep3Screen}
+          />
+          <Stack.Screen
+            name="MarketingSellSkatesStep4"
+            component={MarketingSellSkatesStep4Screen}
+          />
+          <Stack.Screen
+            name="MarketingComprarEnvio"
+            component={MarketingComprarEnvioScreen}
+          />
+          <Stack.Screen
+            name="MarketingComprarRevision"
+            component={MarketingComprarRevisionScreen}
+          />
+          <Stack.Screen
+            name="MarketingComprarPago"
+            component={MarketingComprarPagoScreen}
+          />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Navegacion" component={NavegacionScreen} />
             <Stack.Screen name="Comunidad" component={ComunidadScreen} />
             <Stack.Screen name="Historial" component={HistorialScreen} />
             <Stack.Screen name="Calendario" component={CalendarioScreen} />
             <Stack.Screen name="Menu" component={MenuScreen} />
+            <Stack.Screen name="MenuVentas" component={MenuVentasScreen} />
+            <Stack.Screen name="SupportHelp" component={SupportHelpScreen} />
+            <Stack.Screen name="AdminBuzon" component={AdminBuzonScreen} />
+            <Stack.Screen name="AdminUsuarios" component={AdminUsuariosScreen} />
+            <Stack.Screen name="AdminChats" component={AdminChatsScreen} />
+            <Stack.Screen name="AdminResetPassword" component={AdminResetPasswordScreen} />
+            <Stack.Screen name="AdminVentasGenerales" component={AdminVentasGeneralesScreen} />
+            <Stack.Screen name="MisSuscripciones" component={MySubscriptionsScreen} />
+            <Stack.Screen name="CrearRecap" component={CrearRecapScreen} />
+            <Stack.Screen name="RecapCheckoutPlan" component={RecapCheckoutPlanScreen} />
+            <Stack.Screen name="RecapCheckoutDatos" component={RecapCheckoutDatosScreen} />
+            <Stack.Screen name="RecapCheckoutRevision" component={RecapCheckoutRevisionScreen} />
+            <Stack.Screen name="RecapCheckoutPago" component={RecapCheckoutPagoScreen} />
             <Stack.Screen name="AgregarStaff" component={AgregarStaffScreen} />
             <Stack.Screen name="NombreGrupo" component={NombreGrupoScreen} />
             <Stack.Screen name="AgregarAlias" component={AgregarAliasScreen} />

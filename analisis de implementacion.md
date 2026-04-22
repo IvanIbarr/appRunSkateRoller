@@ -196,7 +196,8 @@ Líder → App → WebSocket Service → Redis (Pub/Sub)
 - **Mapbox Geocoding API**: Conversión de direcciones a coordenadas
 - **Mapbox Search API**: Búsqueda de lugares
 - **Ventajas para Startup:**
-  - 50,000 cargas de mapa/mes gratis (plan freemium)
+  - 50,000 cargas de mapa/mes gratis (
+  )
   - Mapas altamente personalizables
   - Navigation SDK robusto
   - Ideal para MVP y validación de concepto

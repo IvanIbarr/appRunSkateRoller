@@ -195,7 +195,7 @@ export const CrearEventoScreen: React.FC<CrearEventoScreenProps> = ({
 
             <Input
               label="Fecha Inicio"
-              placeholder="DD/MM/YYYY"
+              placeholder="DD/MM/AAAA o AAAA-MM-DD"
               value={fechaInicio}
               onChangeText={setFechaInicio}
               style={styles.input}
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00D9FF',
     ...Platform.select({
       web: {
-        background: 'linear-gradient(90deg, #00D9FF 0%, #00A8CC 100%)',
+        backgroundImage: 'linear-gradient(90deg, #00D9FF 0%, #00A8CC 100%)',
       },
     }),
   },

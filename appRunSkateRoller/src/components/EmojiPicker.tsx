@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
+  Platform,
 } from 'react-native';
 
 interface EmojiPickerProps {
@@ -38,8 +39,9 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      onRequestClose={onClose}
+      presentationStyle={Platform.OS === 'ios' ? 'overFullScreen' : undefined}>
+      <View style={[styles.modalOverlay, Platform.OS === 'web' && styles.modalOverlayWeb]}>
         <View style={styles.modalContent}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Seleccionar Emoji</Text>
@@ -78,6 +80,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+    elevation: 32,
+  },
+  modalOverlayWeb: {
+    zIndex: 999999,
+    position: 'relative' as const,
   },
   modalContent: {
     backgroundColor: '#FFF',
@@ -85,6 +92,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: '70%',
     paddingBottom: 20,
+    elevation: 40,
+    zIndex: 1000000,
   },
   header: {
     flexDirection: 'row',

@@ -9,17 +9,42 @@ import {
   Alert,
   Image,
   Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import {Button} from '../components/Button';
 import {Input} from '../components/Input';
 import authService from '../services/authService';
 import {LoginCredentials} from '../types';
+import {appLog} from '../utils/clientLogger';
 
 interface LoginScreenProps {
   navigation: any;
 }
 
+/** react-native-web: Alert.alert es no-op; en web hay que usar el diálogo del navegador. */
+const showLoginMessage = (title: string, message: string) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+};
+
+/**
+ * Tamaño para una sola línea "RunSkateRoller" con Permanent Marker (muy ancha en web).
+ * En react-native-web, 1 línea usa nowrap + ellipsis si se pasa del ancho.
+ */
+const getTitleFontSize = (width: number): number => {
+  const gutters = 68;
+  const usable = Math.max(width - gutters, 130);
+  const fromWidth = Math.floor(usable / 10.2);
+  return Math.min(56, Math.max(23, fromWidth));
+};
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
+  const {width: windowWidth} = useWindowDimensions();
+  const titleFontSize = getTitleFontSize(windowWidth);
+
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -48,6 +73,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
 
   const handleLogin = async () => {
     if (!validate()) {
+      appLog.warn('Formulario de login inválido', {screen: 'LoginScreen'});
       return;
     }
 
@@ -56,13 +82,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
       const response = await authService.login(credentials);
 
       if (response.success && response.usuario) {
+        appLog.info('Inicio de sesión correcto', {screen: 'LoginScreen'});
         // Navegar directamente a la pantalla de navegación y tracking
         navigation.replace('Navegacion');
       } else {
-        Alert.alert('Error', response.error || 'Error al iniciar sesión');
+        const msg = response.error || 'Error al iniciar sesión';
+        appLog.warn('Login rechazado por el servidor', {
+          screen: 'LoginScreen',
+          context: {message: msg},
+        });
+        showLoginMessage('Error', msg);
       }
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error inesperado');
+      appLog.error('Error inesperado en login', {
+        screen: 'LoginScreen',
+        context: {
+          message: error instanceof Error ? error.message : String(error),
+        },
+      });
+      showLoginMessage('Error', 'Ocurrió un error inesperado');
     } finally {
       setLoading(false);
     }
@@ -78,7 +116,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
         <View style={styles.content}>
           {/* Título arriba */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>RunSkateRoller</Text>
+            <Text
+              style={[
+                styles.title,
+                {
+                  fontSize: titleFontSize,
+                  lineHeight: Math.round(titleFontSize * 1.14),
+                  letterSpacing: Math.max(0.5, titleFontSize * 0.04),
+                },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.52}>
+              RunSkateRoller
+            </Text>
           </View>
 
           {/* Logo de fondo */}
@@ -118,6 +169,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                 }
                 error={errors.password}
                 secureTextEntry
+                showPasswordToggle
                 autoCapitalize="none"
                 labelStyle={styles.labelWhite}
               />
@@ -146,6 +198,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
               Regístrate
             </Text>
           </View>
+
+          <Text
+            style={styles.marketingExploreLink}
+            onPress={() => navigation.navigate('Marketing')}>
+            Ver publicaciones de Marketing
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -167,7 +225,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   titleContainer: {
+    width: '100%',
+    maxWidth: '100%',
     alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 12,
     marginTop: 20,
     marginBottom: 20,
     zIndex: 10,
@@ -193,14 +255,19 @@ const styles = StyleSheet.create({
     // Sin opacidad para mantener el color original de la imagen
   },
   title: {
-    fontSize: 58, // 20% más grande (48 * 1.20 = 57.6, redondeado a 58)
     fontWeight: 'bold',
     color: '#333',
     fontFamily: Platform.OS === 'web' ? '"Permanent Marker", cursive' : undefined,
-    textShadowColor: 'rgba(255, 255, 255, 0.9)',
-    textShadowOffset: {width: 2, height: 2},
-    textShadowRadius: 4,
+    textAlign: 'center',
+    ...(Platform.OS === 'web'
+      ? {textShadow: '2px 2px 5px rgba(255, 255, 255, 0.95)'}
+      : {
+          textShadowColor: 'rgba(255, 255, 255, 0.95)',
+          textShadowOffset: {width: 2, height: 2},
+          textShadowRadius: 5,
+        }),
     zIndex: 10,
+    maxWidth: '100%',
   },
   form: {
     zIndex: 10,
@@ -238,9 +305,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#0A84FF',
     fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: {width: 1, height: 1},
-    textShadowRadius: 2,
+    ...(Platform.OS === 'web'
+      ? {textShadow: '1px 1px 2px rgba(0, 0, 0, 0.6)'}
+      : {
+          textShadowColor: 'rgba(0, 0, 0, 0.6)',
+          textShadowOffset: {width: 1, height: 1},
+          textShadowRadius: 2,
+        }),
   },
   registerContainer: {
     flexDirection: 'row',
@@ -262,6 +333,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFF',
     fontWeight: 'bold',
+  },
+  marketingExploreLink: {
+    marginTop: 16,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#0A84FF',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+    zIndex: 10,
+    ...(Platform.OS === 'web'
+      ? {textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'}
+      : {
+          textShadowColor: 'rgba(0, 0, 0, 0.5)',
+          textShadowOffset: {width: 1, height: 1},
+          textShadowRadius: 2,
+        }),
   },
 });
 

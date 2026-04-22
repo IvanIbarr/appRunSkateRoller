@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Platform.select({
       web: {
-        background: 'linear-gradient(90deg, #00D9FF 0%, #00A8CC 100%)',
+        backgroundImage: 'linear-gradient(90deg, #00D9FF 0%, #00A8CC 100%)',
       },
     }),
   },
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     ...Platform.select({
       web: {
-        background: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
+        backgroundImage: 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)',
       },
     }),
   },

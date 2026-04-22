@@ -46,10 +46,14 @@ class AuthService {
    */
   static async login(email, password) {
     try {
-      // Buscar usuario por email (incluye password_hash)
-      const query = 'SELECT * FROM usuarios WHERE email = $1';
+      const emailNorm = String(email || '')
+        .trim()
+        .toLowerCase();
+      // Mismo criterio que findByEmail (Safari/iOS suele mandar espacios o mayúsculas distintas)
+      const query =
+        'SELECT * FROM usuarios WHERE LOWER(TRIM(email)) = $1';
       const {pool} = require('../config/database');
-      const result = await pool.query(query, [email]);
+      const result = await pool.query(query, [emailNorm]);
 
       if (result.rows.length === 0) {
         return {

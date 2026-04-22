@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RunSkateRoller – Hosting y costos (vista clara)</title>
+  <style>
+    :root { --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9cb3; --accent: #3ecf8e; --border: #2d3a4d; }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; line-height: 1.5; }
+    h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; overflow-x: auto; }
+    h2 { font-size: 1.05rem; color: var(--accent); margin: 0 0 0.75rem; }
+    h3 { font-size: 0.95rem; color: #b8d4f0; margin: 0 0 0.5rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    table.fases-modulos th, table.fases-modulos td { font-size: 0.8rem; padding: 0.4rem 0.45rem; }
+    table.fases-modulos th:first-child, table.fases-modulos td:first-child { min-width: 7.5rem; }
+    .ok { color: #6ed492; } .parc { color: #e6c35c; } .nuc { color: #7ec8ff; } .post { color: #9aa7b3; } .es { color: #c9a0f0; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.6rem; text-align: left; vertical-align: top; }
+    th { background: #222d3d; }
+    tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+    .tip { background: #1e2a1f; border-left: 3px solid var(--accent); padding: 0.75rem 1rem; margin: 1rem 0; font-size: 0.9rem; }
+    code { background: #222; padding: 0.1rem 0.35rem; border-radius: 4px; }
+    a { color: #7ec8ff; }
+    ul { margin: 0.5rem 0 0 1.2rem; }
+    @media print { body { background: #fff; color: #111; } .box { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <h1>RunSkateRoller – Hosting y costos</h1>
+  <p class="sub">Mismo contenido que <code>opciones-hosting-costos.md</code> · Tipo de cambio referencia: 1 USD ≈ 18 MXN</p>
+
+  <div class="tip">
+    <strong>Cómo verlo en Excel:</strong> en la carpeta del proyecto abre con doble clic los archivos
+    <code>RunSkateRoller-hosting-*.csv</code>. Si las tildes se ven mal, en Excel: <em>Datos → Desde texto/CSV</em> y codificación <strong>UTF-8</strong>.<br />
+    <strong>PowerPoint:</strong> en las diapositivas no es ideal para tablas; puedes <em>Insertar → Hoja de cálculo de Excel</em> o pegar la tabla desde Excel, o exportar esta página a PDF (Ctrl+P) como “resumen de una hoja”.<br />
+    <strong>Donde se ve más claro:</strong> esta página en el navegador (colores) o <strong>Excel</strong> para filtrar y sumar tú misma.
+  </div>
+
+  <div class="box" style="border-color: #3ecf8e;">
+    <h2>Para Iván — recomendación con contexto (léeme primero)</h2>
+    <p><strong>“No quedarnos en ceros”</strong> aquí no es gastar por gastar: es <strong>no depender solo del free</strong> cuando ya hay <strong>usuarios reales</strong> en calendario y login. El front puede seguir en Pages/Vercel gratis; lo que merece un piso de pago (~300–500 MXN/mes en API+DB+dominio prorrateado) es cuando pasas de beta a <strong>público suave</strong>.</p>
+    <p><strong>Fases en una frase:</strong> (0) desarrollo local; (1) beta con free o casi free; (2) v1 pública con escenario B/C y base estable; (2.1) ajustes según monitoreo; (3) Mapbox/imágenes/email pago cuando las <strong>métricas</strong> lo justifiquen.</p>
+    <p class="sub" style="margin:0;">Texto completo y tabla de fases con más detalle: <strong>sección 4</strong> del archivo <code>opciones-hosting-costos.md</code>. Pack de filas, suma y mes a mes: <strong>secciones 8.1 y 8.2</strong> del mismo doc.</p>
+    <p class="sub" style="margin-top:0.6rem; border-top:1px solid var(--border); padding-top:0.6rem;"><strong>Horario de rodadas:</strong> resumen arriba; el desglose completo está en <strong>§3.1</strong> de esta página (debajo de la tabla <em>Estrategia por fases</em>). En el doc: <code>opciones-hosting-costos.md</code> §11.1.</p>
+  </div>
+
+  <div class="box">
+    <h2>0. Qué filas sumar (tabla de costo por proveedor) — pack Iván</h2>
+    <p>La tabla grande de “costo por proveedor” lista <strong>todas</strong> las opciones. Para <strong>arrancar en producción</strong> (no es otra tabla: es <strong>qué filas sumar</strong>):</p>
+    <ul>
+      <li><strong>1 o 2</strong> (Cloudflare o Vercel) — front, 0 USD</li>
+      <li><strong>3 + 4</strong> (Render API + Render Postgres) — <strong>14 USD/mes</strong> = <strong>252 MXN</strong> a TC 18</li>
+      <li><strong>9</strong> (SendGrid free) — 0</li>
+      <li><strong>11</strong> (dominio prorrateado) — <strong>~25 MXN/mes</strong> si el .com cuesta ~300/año</li>
+    </ul>
+    <p><strong>Total mensual fijo:</strong> ~<strong>300–330 MXN</strong>. <strong>Total año 1 (aprox.):</strong> ~<strong>3 300–3 400 MXN</strong> (3 024 de API+DB + 250–350 dominio). CSV: <code>RunSkateRoller-paquete-ivan-suma.csv</code></p>
+    <table>
+      <thead>
+        <tr><th>Mes</th><th>Etapa</th><th>Total MXN/mes (meta)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Beta</td><td>0 – 120</td></tr>
+        <tr><td>2</td><td>Beta</td><td>0 – 120</td></tr>
+        <tr><td>3–5</td><td>Publico + pack Render</td><td>300 – 330</td></tr>
+        <tr><td>6</td><td>Igual o +RAM si aplica</td><td>300 – 450</td></tr>
+      </tbody>
+    </table>
+    <p class="sub" style="margin:0;">Detalle: <code>RunSkateRoller-plan-ivan-meses.csv</code></p>
+  </div>
+
+  <div class="box">
+    <h2>1. Costo por proveedor (línea a línea)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Proveedor</th><th>Plan / servicio</th><th>USD/mes</th><th>MXN/mes (×18)</th><th>Desc. anual (típico)</th><th>Comentario</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Cloudflare</td><td>Pages (hobby)</td><td>0</td><td>0</td><td>— (gratis)</td><td>Front web</td></tr>
+        <tr><td>2</td><td>Vercel</td><td>Hobby</td><td>0</td><td>0</td><td>— (gratis)</td><td>Front alternativo</td></tr>
+        <tr><td>3</td><td>Render</td><td>Web Service (API)</td><td>7</td><td>126</td><td>Raro en básico</td><td>Node + Socket.io</td></tr>
+        <tr><td>4</td><td>Render</td><td>PostgreSQL</td><td>7</td><td>126</td><td>Mensual</td><td>Misma factura</td></tr>
+        <tr><td>5</td><td>Railway</td><td>Uso bajo</td><td>3–8</td><td>54–144</td><td>Promos</td><td>Activa tope de gasto</td></tr>
+        <tr><td>6</td><td>Neon</td><td>Free</td><td>0</td><td>0</td><td>—</td><td>Con límites</td></tr>
+        <tr><td>7</td><td>Neon</td><td>Pago mín.</td><td>15–19</td><td>270–342</td><td>Revisar</td><td>Serverless</td></tr>
+        <tr><td>8</td><td>Supabase</td><td>Free / Pro</td><td>0 / 25</td><td>0 / 450</td><td>Pro a veces anual</td><td>DB + extras</td></tr>
+        <tr><td>9</td><td>SendGrid</td><td>Free / pago</td><td>0+</td><td>0+</td><td>En planes pago</td><td>Correo</td></tr>
+        <tr><td>10</td><td>Resend</td><td>Free / paid</td><td>0 / 20</td><td>0 / 360</td><td>Revisar</td><td>Alternativa</td></tr>
+        <tr><td>11</td><td>Registro dominio</td><td>.com ÷ 12</td><td>~0,8–1,2</td><td>~15–22</td><td>Multianual</td><td>Se factura al año</td></tr>
+        <tr><td>12</td><td>Mapbox</td><td>Free + uso</td><td>0–20</td><td>0–360</td><td>Uso/mes</td><td>Mapas</td></tr>
+        <tr><td>13</td><td>VPS (Hetzner, etc.)</td><td>1 vCPU</td><td>4–6</td><td>72–108</td><td>A veces anual</td><td>Tú admin.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h2>2. Totales por escenario (MXN)</h2>
+    <table>
+      <thead>
+        <tr><th>Escenario</th><th>Incluye (resumido)</th><th>USD/mes</th><th>Total MXN/mes</th><th>Total MXN/año (aprox.)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>A</strong> Mínimo</td><td>Free tiers max.</td><td>0–5</td><td>0 – 90</td><td>0 – 1 080</td></tr>
+        <tr><td><strong>B</strong> Equilibrado</td><td>Render API+DB, dominio, email free</td><td>~15–17</td><td>~270 – 310 + dom.</td><td>~3,2k – 3,8k + dom.</td></tr>
+        <tr><td><strong>C</strong> Un panel</td><td>Render (todo)</td><td>~16–25</td><td>~290 – 450</td><td>~3,5k – 5,4k</td></tr>
+        <tr><td><strong>D</strong> v1 con todo</td><td>+ email pago, Mapbox, imágenes</td><td>35–60</td><td>~630 – 1 080</td><td>~7,5k – 13k</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h2>3. Estrategia por fases</h2>
+    <h3>3.a Alcance por módulo (pantallas) — Fase 1, 2 y 3</h3>
+    <p class="sub" style="margin:0 0 0.6rem 0;">Qué tocar en cada “salto” de etapa (RunSkateRoller: inicio, ruta, comunidad, calendario, etc.). <strong>Sí</strong> = probar o usar; <span class="nuc">Núc.</span> = núcleo de la beta; <span class="parc">Parc.</span> = parcial, poco volumen; <span class="post">Post.</span> = no es foco aún; <span class="es">Escala (F3)</span> = carga, mapas, pagos, muchos envíos. No son “apagones” de código: son <strong>expectativas</strong> de prueba e infra.</p>
+    <div style="overflow-x:auto; margin-bottom:1rem;">
+    <table class="fases-modulos">
+      <thead>
+        <tr>
+          <th>Módulo / pantalla (app)</th>
+          <th>Fase 1 – Beta</th>
+          <th>Fase 2 – Público</th>
+          <th>Fase 3 – Crecer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Inicio</strong> (Home, accesos)</td>
+          <td class="ok">Sí — login, sesión, navegación básica</td>
+          <td class="ok">Sí — estable, más usuarios en paralelo</td>
+          <td class="es">Afinar si hay muchos DAU o links profundos</td>
+        </tr>
+        <tr>
+          <td><strong>Ruta / mapa</strong> (Navegación, GPS, seguimiento)</td>
+          <td class="parc"><span class="parc">Parc.</span> — probar en <strong>horario de rodada</strong>, Mapbox/telemetría con poco pico; cuidado con <strong>cold start</strong> a la noche</td>
+          <td class="ok">Sí — “producción suave” misma noche, API despierta</td>
+          <td class="es"><span class="es">Escala</span> — techo de mapas, batería, tráfico en vivo</td>
+        </tr>
+        <tr>
+          <td><strong>Comunidad / chat</strong> (grupos, hilos, tiempo real)</td>
+          <td class="parc"><span class="parc">Parc.</span> — pocos grupos, pocos mensajes; vigilar <strong>Socket</strong> + free</td>
+          <td class="ok">Sí — más threads; misma lógica en servidor</td>
+          <td class="es">Escalar si notificaciones y mensajes crecen</td>
+        </tr>
+        <tr>
+          <td><strong>Calendario y eventos</strong> (crear, listar, compartir)</td>
+          <td class="nuc"><span class="nuc">Núc.</span> — <strong>API + PostgreSQL</strong> para que todos vean lo mismo; foco de bugs</td>
+          <td class="ok">Sí — carga real de rodadas y estados</td>
+          <td class="es">Afinar según eventos y picos fin de semana</td>
+        </tr>
+        <tr>
+          <td><strong>Historial</strong> (recorridos, stats)</td>
+          <td class="parc"><span class="parc">Parc.</span> — probar flujo, pocos kilómetros reales</td>
+          <td class="ok">Sí</td>
+          <td class="es">Afinar almacenamiento y consultas</td>
+        </tr>
+        <tr>
+          <td><strong>Tips / Roller tips / perfil</strong> (lectura, comunidad leve)</td>
+          <td class="ok">Sí — lectura, sin exigir viralidad</td>
+          <td class="ok">Sí</td>
+          <td class="ok">Sí, más carga de contenido si aplica</td>
+        </tr>
+        <tr>
+          <td><strong>Marketplace, ventas, envíos, recap</strong> (comprar/vender, checkouts)</td>
+          <td class="post"><span class="post">Post.</span> — solo <strong>pruebas puntuales</strong>; no es el foco de carga de la beta</td>
+          <td class="ok">Sí, con cuidado en <strong>pagos</strong> y soporte</td>
+          <td class="es"><span class="es">Escala</span> — mapas, imágenes, envíos, ingresos</td>
+        </tr>
+        <tr>
+          <td><strong>Menú, soporte, admin</strong> (ayuda, buzón, roles)</td>
+          <td class="parc">Probar con <strong>1–2</strong> personas staff; no abrir <strong>admin</strong> a 800 a la vez</td>
+          <td class="ok">Sí, roles y canales de feedback claros</td>
+          <td class="es">Afinar moderación, volúmenes, correos</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="sub" style="margin:0.4rem 0 0.9rem 0;"><strong>Brincos de etapa:</strong> de <strong>1 → 2</strong> pasa <strong>calendario, auth y ruta</strong> a “gente de verdad” y API+DB fijos; de <strong>2 → 3</strong> añadís carga a <strong>mapa, comercio, almacenamiento, mail masivo</strong> según <strong>métricas</strong>, no por ansiedad. Detalle en <code>opciones-hosting-costos.md</code> §11.</p>
+
+    <h3 style="margin-top:0.2rem">3.b Coste e infra (MXN) por fase</h3>
+    <p class="sub" style="margin-top:0;">Suma en <strong>pesos mexicanos (MXN)</strong> alineada a escenarios A–D del doc (TC ~18); el dominio en fase 2 puede ir <strong>aparte</strong> como pago anual (~250–400 MXN/año).</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Fase</th>
+          <th>Qué activas</th>
+          <th>Alcance o detalle (qué cubre)</th>
+          <th>Ref. coste</th>
+          <th>MXN / mes <span class="sub">(aprox.)</span></th>
+          <th>MXN / año <span class="sub">(aprox.)</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1 – Beta</td>
+          <td>Free + pruebas cerradas</td>
+          <td><strong>Primera tanda/técnico:</strong> ~<strong>5–30</strong> muy activos, o <strong>30–80</strong> en <strong>lotes</strong> (por semanas), no 800 descargando el mismo minuto. <strong>Grupo grande (ej. 800+):</strong> es <strong>audiencia</strong>, no “todos a la vez”; comunicá: <em>“primera tanda ~40–50 voluntari@s, luego más rondas”</em> — atrae atención sin prometer carga de tienda. <strong>Límites free / pico / 24-7 / bugs y flujos</strong> — ver <strong>§11.1</strong> (incluye texto sugerido para el anuncio).</td>
+          <td>A</td>
+          <td><strong>0 – 90</strong></td>
+          <td><strong>0 – 1 080</strong></td>
+        </tr>
+        <tr>
+          <td>2 – Público</td>
+          <td>API+DB fijo, dominio, alertas</td>
+          <td><strong>Cubre</strong> gente real en la app y rodadas; datos <strong>unificados en Postgres</strong> para todos. Dominio, HTTPS, servicio despierto, alertas. <strong>No</strong> exige aún mapas/imgs de pago ni email masivo.</td>
+          <td>B o C</td>
+          <td><strong>~300 – 450</strong></td>
+          <td><strong>~3 500 – 5 400</strong></td>
+        </tr>
+        <tr>
+          <td>3 – Crecer</td>
+          <td>Más recursos según métricas</td>
+          <td><strong>Cubre</strong> picos, más concurrencia y costos variables (Mapbox, almacenamiento, muchos correos) según <strong>métricas reales</strong> (DAU, retención). Escala solo lo que justifiquen los datos.</td>
+          <td>parcial D</td>
+          <td><strong>~450 – 1 080+</strong></td>
+          <td><strong>~5 400 – 13 000+</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h2>3.1 Qué implica con horarios reales (rutas RunSkateRoller)</h2>
+    <p><strong>L–V 20:00–23:00</strong> y <strong>S–D 8:00–11:00</strong> o <strong>20:00–23:00</strong>: el uso de la app (calendario, mapa, notificaciones) se <strong>amontona en unas ~3 h</strong>, no repartido en 24 h. Eso hace <strong>picos</strong> a esas horas, no a las 2 de la tarde.</p>
+    <p><strong>Free tier:</strong> a veces, si casi nadie pega a la API de día, el backend <strong>enfría</strong>; la primera apertura a la noche puede ir lenta (<strong>cold start</strong>) hasta “despertar”. En <strong>Fase 2</strong> (pago, siempre encendido) se nota mucho menos.</p>
+    <p><strong>50 personas de beta:</strong> sigue siendo razonable; el riesgo no es 50 en el <em>mes</em>, sino 50 bajando o entrando a la app en el <strong>mismo minuto</strong> (p. ej. todos a las 20:05). Por eso encaja aún <strong>25 + 25</strong> o <strong>Lote noche de semana / Lote fin de semana</strong>.</p>
+    <h3 style="font-size:1.02rem; color: var(--accent); margin: 1rem 0 0.5rem;">Estrategia concreta (alineada a tu horario)</h3>
+    <ul style="margin:0.4rem 0 0 1.1rem;">
+      <li><strong>Mensaje al grupo:</strong> que prueben en <strong>horario de ruta</strong> (lunes a viernes noche o sábado/domingo según su rodada). Así el feedback y los fallos reflejan <strong>uso real</strong>, no probar a mediodía “porque sí”.</li>
+      <li><strong>Dividir tandas:</strong> p. ej. “<strong>Lote A</strong> — principalmente noche de semana” / “<strong>Lote B</strong> — fin de semana (mañana o noche)” para no concentrar el pico.</li>
+      <li><strong>Monitoreo:</strong> si mirás el panel, tené en cuenta <strong>20:00–23:00</strong> (y sábados <strong>8:00–11:00</strong>), no solo “medio día”.</li>
+      <li><strong>Personas (50):</strong> no hace falta bajar el número si repartís días/ventanas; el horario fijo hace que más gente a la misma hora sea más probable, por eso importa el <strong>reparto</strong>, no bajar a 20 sin razón.</li>
+    </ul>
+    <p class="sub" style="margin-top:0.75rem; margin-bottom:0;">El <strong>costo mensual en MXN</strong> del hosting <strong>no cambia</strong> por el horario de rodada; cambia <strong>cuándo</strong> mirar el servidor y <strong>cómo</strong> comunicar la beta. Detalle en <code>opciones-hosting-costos.md</code> §11.1.</p>
+  </div>
+
+  <div class="box">
+    <h2>4. Archivos para Excel (misma carpeta que este HTML)</h2>
+    <ul>
+      <li><code>RunSkateRoller-hosting-proveedores.csv</code></li>
+      <li><code>RunSkateRoller-hosting-escenarios.csv</code></li>
+      <li><code>RunSkateRoller-hosting-flujo-caja.csv</code></li>
+      <li><code>RunSkateRoller-hosting-fases.csv</code></li>
+      <li><code>RunSkateRoller-hosting-comparativo.csv</code></li>
+    </ul>
+  </div>
+
+  <p class="sub">Puedes imprimir esta página a PDF: Ctrl+P → Guardar como PDF.</p>
+</body>
+</html>

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Evento} from '../types';
 import apiService from './apiService';
 import {API_ENDPOINTS} from '../config/api';
+import {eventoFechaToYmd, ddmmyyyyToYmd, ymdToLocalDate} from '../utils/dateOnly';
 
 const EVENTOS_STORAGE_KEY = '@app:eventos';
 
@@ -100,9 +101,7 @@ class EventoService {
         clave = `id:${evento.id}`;
       } else {
         const titulo = evento.tituloRuta || evento.titulo || '';
-        const fecha = typeof evento.fecha === 'string' 
-          ? evento.fecha 
-          : evento.fecha.toISOString().split('T')[0];
+        const fecha = eventoFechaToYmd(evento.fecha) || '';
         clave = `titulo:${titulo}:fecha:${fecha}`;
       }
 
@@ -150,18 +149,23 @@ class EventoService {
   private normalizeEvento(evento: Evento): Evento {
     return {
       ...evento,
-      fecha: typeof evento.fecha === 'string' ? new Date(evento.fecha) : evento.fecha,
+      // Mantener fecha como "date-only" (YYYY-MM-DD) para evitar desfase por zona horaria.
+      // Si viene en ISO con hora, se recorta; si es Date, se convierte a YYYY-MM-DD local.
+      fecha: (eventoFechaToYmd(evento.fecha) || (evento.fecha as any)) as any,
     };
   }
 
   private buildApiPayload(evento: Evento) {
+    const ymd =
+      eventoFechaToYmd(evento.fecha) ||
+      (typeof evento.fechaInicio === 'string' ? ddmmyyyyToYmd(evento.fechaInicio) : null) ||
+      (evento.fecha instanceof Date ? evento.fecha.toISOString().slice(0, 10) : null);
+
     return {
       id: evento.id,
       titulo: evento.titulo,
-      fecha: (evento.fecha instanceof Date
-        ? evento.fecha
-        : new Date(evento.fecha || new Date())
-      ).toISOString().split('T')[0],
+      // Enviar siempre YYYY-MM-DD (sin hora).
+      fecha: ymd,
       hora: evento.hora,
       puntoEncuentroLat: evento.puntoEncuentroLat,
       puntoEncuentroLng: evento.puntoEncuentroLng,
@@ -201,10 +205,16 @@ class EventoService {
    */
   async crearEvento(data: CrearEventoData): Promise<CrearEventoResponse> {
     try {
+      const ymd = ddmmyyyyToYmd(data.fechaInicio);
+      if (!ymd) {
+        return {success: false, error: 'Formato de fecha inválido (usa DD/MM/YYYY)'};
+      }
+      const fechaLocal = ymdToLocalDate(ymd) || new Date();
       const nuevoEvento: Evento = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // ID único
         titulo: data.tituloRuta,
-        fecha: this.parseFecha(data.fechaInicio),
+        // Guardar como date-only string para evitar desfase.
+        fecha: ymd,
         hora: data.cita,
         puntoEncuentroLat: 0, // Por defecto
         puntoEncuentroLng: 0, // Por defecto
@@ -219,7 +229,7 @@ class EventoService {
         nivel: data.nivel,
         logoGrupo: data.logoGrupo,
         lugarDestino: data.lugarDestino,
-        createdAt: new Date(),
+        createdAt: fechaLocal,
       };
 
       const response = await apiService.post<{success: boolean; evento?: Evento; error?: string}>(
@@ -323,12 +333,15 @@ class EventoService {
    */
   async actualizarEvento(data: ActualizarEventoData): Promise<ActualizarEventoResponse> {
     try {
-      const fechaEventoApi = this.parseFecha(data.fechaInicio);
+      const ymd = ddmmyyyyToYmd(data.fechaInicio);
+      if (!ymd) {
+        return {success: false, error: 'Formato de fecha inválido (usa DD/MM/YYYY)'};
+      }
       const response = await apiService.put<{success: boolean; evento?: Evento; error?: string}>(
         API_ENDPOINTS.EVENTO.UPDATE(data.id),
         {
           titulo: data.tituloRuta,
-          fecha: fechaEventoApi.toISOString().split('T')[0],
+          fecha: ymd,
           hora: data.cita,
           puntoEncuentroDireccion: data.puntoSalida,
           tituloRuta: data.tituloRuta,

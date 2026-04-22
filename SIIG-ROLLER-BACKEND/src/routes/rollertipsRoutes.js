@@ -39,7 +39,14 @@ const upload = multer({
 router.post('/', optionalAuth, upload.single('video'), rollertipsController.createRollerTip);
 router.get('/', rollertipsController.listRollerTips);
 router.get('/user/:userId', optionalAuth, rollertipsController.listRollerTipsByUser);
+router.get(
+  '/creators/:userId',
+  rollertipsController.getCreatorPublicProfile,
+);
 router.post('/:id/reactions', optionalAuth, rollertipsController.addReaction);
+router.post('/:id/comments', optionalAuth, rollertipsController.addComment);
+router.post('/:id/comments/:commentId/reactions', optionalAuth, rollertipsController.addCommentReaction);
+router.delete('/:id/comments/:commentId', authenticateToken, rollertipsController.deleteComment);
 router.delete('/:id', authenticateToken, rollertipsController.deleteRollerTip);
 
 module.exports = router;

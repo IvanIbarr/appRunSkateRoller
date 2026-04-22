@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, Platform} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {BottomTabBar} from './BottomTabBar';
 
@@ -26,11 +26,21 @@ export const WithBottomTabBar: React.FC<WithBottomTabBarProps> = ({
     currentRoute === 'Historial' ||
     currentRoute === 'Calendario' ||
     currentRoute === 'RollerTips' ||
+    currentRoute === 'Marketing' ||
     currentRoute === 'Menu';
+
+  /**
+   * Importante:
+   * La barra inferior NO es absoluta (está fuera del content), así que no necesitamos
+   * reservar espacio extra con paddingBottom; eso solo crea un hueco visible.
+   */
+  const bottomInset = 0;
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>{children}</View>
+      <View style={[styles.content, showTabBar && {paddingBottom: bottomInset}]}>
+        {children}
+      </View>
       {showTabBar && (
         <BottomTabBar
           currentRoute={currentRoute}

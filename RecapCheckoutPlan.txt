@@ -1,0 +1,70 @@
+Aquí te detallo de nuevo el Resumen del Flujo de Caja para que tengas claro cómo cada uno de esos botones va a mantener tu app y generar ganancias:
+1. Pase Único ($25 MXN) – "El Oxígeno"
+Este es tu ingreso más rápido y de menor resistencia.
+Para qué sirve: Cubre el costo inmediato de procesamiento (renderizado) del video 3D en el servidor.
+Estrategia: De esos $25, te quedarán unos $17.80 netos (tras comisión de Mercado Pago e impuestos). Si el renderizado de un video te cuesta $1 o $2 pesos en la nube, cada pase único paga su propio costo y el de otros 8 videos de usuarios gratuitos. Es dinero que mantiene la app "viva" día a día.
+2. Plus Mensual ($59 MXN) – "La Operación"
+Este es el motor de tu negocio.
+Para qué sirve: Pagar los gastos fijos mensuales: el servidor donde vive la app, la base de datos y tu propio tiempo/trabajo.
+Estrategia: Al ser una suscripción, te da predicibilidad. Sabes que cada mes cuentas con ese dinero. Si logras 100 usuarios aquí, tienes cubiertos casi todos tus costos fijos básicos de tecnología.
+3. Plus Anual ($479 MXN) – "La Inversión"
+Este es el "golpe de capital" más fuerte.
+Para qué sirve: Para pagar infraestructura por adelantado o ahorrar para mejoras grandes (como comprar mejores mapas 3D o desarrollar versiones para otros deportes).
+Estrategia: Es dinero "adelantado". Recibir $479 de un solo golpe es mucho mejor que esperar 12 meses a que el usuario pague mes a mes. Te da flujo de caja para pagar un año de servidor con descuento por pago anual.
+4. Versión Básica ($0 MXN) – "El Marketing"
+Aunque no aparece en la imagen de pago, es parte del flujo.
+Para qué sirve: Traer usuarios nuevos sin gastar en publicidad.
+Estrategia: El video gratuito lleva tu marca de agua. Cuando el usuario lo comparte en Instagram o TikTok, está trabajando para ti. Además, mientras el video gratuito se procesa (en "cola"), puedes mostrar anuncios de Google (AdMob) para que esa espera también te genere algunos centavos.
+Resumen del Movimiento de Dinero:
+Ingreso Bruto: El usuario paga en tu pantalla (como la que diseñaste).
+Pasarela (Mercado Pago/Stripe): Retiene su comisión y el IVA.
+Cuenta de Rendimientos: El dinero cae a tu cuenta de Mercado Pago y genera el 15% anual mientras no lo usas.
+Pago de Servidores: Usas tu tarjeta de Mercado Pago para pagar AWS/Google Cloud/Heroku.
+
+Estructura de Planes y Flujo de Caja
+Plan	Costo (MXN)	Propósito Estratégico	Beneficio Principal para el Usuario	Ganancia Neta Est. (Post-Comisión/Imp)
+Versión Básica	$0	Marketing y Viralidad	Video 3D básico con marca de agua y espera en cola.	$0 (Ganas publicidad gratuita y datos).
+Pase Único	$25	Oxígeno Inmediato	Un solo video Premium en HD, sin anuncios y sin suscripción.	$17.80 (Paga el servidor del día).
+Plus Mensual	$59	Operación y Sueldo	Videos ilimitados, prioridad máxima y almacenamiento en la nube.	$42.02 (Paga tus gastos fijos).
+Plus Anual	$479	Inversión y Capital	Todo lo anterior con un ahorro del 30% (paga solo 8 meses).	$341.20 (Caja para mejoras y servidores anuales).
+Por qué la Versión Básica es "El Marketing":
+La "Moneda" es la Marca de Agua: El usuario no paga con dinero, paga promocionando tu app. Cada video compartido en Instagram o TikTok con tu logo es un anuncio que te ahorra miles de pesos en publicidad.
+Segmentación: El usuario básico es el que eventualmente se frustrará con la "espera en cola" o el límite de fotos, y ahí es donde el Pase Único de $25 se vuelve irresistible.
+Validación: Te ayuda a saber qué rutas son las más populares en México sin que te cueste dinero atraer a esos usuarios.
+¿Te gustaría que definamos el "Mensaje de Gancho" que aparecería cuando un usuario gratuito intente subir más fotos de las permitidas? (Para que elijan el pase de $25).
+----
+
+Tienes toda la razón en ser preciso con los números, ya que de ese neto real depende tu margen de ganancia para pagar los servidores.
+Para calcular el neto exacto, utilizaremos las tasas estándar de Mercado Pago en México (que es lo que mencionaste usar). Aquí están las variables reales para que hagamos el cálculo:
+Las Tasas Reales (Mercado Pago México)
+Comisión por transación: 3.49% sobre el valor total.
+Costo fijo por transación: $4.00 MXN.
+IVA de la comisión: Se aplica el 16% solo sobre la comisión y el costo fijo (no sobre el total de la venta).
+Retención de Impuestos (SAT): Si tienes tu RFC cargado como "Persona Física con Actividad Empresarial" o "Plataformas Tecnológicas", te retendrán:
+IVA Retenido: 8% (la mitad del IVA del producto).
+ISR Retenido: 1% (tasa para plataformas).
+Cálculo del Neto Exacto (Estimado con RFC registrado)
+Si aplicamos estas tasas a tus planes actuales, así quedaría el dinero real que llega a tu cuenta de Mercado Pago:
+Plan	Precio al Público	Comisión + Fijo + IVA de com.	Retenciones SAT (IVA+ISR)	Neto que recibes
+Pase Único	$25.00	-$5.65	-$2.25	$17.10 MXN
+Plus Mensual	$59.00	-$7.03	-$5.31	$46.66 MXN
+Plus Anual	$479.00	-$24.03	-$43.11	$411.86 MXN
+
+---
+
+Sí: tus cálculos cuadran con las tasas que listaste (comisión 3.49% + $4 fijo + IVA 16% sobre esos cargos, y retenciones SAT (IVA 8% + ISR 1% = 9%) sobre el total).
+
+Fórmula usada
+Comisión variable = precio × 0.0349
+Cargos MP = comisión variable + 4
+IVA cargos = cargos MP × 0.16
+Total MP = cargos MP + IVA cargos
+Retenciones = precio × 0.09
+Neto = precio − total MP − retenciones
+
+Resultados (redondeados a 2 decimales)
+$25: MP = 5.65, retenciones = 2.25 → neto = 17.10
+$59: MP = 7.03, retenciones = 5.31 → neto = 46.66
+$479: MP = 24.03, retenciones = 43.11 → neto = 411.86
+
+Única nota: el neto final puede variar por régimen/retenciones reales y por redondeos que aplique Mercado Pago, pero matemáticamente está correcto con esos supuestos.
