@@ -1,0 +1,368 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'core/auth/auth_session.dart';
+import 'core/ui/app_theme.dart';
+import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/register_screen.dart';
+import 'features/auth/presentation/reset_password_screen.dart';
+import 'features/shell/presentation/app_shell.dart';
+import 'features/historial/presentation/historial_screen.dart';
+import 'features/calendario/presentation/calendario_screen.dart';
+import 'features/chat/presentation/chat_screen.dart';
+import 'features/rollertips/presentation/rollertips_screen.dart';
+import 'features/perfil/presentation/perfil_screen.dart';
+import 'features/inicio/presentation/inicio_screen.dart';
+import 'features/marketing/presentation/marketing_screen.dart';
+import 'features/marketing/models/marketing_checkout_draft.dart';
+import 'features/marketing/models/marketing_sell_draft.dart';
+import 'features/marketing/presentation/marketing_comprar_envio_screen.dart';
+import 'features/marketing/presentation/marketing_comprar_pago_screen.dart';
+import 'features/marketing/presentation/marketing_comprar_revision_screen.dart';
+import 'features/marketing/presentation/marketing_sell_step1_screen.dart';
+import 'features/marketing/presentation/marketing_sell_step3_screen.dart';
+import 'features/marketing/presentation/marketing_sell_step4_screen.dart';
+import 'features/menu/presentation/menu_screen.dart';
+import 'features/menu/presentation/menu_admin_screen.dart';
+import 'features/menu/presentation/menu_grupo_screen.dart';
+import 'features/menu/presentation/menu_suscripciones_screen.dart';
+import 'features/recap/models/recap_checkout_draft.dart';
+import 'features/recap/models/recap_input.dart';
+import 'features/recap/presentation/recap_checkout_datos_screen.dart';
+import 'features/recap/presentation/recap_checkout_pago_screen.dart';
+import 'features/recap/presentation/recap_checkout_plan_screen.dart';
+import 'features/recap/presentation/recap_checkout_revision_screen.dart';
+import 'features/recap/presentation/recap_create_screen.dart';
+import 'features/alias/presentation/agregar_alias_screen.dart';
+import 'features/alias/presentation/cambiar_alias_screen.dart';
+import 'features/grupo/presentation/nombre_grupo_screen.dart';
+import 'features/grupo/presentation/integrantes_grupo_screen.dart';
+import 'features/support/presentation/support_help_screen.dart';
+import 'features/comunidad/presentation/comunidad_screen.dart';
+import 'features/calendario/models/evento_draft.dart';
+import 'features/calendario/presentation/vista_previa_evento_screen.dart';
+import 'features/admin/presentation/admin_home_screen.dart';
+import 'features/admin/presentation/admin_buzon_screen.dart';
+import 'features/admin/presentation/admin_chats_screen.dart';
+import 'features/admin/presentation/admin_reset_password_screen.dart';
+import 'features/admin/presentation/admin_usuarios_screen.dart';
+import 'features/admin/presentation/admin_ventas_screen.dart';
+import 'features/chat/presentation/chat_list_screen.dart';
+import 'features/chat/presentation/chat_thread_screen.dart';
+
+final _routerProvider = Provider<GoRouter>((ref) {
+  final session = ref.watch(authSessionProvider);
+  return GoRouter(
+    initialLocation: '/login',
+    redirect: (context, state) {
+      final loggingIn = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/reset-password';
+
+      final isLoading = session.isLoading;
+      final isAuthed = session.valueOrNull != null;
+
+      if (isLoading) {
+        return null;
+      }
+
+      if (!isAuthed && !loggingIn) {
+        return '/login';
+      }
+
+      if (isAuthed && loggingIn) {
+        return '/inicio';
+      }
+
+      return null;
+    },
+    routes: <RouteBase>[
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => const ResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/alias/agregar',
+        builder: (context, state) => const AgregarAliasScreen(),
+      ),
+      GoRoute(
+        path: '/alias/cambiar',
+        builder: (context, state) => const CambiarAliasScreen(),
+      ),
+      GoRoute(
+        path: '/grupo/nombre',
+        builder: (context, state) => const NombreGrupoScreen(),
+      ),
+      GoRoute(
+        path: '/grupo/integrantes',
+        builder: (context, state) => const IntegrantesGrupoScreen(),
+      ),
+      GoRoute(
+        path: '/soporte',
+        builder: (context, state) => const SupportHelpScreen(),
+      ),
+      GoRoute(
+        path: '/comunidad',
+        builder: (context, state) => const ComunidadScreen(),
+      ),
+      GoRoute(
+        path: '/evento/preview',
+        builder: (context, state) {
+          final draft = state.extra as EventoDraft?;
+          if (draft == null) {
+            return const SupportHelpScreen();
+          }
+          return VistaPreviaEventoScreen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminHomeScreen(),
+      ),
+      GoRoute(
+        path: '/admin/usuarios',
+        builder: (context, state) => const AdminUsuariosScreen(),
+      ),
+      GoRoute(
+        path: '/admin/chats',
+        builder: (context, state) => const AdminChatsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/ventas',
+        builder: (context, state) => const AdminVentasScreen(),
+      ),
+      GoRoute(
+        path: '/admin/buzon',
+        builder: (context, state) => const AdminBuzonScreen(),
+      ),
+      GoRoute(
+        path: '/admin/reset-password',
+        builder: (context, state) => const AdminResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/chat/list',
+        builder: (context, state) => const ChatListScreen(),
+      ),
+      GoRoute(
+        path: '/chat/thread',
+        builder: (context, state) {
+          final chatType = (state.extra ?? 'general').toString();
+          return ChatThreadScreen(chatType: chatType);
+        },
+      ),
+      GoRoute(
+        path: '/recap/crear',
+        builder: (context, state) {
+          final input = state.extra as RecapInput?;
+          final demo = RecapInput(
+            route: const [
+              LatLng(19.4326, -99.1332),
+              LatLng(19.4370, -99.1280),
+              LatLng(19.4400, -99.1220),
+              LatLng(19.4440, -99.1180),
+            ],
+            distanceMeters: 3200,
+            durationSeconds: 980,
+          );
+          return RecapCreateScreen(input: input ?? demo);
+        },
+      ),
+      GoRoute(
+        path: '/recap/plan',
+        builder: (context, state) => const RecapCheckoutPlanScreen(),
+      ),
+      GoRoute(
+        path: '/menu/grupo',
+        builder: (context, state) => const MenuGrupoScreen(),
+      ),
+      GoRoute(
+        path: '/menu/suscripciones',
+        builder: (context, state) => const MenuSuscripcionesScreen(),
+      ),
+      GoRoute(
+        path: '/menu/admin',
+        builder: (context, state) => const MenuAdminScreen(),
+      ),
+      GoRoute(
+        path: '/marketing/vender',
+        builder: (context, state) => const MarketingSellStep1Screen(),
+      ),
+      GoRoute(
+        path: '/marketing/vender/step3',
+        builder: (context, state) {
+          final draft = state.extra as MarketingSellDraft?;
+          if (draft == null) return const MarketingSellStep1Screen();
+          return MarketingSellStep3Screen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/marketing/vender/step4',
+        builder: (context, state) {
+          final draft = state.extra as MarketingSellDraft?;
+          if (draft == null) return const MarketingSellStep1Screen();
+          return MarketingSellStep4Screen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/marketing/comprar/envio',
+        builder: (context, state) {
+          final draft = state.extra as MarketingCheckoutDraft?;
+          if (draft == null) return const MarketingScreen();
+          return MarketingComprarEnvioScreen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/marketing/comprar/revision',
+        builder: (context, state) {
+          final draft = state.extra as MarketingCheckoutDraft?;
+          if (draft == null) return const MarketingScreen();
+          return MarketingComprarRevisionScreen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/marketing/comprar/pago',
+        builder: (context, state) {
+          final draft = state.extra as MarketingCheckoutDraft?;
+          if (draft == null) return const MarketingScreen();
+          return MarketingComprarPagoScreen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/recap/datos',
+        builder: (context, state) {
+          final draft = state.extra as RecapCheckoutDraft?;
+          if (draft == null) {
+            return const RecapCheckoutPlanScreen();
+          }
+          return RecapCheckoutDatosScreen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/recap/revision',
+        builder: (context, state) {
+          final draft = state.extra as RecapCheckoutDraft?;
+          if (draft == null) {
+            return const RecapCheckoutPlanScreen();
+          }
+          return RecapCheckoutRevisionScreen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/recap/pago',
+        builder: (context, state) {
+          final draft = state.extra as RecapCheckoutDraft?;
+          if (draft == null) {
+            return const RecapCheckoutPlanScreen();
+          }
+          return RecapCheckoutPagoScreen(draft: draft);
+        },
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return AppShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/inicio',
+                builder: (context, state) => const InicioScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/marketing',
+                builder: (context, state) => const MarketingScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/historial',
+                builder: (context, state) => const HistorialScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/calendario',
+                builder: (context, state) => const CalendarioScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/chat',
+                builder: (context, state) => const ChatScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/rollertips',
+                builder: (context, state) => const RollerTipsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/perfil',
+                builder: (context, state) => const PerfilScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/menu',
+                builder: (context, state) => const MenuScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+class RollerApp extends ConsumerWidget {
+  const RollerApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(_routerProvider);
+    return MaterialApp.router(
+      title: 'Roller Flutter',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.dark(),
+      routerConfig: router,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es'),
+        Locale('en'),
+      ],
+    );
+  }
+}

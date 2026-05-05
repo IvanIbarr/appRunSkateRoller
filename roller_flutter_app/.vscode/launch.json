@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Roller · app (main.dart)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart"
+    },
+    {
+      "name": "Roller · previews (preview_main.dart)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/preview_main.dart"
+    }
+  ]
+}
