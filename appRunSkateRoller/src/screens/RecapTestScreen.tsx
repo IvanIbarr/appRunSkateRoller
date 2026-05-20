@@ -15,8 +15,15 @@ import type {RootStackParamList} from '../navigation/types';
 import {WithBottomTabBar} from '../components/WithBottomTabBar';
 import authService from '../services/authService';
 import subscriptionsService from '../services/subscriptionsService';
+import seguimientoService from '../services/seguimientoService';
+import apiService from '../services/apiService';
+import {getApiBaseUrl} from '../config/api';
+import {MAPBOX_ACCESS_TOKEN, isExampleToken} from '../config/mapbox';
 
 type LoadedPhoto = {id: string; url: string; tsLabel: string};
+type GeoPoint = {lat: number; lng: number};
+type MapViewState = {centerLng: number; centerLat: number; zoom: number};
+type RecapStats = {km: number; durationSec: number; avgKmh: number};
 
 /** Web pública (Recap con canvas + MediaRecorder solo en navegador). */
 const RECAP_WEB_URL = 'https://siigroller.com';
@@ -41,6 +48,59 @@ function createDemoRoute(count: number): Array<{x: number; y: number}> {
     pts.push({x, y});
   }
   return pts;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function computeMapViewFromGeo(points: GeoPoint[]): MapViewState | null {
+  if (points.length < 2) return null;
+  const lats = points.map((p) => p.lat);
+  const lngs = points.map((p) => p.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+  const spanLat = Math.max(maxLat - minLat, 0.0005);
+  const spanLng = Math.max(maxLng - minLng, 0.0005);
+  const span = Math.max(spanLat, spanLng);
+  const zoom = clamp(12 - Math.log2(span * 220), 9, 16);
+  return {centerLat, centerLng, zoom};
+}
+
+function projectGeoPoint(
+  p: GeoPoint,
+  w: number,
+  h: number,
+  view: MapViewState,
+): {sx: number; sy: number} {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const worldSize = 512 * Math.pow(2, view.zoom);
+  const mercX = (lng: number) => ((lng + 180) / 360) * worldSize;
+  const mercY = (lat: number) => {
+    const s = Math.sin(toRad(clamp(lat, -85, 85)));
+    return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * worldSize;
+  };
+
+  const cx = mercX(view.centerLng);
+  const cy = mercY(view.centerLat);
+  const px = mercX(p.lng);
+  const py = mercY(p.lat);
+  const x = (px - cx) + w / 2;
+  const y = (py - cy) + h / 2;
+  return {sx: x, sy: y};
+}
+
+function buildMapboxStaticUrl(view: MapViewState, width: number, height: number): string | null {
+  if (!MAPBOX_ACCESS_TOKEN || isExampleToken()) {
+    return null;
+  }
+  const w = clamp(Math.round(width), 320, 1280);
+  const h = clamp(Math.round(height), 180, 720);
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${view.centerLng},${view.centerLat},${view.zoom},0/${w}x${h}?access_token=${MAPBOX_ACCESS_TOKEN}`;
 }
 
 function mapToScreen(
@@ -91,6 +151,11 @@ function pickBestMimeType(): string | null {
     }
   }
   return null;
+}
+
+function canDrawImage(img: HTMLImageElement | null | undefined): boolean {
+  if (!img) return false;
+  return Boolean(img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
 }
 
 /**
@@ -233,7 +298,11 @@ export const CrearRecapScreen: React.FC = () => {
     void loadPlan();
   }, []);
 
-  const route = useMemo(() => createDemoRoute(220), []);
+  const fallbackRoute = useMemo(() => createDemoRoute(220), []);
+  const [geoRoute, setGeoRoute] = useState<GeoPoint[]>([]);
+  const [mapView, setMapView] = useState<MapViewState | null>(null);
+  const [mapBackground, setMapBackground] = useState<HTMLImageElement | null>(null);
+  const [recapStats, setRecapStats] = useState<RecapStats>({km: 0, durationSec: 15 * 60, avgKmh: 0});
 
   useLayoutEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') {
@@ -431,6 +500,73 @@ export const CrearRecapScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    let cancelled = false;
+    const loadLatestSeguimiento = async () => {
+      try {
+        const history = await seguimientoService.getHistory('all');
+        const items = (history?.success && Array.isArray(history.data)) ? history.data : [];
+        if (items.length === 0) return;
+
+        const sorted = [...items].sort(
+          (a, b) => new Date(b.creado_en).getTime() - new Date(a.creado_en).getTime(),
+        );
+        const latest = sorted[0];
+        const stats = latest.stats;
+        if (stats) {
+          const km = Math.max(0, (Number(stats.distanciaTotal) || 0) / 1000);
+          const durationSec = Math.max(1, Number(stats.duracion) || 15 * 60);
+          const avgKmh =
+            Number(stats.velocidadPromedio) > 0
+              ? Number(stats.velocidadPromedio) * 3.6
+              : km > 0
+                ? (km / (durationSec / 3600))
+                : 0;
+          setRecapStats({
+            km: Number(km.toFixed(2)),
+            durationSec,
+            avgKmh: Number(avgKmh.toFixed(1)),
+          });
+        }
+
+        const detail = await apiService.get<{success?: boolean; data?: {puntos?: Array<{latitud: number; longitud: number}>}}>(
+          `${getApiBaseUrl()}/seguimiento/${latest.id}`,
+        );
+        const rawPts = detail?.success && detail?.data?.puntos ? detail.data.puntos : [];
+        const pts: GeoPoint[] = rawPts
+          .map((p) => ({lat: Number(p.latitud), lng: Number(p.longitud)}))
+          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+
+        if (cancelled || pts.length < 2) return;
+        const view = computeMapViewFromGeo(pts);
+        setGeoRoute(pts);
+        setMapView(view);
+
+        if (!view) return;
+        const staticUrl = buildMapboxStaticUrl(view, 1280, 720);
+        if (!staticUrl) return;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          if (!cancelled) setMapBackground(img);
+        };
+        img.onerror = () => {
+          if (!cancelled) setMapBackground(null);
+        };
+        img.src = staticUrl;
+      } catch {
+        // fallback silencioso al modo demo
+      }
+    };
+
+    void loadLatestSeguimiento();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const renderFrame = async (
     ctx: CanvasRenderingContext2D,
     w: number,
@@ -494,15 +630,38 @@ export const CrearRecapScreen: React.FC = () => {
     }
     ctx.restore();
 
-    // “Pitch/bearing” simulados
-    const pitch = 0.78; // 0..1
-    const bearing = -18; // deg
+    // Fondo de mapa real (si hay) o fallback visual.
+    if (mapBackground) {
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(mapBackground, 0, 0, w, h);
+      ctx.restore();
+    }
 
-    // Convertimos ruta a screen coords (y aplicamos shadow/trazo)
-    const n = route.length;
+    // “Pitch/bearing” simulados solo para fallback demo.
+    const pitch = 0.78;
+    const bearing = -18;
+    const useGeoRoute = geoRoute.length >= 2 && !!mapView;
+    const screenRoute = useGeoRoute
+      ? geoRoute.map((p) => projectGeoPoint(p, w, h, mapView!))
+      : fallbackRoute.map((p) => mapToScreen(p, w, h, pitch, bearing));
+
+    const n = screenRoute.length;
     const prog = clamp01(tNorm);
     const upto = Math.max(2, Math.floor(prog * (n - 1)));
-    const ptsScreen = route.map((p) => mapToScreen(p, w, h, pitch, bearing));
+
+    // Cámara cinematográfica: paneo suave siguiendo al patín + zoom sutil.
+    const focus = screenRoute[upto];
+    const desiredX = w * 0.56;
+    const desiredY = h * 0.56;
+    const camDx = (desiredX - focus.sx) * (useGeoRoute ? 0.42 : 0.15);
+    const camDy = (desiredY - focus.sy) * (useGeoRoute ? 0.34 : 0.12);
+    const zoom = useGeoRoute ? 1.05 + 0.045 * Math.sin(prog * Math.PI) : 1;
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-w / 2 + camDx, -h / 2 + camDy);
 
     // Sombra de ruta
     ctx.save();
@@ -512,25 +671,34 @@ export const CrearRecapScreen: React.FC = () => {
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = Math.max(10, w * 0.010);
     ctx.beginPath();
-    ctx.moveTo(ptsScreen[0].sx, ptsScreen[0].sy + h * 0.012);
+    ctx.moveTo(screenRoute[0].sx, screenRoute[0].sy + h * 0.012);
     for (let i = 1; i <= upto; i += 1) {
-      ctx.lineTo(ptsScreen[i].sx, ptsScreen[i].sy + h * 0.012);
+      ctx.lineTo(screenRoute[i].sx, screenRoute[i].sy + h * 0.012);
     }
     ctx.stroke();
     ctx.restore();
 
-    // Trazo principal
+    // Trazo principal (glow más limpio)
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.lineWidth = Math.max(6, w * 0.0065);
-    ctx.strokeStyle = 'rgba(244, 114, 182, 0.88)';
-    ctx.shadowColor = 'rgba(244, 114, 182, 0.38)';
-    ctx.shadowBlur = Math.max(8, w * 0.010);
+    ctx.lineWidth = Math.max(5.5, w * 0.006);
+    const lineGrad = ctx.createLinearGradient(
+      screenRoute[0].sx,
+      screenRoute[0].sy,
+      screenRoute[Math.max(1, upto)].sx,
+      screenRoute[Math.max(1, upto)].sy,
+    );
+    lineGrad.addColorStop(0, 'rgba(56, 189, 248, 0.95)');
+    lineGrad.addColorStop(0.55, 'rgba(34, 211, 238, 0.95)');
+    lineGrad.addColorStop(1, 'rgba(244, 114, 182, 0.92)');
+    ctx.strokeStyle = lineGrad;
+    ctx.shadowColor = 'rgba(34, 211, 238, 0.45)';
+    ctx.shadowBlur = Math.max(10, w * 0.012);
     ctx.beginPath();
-    ctx.moveTo(ptsScreen[0].sx, ptsScreen[0].sy);
+    ctx.moveTo(screenRoute[0].sx, screenRoute[0].sy);
     for (let i = 1; i <= upto; i += 1) {
-      ctx.lineTo(ptsScreen[i].sx, ptsScreen[i].sy);
+      ctx.lineTo(screenRoute[i].sx, screenRoute[i].sy);
     }
     ctx.stroke();
     ctx.restore();
@@ -540,7 +708,7 @@ export const CrearRecapScreen: React.FC = () => {
     const tail = Math.max(12, Math.round(n * 0.06));
     for (let k = 0; k < tail; k += 1) {
       const idx = Math.max(0, upto - k);
-      const p = ptsScreen[idx];
+      const p = screenRoute[idx];
       const a = (1 - k / tail) * 0.35;
       ctx.globalAlpha = a;
       ctx.fillStyle = 'rgba(251, 146, 60, 0.95)';
@@ -552,10 +720,10 @@ export const CrearRecapScreen: React.FC = () => {
     ctx.restore();
 
     // Patín en línea (marcador estilo app)
-    const skate = ptsScreen[upto];
+    const skate = screenRoute[upto];
     ctx.save();
     ctx.translate(skate.sx, skate.sy);
-    const prev = ptsScreen[Math.max(0, upto - 2)];
+    const prev = screenRoute[Math.max(0, upto - 2)];
     const ang = Math.atan2(skate.sy - prev.sy, skate.sx - prev.sx);
     ctx.rotate(ang);
     ctx.shadowColor = 'rgba(0,0,0,0.45)';
@@ -564,6 +732,7 @@ export const CrearRecapScreen: React.FC = () => {
     drawInlineSkateMarker(ctx, Math.max(26, w * 0.058));
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
+    ctx.restore();
     ctx.restore();
 
     // HUD (marca Roller + tiempo)
@@ -582,9 +751,23 @@ export const CrearRecapScreen: React.FC = () => {
     ctx.fillStyle = 'rgba(251, 146, 60, 0.95)';
     ctx.font = `700 ${Math.max(12, Math.round(w * 0.016))}px system-ui, -apple-system, Segoe UI, Arial`;
     ctx.fillText(`Tiempo: ${formatTs(tNorm * 15)}`, w * 0.05, h * 0.135);
+
+    // Tarjeta de métricas para demo de negocio (datos reales cuando existen).
+    ctx.fillStyle = 'rgba(2,6,23,0.62)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(w * 0.68, h * 0.04, w * 0.29, h * 0.16, 14);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(226,232,240,0.95)';
+    ctx.font = `800 ${Math.max(10, Math.round(w * 0.012))}px system-ui, -apple-system, Segoe UI, Arial`;
+    ctx.fillText(`KM ${recapStats.km.toFixed(2)}`, w * 0.705, h * 0.085);
+    ctx.fillText(`Ritmo ${recapStats.avgKmh.toFixed(1)} km/h`, w * 0.705, h * 0.118);
+    ctx.fillText(`Duración ${formatTs(recapStats.durationSec)}`, w * 0.705, h * 0.151);
     ctx.restore();
 
-    // Fotos en esquinas (máx 4) + timestamp
+    // Fotos en esquinas (máx 4) + timestamp con transición premium.
     const cards = [
       {x: w * 0.03, y: h * 0.20},
       {x: w * 0.72, y: h * 0.20},
@@ -596,7 +779,16 @@ export const CrearRecapScreen: React.FC = () => {
     for (let i = 0; i < Math.min(4, photoImgs.length); i += 1) {
       const img = photoImgs[i];
       const {x, y} = cards[i];
+      const appearStart = 0.08 + i * 0.13;
+      const appearEnd = appearStart + 0.22;
+      const progress = clamp((prog - appearStart) / (appearEnd - appearStart), 0, 1);
+      const eased = progress * progress * (3 - 2 * progress);
+      const cardAlpha = 0.18 + 0.82 * eased;
+      const slideY = (1 - eased) * 16;
+
       ctx.save();
+      ctx.globalAlpha = cardAlpha;
+      ctx.translate(0, slideY);
       ctx.fillStyle = 'rgba(15,23,42,0.72)';
       ctx.strokeStyle = 'rgba(255,255,255,0.12)';
       ctx.lineWidth = 1;
@@ -612,7 +804,23 @@ export const CrearRecapScreen: React.FC = () => {
       ctx.beginPath();
       ctx.roundRect(x + pad, y + pad, iw, ih, 10);
       ctx.clip();
-      ctx.drawImage(img, x + pad, y + pad, iw, ih);
+      if (canDrawImage(img)) {
+        try {
+          ctx.drawImage(img, x + pad, y + pad, iw, ih);
+        } catch {
+          ctx.fillStyle = 'rgba(30, 41, 59, 0.92)';
+          ctx.fillRect(x + pad, y + pad, iw, ih);
+          ctx.fillStyle = 'rgba(148,163,184,0.95)';
+          ctx.font = `700 ${Math.max(11, Math.round(w * 0.013))}px system-ui, -apple-system, Segoe UI, Arial`;
+          ctx.fillText('Foto no disponible', x + pad + 10, y + pad + 24);
+        }
+      } else {
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.92)';
+        ctx.fillRect(x + pad, y + pad, iw, ih);
+        ctx.fillStyle = 'rgba(148,163,184,0.95)';
+        ctx.font = `700 ${Math.max(11, Math.round(w * 0.013))}px system-ui, -apple-system, Segoe UI, Arial`;
+        ctx.fillText('Foto no disponible', x + pad + 10, y + pad + 24);
+      }
       ctx.restore();
       // timestamp
       ctx.fillStyle = 'rgba(226,232,240,0.92)';

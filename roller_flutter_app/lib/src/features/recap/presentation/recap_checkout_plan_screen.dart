@@ -105,7 +105,15 @@ class RecapCheckoutPlanScreen extends StatelessWidget {
                       Text(p.subtitle, style: Theme.of(context).textTheme.bodySmall),
                       if (p.extra.isNotEmpty) ...[
                         const SizedBox(height: 10),
-                        Text(p.extra.join('\n'), style: Theme.of(context).textTheme.bodySmall),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final line in p.extra) ...[
+                              Text(line, style: Theme.of(context).textTheme.bodySmall),
+                              const SizedBox(height: 6),
+                            ],
+                          ],
+                        ),
                       ],
                       const SizedBox(height: 10),
                       Align(

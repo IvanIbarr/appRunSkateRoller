@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../perfil/data/perfil_repository.dart';
+import '../../../core/ui/rn_mirror_layouts.dart';
+import '../../../core/ui/user_profile_avatar.dart';
+import '../../perfil/data/perfil_providers.dart';
+import 'widgets/evento_image_uploader.dart';
 import '../data/evento_repository.dart';
-import '../models/evento_draft.dart';
-import 'vista_previa_evento_screen.dart';
 
-final eventosProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  return ref.watch(eventoRepositoryProvider).list();
-});
-
-final _calendarioMeProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.watch(perfilRepositoryProvider).me();
-});
+final _calendarioMeProvider = currentMeProvider;
 
 /// Texto de compartir alineado con `buildShareMessage` en `CalendarioScreen.tsx`.
 String buildCalendarioShareMessage(Map<String, dynamic> evento) {
@@ -149,21 +145,36 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
       await ref.read(eventoRepositoryProvider).delete(id);
       ref.invalidate(eventosProvider);
       if (mounted) setState(() => _eventoEliminar = null);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo eliminar: $e')));
-      }
+    } catch (_) {
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _avatarFromMeMap(Map<String, dynamic> me) {
+    return UserProfileAvatar.fromUser(me, size: 45, borderWidth: 0);
+  }
+
+  Widget _calendarioContent(List<Map<String, dynamic>> raw, {Map<String, dynamic>? syncMe, String? loadError}) {
+    final eventos = _filteredSorted(raw);
     final topPad = MediaQuery.paddingOf(context).top;
     final iosHeaderTop = topPad > 0 ? topPad : 16.0;
-    final async = ref.watch(eventosProvider);
-    final meAsync = ref.watch(_calendarioMeProvider);
+    final Widget avatarSlot = syncMe != null
+        ? _avatarFromMeMap(syncMe)
+        : ref.watch(_calendarioMeProvider).when(
+              data: _avatarFromMeMap,
+              loading: () => const SizedBox(
+                width: 45,
+                height: 45,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6C63FF))),
+              ),
+              error: (_, _) => Container(
+                width: 45,
+                height: 45,
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF2A2A3E)),
+                child: const Icon(Icons.person, size: 22, color: Colors.white54),
+              ),
+            );
 
     TextStyle pageTitle() => GoogleFonts.permanentMarker(
           fontSize: 31,
@@ -183,198 +194,153 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
           ],
         );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0F1E),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.3,
-              child: Image.asset('assets/IMG_2675.jpeg', fit: BoxFit.cover),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: EdgeInsets.fromLTRB(16, iosHeaderTop, 16, 12),
+          decoration: const BoxDecoration(
+            color: Color.fromRGBO(26, 26, 46, 0.6),
+            border: Border(bottom: BorderSide(color: Color.fromRGBO(108, 99, 255, 0.35))),
+            boxShadow: [
+              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 4, offset: Offset(0, 2)),
+            ],
           ),
-          const Positioned.fill(
-            child: ColoredBox(color: Color.fromRGBO(15, 15, 30, 0.85)),
-          ),
-          Positioned.fill(
-            child: RefreshIndicator(
-              color: const Color(0xFF00D9FF),
-              onRefresh: () async {
-                ref.invalidate(eventosProvider);
-                await ref.read(eventosProvider.future);
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 100),
-                child: async.when(
-                data: (raw) {
-                  final eventos = _filteredSorted(raw);
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.fromLTRB(16, iosHeaderTop, 16, 12),
-                        decoration: const BoxDecoration(
-                          color: Color.fromRGBO(26, 26, 46, 0.6),
-                          border: Border(bottom: BorderSide(color: Color.fromRGBO(0, 217, 255, 0.2))),
-                          boxShadow: [
-                            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.1), blurRadius: 4, offset: Offset(0, 2)),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            meAsync.when(
-                              data: (me) {
-                                final foto = (me['fotoPerfil'] ?? '').toString();
-                                final av = (me['avatar'] ?? '').toString();
-                                return Container(
-                                  width: 80,
-                                  height: 80,
-                                  clipBehavior: Clip.antiAlias,
-                                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                                  child: foto.isNotEmpty
-                                      ? Image.network(foto, fit: BoxFit.cover, errorBuilder: (_, _, _) => _avatarFallback(av))
-                                      : _avatarFallback(av),
-                                );
-                              },
-                              loading: () => const SizedBox(width: 80, height: 80, child: CircularProgressIndicator(strokeWidth: 2)),
-                              error: (_, _) => const CircleAvatar(radius: 40, child: Icon(Icons.person, size: 40)),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('📅 Calendario', style: pageTitle()),
-                                  Text('Eventos y rodadas programadas', style: pageSubtitle()),
-                                ],
-                              ),
-                            ),
-                            Material(
-                              color: const Color.fromRGBO(0, 217, 255, 0.2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(22),
-                                side: const BorderSide(color: Color(0xFF00D9FF), width: 2),
-                              ),
-                              elevation: 6,
-                              shadowColor: const Color(0xFF00D9FF).withValues(alpha: 0.4),
-                              child: InkWell(
-                                onTap: () async {
-                                  await showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: const Color(0xFF1A1A2E),
-                                    builder: (_) => const _CrearEventoSheet(),
-                                  );
-                                  ref.invalidate(eventosProvider);
-                                },
-                                borderRadius: BorderRadius.circular(22),
-                                child: const SizedBox(
-                                  width: 44,
-                                  height: 44,
-                                  child: Center(
-                                    child: Text(
-                                      '+',
-                                      style: TextStyle(
-                                        fontSize: 28,
-                                        color: Color(0xFF00D9FF),
-                                        fontWeight: FontWeight.w300,
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                        child: _MiniCalendarRn(
-                          onPrev: () => setState(() {
-                            _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
-                          }),
-                          onNext: () => setState(() {
-                            _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
-                          }),
-                          daysInMonth: _daysInMonth(_currentMonth),
-                          firstWeekday: _firstWeekday(_currentMonth),
-                          eventsForDay: (d) => _eventsForDay(eventos, d),
-                          isToday: _isToday,
-                          isPast: _isPast,
-                          monthLabel: () {
-                            final s = DateFormat.yMMMM('es').format(_currentMonth);
-                            if (s.isEmpty) return s;
-                            return '${s[0].toUpperCase()}${s.substring(1)}';
-                          }(),
-                        ),
-                      ),
-                      if (eventos.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Text(
-                            'No hay eventos programados',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, color: Color(0xFF8B9DC3)),
-                          ),
-                        )
-                      else
-                        ...eventos.map((e) => _EventCardRn(
-                              evento: e,
-                              formatRango: () => _formatFechaRango(e),
-                              onDelete: (id, titulo) => setState(() => _eventoEliminar = {'id': id, 'titulo': titulo}),
-                              onShare: () => setState(() => _eventoCompartir = e),
-                              onEdit: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Edición: usa Crear evento / vista previa desde el flujo Flutter.')),
-                                );
-                              },
-                            )),
-                    ],
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(48),
-                  child: Center(child: CircularProgressIndicator(color: Color(0xFF00D9FF))),
-                ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text('Error: $e', style: const TextStyle(color: Colors.white)),
+          child: Row(
+            children: [
+              avatarSlot,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('📅 Calendario', style: pageTitle()),
+                    Text('Eventos y rodadas programadas', style: pageSubtitle()),
+                  ],
                 ),
               ),
-            ),
-            ),
+              Material(
+                color: const Color.fromRGBO(108, 99, 255, 0.25),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  side: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                ),
+                elevation: 6,
+                shadowColor: const Color(0xFF6C63FF).withValues(alpha: 0.4),
+                child: InkWell(
+                  onTap: () async {
+                    await context.push('/calendario/crear');
+                    ref.invalidate(eventosProvider);
+                  },
+                  borderRadius: BorderRadius.circular(22),
+                  child: const SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: Text(
+                        '+',
+                        style: TextStyle(
+                          fontSize: 28,
+                          color: Color(0xFFCFCBFF),
+                          fontWeight: FontWeight.w300,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          if (_eventoEliminar != null)
-            _DeleteModalRn(
-              titulo: (_eventoEliminar!['titulo'] ?? '').toString(),
-              deleting: _deleting,
-              onCancel: () => setState(() => _eventoEliminar = null),
-              onDelete: () => _confirmDelete(ref, (_eventoEliminar!['id'] ?? '').toString()),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: _MiniCalendarRn(
+            onPrev: () => setState(() {
+              _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+            }),
+            onNext: () => setState(() {
+              _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+            }),
+            daysInMonth: _daysInMonth(_currentMonth),
+            firstWeekday: _firstWeekday(_currentMonth),
+            eventsForDay: (d) => _eventsForDay(eventos, d),
+            isToday: _isToday,
+            isPast: _isPast,
+            monthLabel: () {
+              final s = DateFormat.yMMMM('es').format(_currentMonth);
+              if (s.isEmpty) return s;
+              return '${s[0].toUpperCase()}${s.substring(1)}';
+            }(),
+          ),
+        ),
+        if (loadError != null && loadError.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'No se pudieron cargar los eventos.\nDesliza hacia abajo para reintentar.\n($loadError)',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.red.shade200, height: 1.4),
             ),
-          if (_eventoCompartir != null)
-            _ShareModalRn(
-              evento: _eventoCompartir!,
-              onClose: () => setState(() => _eventoCompartir = null),
+          )
+        else if (eventos.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(40),
+            child: Text(
+              'No hay eventos programados',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Color(0xFF8B9DC3)),
             ),
-        ],
+          )
+        else
+          ...eventos.map((e) => _EventCardRn(
+                evento: e,
+                formatRango: () => _formatFechaRango(e),
+                onDelete: (id, titulo) => setState(() => _eventoEliminar = {'id': id, 'titulo': titulo}),
+                onShare: () => setState(() => _eventoCompartir = e),
+                onEdit: () {
+                  context.push('/calendario/crear', extra: {'evento': e, 'esEdicion': true});
+                },
+              )),
+      ],
+    );
+  }
+
+  List<Widget> get _calendarioOverlays => [
+        if (_eventoEliminar != null)
+          _DeleteModalRn(
+            titulo: (_eventoEliminar!['titulo'] ?? '').toString(),
+            deleting: _deleting,
+            onCancel: () => setState(() => _eventoEliminar = null),
+            onDelete: () => _confirmDelete(ref, (_eventoEliminar!['id'] ?? '').toString()),
+          ),
+        if (_eventoCompartir != null)
+          _ShareModalRn(
+            evento: _eventoCompartir!,
+            onClose: () => setState(() => _eventoCompartir = null),
+          ),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(eventosProvider);
+
+    return RnMirrorCalendarioLayout(
+      overlays: _calendarioOverlays,
+      onRefresh: () async {
+        ref.invalidate(eventosProvider);
+        await ref.read(eventosProvider.future);
+      },
+      scrollChild: async.when(
+        data: _calendarioContent,
+        loading: () => const Padding(
+          padding: EdgeInsets.all(48),
+          child: Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+        ),
+        error: (err, _) => _calendarioContent(const [], loadError: err.toString()),
       ),
     );
   }
-}
-
-Widget _avatarFallback(String avatar) {
-  if (avatar.isEmpty) {
-    return const ColoredBox(
-      color: Color(0xFF2A2A3E),
-      child: Icon(Icons.person, size: 40, color: Colors.white54),
-    );
-  }
-  return ColoredBox(
-    color: const Color(0xFF2A2A3E),
-    child: Center(child: Text(avatar, style: const TextStyle(fontSize: 28))),
-  );
 }
 
 class _MiniCalendarRn extends StatelessWidget {
@@ -630,15 +596,18 @@ class _EventCardRn extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: lugarDestino.startsWith('http') || lugarDestino.startsWith('data:')
-                          ? Image.network(
-                              lugarDestino,
-                              width: double.infinity,
-                              height: double.infinity,
+                      child: lugarDestino.startsWith('http') ||
+                              lugarDestino.startsWith('data:') ||
+                              lugarDestino.startsWith('/')
+                          ? EventoDraftImage(
+                              uri: lugarDestino,
                               fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => _placeholderImg(),
+                              placeholder: _placeholderImg(),
                             )
-                          : ColoredBox(color: const Color(0xFF2A2A3E), child: Center(child: Text(lugarDestino, style: const TextStyle(color: Colors.white54)))),
+                          : ColoredBox(
+                              color: const Color(0xFF2A2A3E),
+                              child: Center(child: Text(lugarDestino, style: const TextStyle(color: Colors.white54))),
+                            ),
                     ),
                   )
                 else
@@ -676,7 +645,7 @@ class _EventCardRn extends StatelessWidget {
                           BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.3), blurRadius: 4, offset: Offset(0, 2)),
                         ],
                       ),
-                      child: Image.network(logoGrupo, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox()),
+                      child: EventoDraftImage(uri: logoGrupo, fit: BoxFit.contain),
                     ),
                   ),
                 if (id.isNotEmpty)
@@ -1103,213 +1072,6 @@ class _ShareModalRn extends StatelessWidget {
           width: double.infinity,
           height: 44,
           child: Center(child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
-        ),
-      ),
-    );
-  }
-}
-
-class _CrearEventoSheet extends ConsumerStatefulWidget {
-  const _CrearEventoSheet();
-
-  @override
-  ConsumerState<_CrearEventoSheet> createState() => _CrearEventoSheetState();
-}
-
-class _CrearEventoSheetState extends ConsumerState<_CrearEventoSheet> {
-  final _tituloRutaCtrl = TextEditingController();
-  final _puntoSalidaCtrl = TextEditingController();
-  final _fechaInicioCtrl = TextEditingController(text: '01/01/2026');
-  final _citaCtrl = TextEditingController(text: '19:00');
-  final _salidaCtrl = TextEditingController(text: '19:15');
-  final _nivelCtrl = TextEditingController(text: 'Intermedio');
-  final _logoGrupoCtrl = TextEditingController();
-  final _lugarDestinoCtrl = TextEditingController();
-  final _organizadorCtrl = TextEditingController();
-
-  bool _loading = false;
-
-  @override
-  void dispose() {
-    _tituloRutaCtrl.dispose();
-    _puntoSalidaCtrl.dispose();
-    _fechaInicioCtrl.dispose();
-    _citaCtrl.dispose();
-    _salidaCtrl.dispose();
-    _nivelCtrl.dispose();
-    _logoGrupoCtrl.dispose();
-    _lugarDestinoCtrl.dispose();
-    _organizadorCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: bottom + 16),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Crear evento', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _tituloRutaCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Título de la Ruta',
-                hintText: 'Ej: Rodada Nocturna Centro Histórico',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _puntoSalidaCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Punto de Salida',
-                hintText: 'Ej: Monumento a la Revolución',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _fechaInicioCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Fecha Inicio',
-                hintText: 'DD/MM/AAAA o AAAA-MM-DD',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _citaCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Cita', hintText: 'HH:MM'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _salidaCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Salida', hintText: 'HH:MM'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _nivelCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Nivel',
-                hintText: 'Principiante / Intermedio / Avanzado',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _logoGrupoCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Logo del Grupo (URL o texto)'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _lugarDestinoCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Lugar del Destino (URL o texto)'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _organizadorCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(labelText: 'Tu correo (organizador)'),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _loading
-                        ? null
-                        : () async {
-                            final t = _tituloRutaCtrl.text.trim();
-                            final p = _puntoSalidaCtrl.text.trim();
-                            final f = _fechaInicioCtrl.text.trim();
-                            final c = _citaCtrl.text.trim();
-                            final s = _salidaCtrl.text.trim();
-                            final n = _nivelCtrl.text.trim();
-                            final org = _organizadorCtrl.text.trim();
-                            if (t.isEmpty || p.isEmpty || f.isEmpty || c.isEmpty || s.isEmpty || n.isEmpty || org.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Completa todos los campos requeridos.')),
-                              );
-                              return;
-                            }
-                            final draft = EventoDraft(
-                              tituloRuta: t,
-                              puntoSalida: p,
-                              fechaInicio: f,
-                              cita: c,
-                              salida: s,
-                              nivel: n,
-                              logoGrupo: _logoGrupoCtrl.text.trim().isEmpty ? null : _logoGrupoCtrl.text.trim(),
-                              lugarDestino: _lugarDestinoCtrl.text.trim().isEmpty ? null : _lugarDestinoCtrl.text.trim(),
-                              organizadorEmail: org,
-                            );
-                            final published = await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(builder: (_) => VistaPreviaEventoScreen(draft: draft)),
-                            );
-                            if (published == true && context.mounted) {
-                              Navigator.of(context).pop();
-                            }
-                          },
-                    child: const Text('Vista previa'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _loading
-                        ? null
-                        : () async {
-                            final t = _tituloRutaCtrl.text.trim();
-                            final p = _puntoSalidaCtrl.text.trim();
-                            final f = _fechaInicioCtrl.text.trim();
-                            final c = _citaCtrl.text.trim();
-                            final s = _salidaCtrl.text.trim();
-                            final n = _nivelCtrl.text.trim();
-                            final org = _organizadorCtrl.text.trim();
-                            if (t.isEmpty || p.isEmpty || f.isEmpty || c.isEmpty || s.isEmpty || n.isEmpty || org.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Completa todos los campos requeridos.')),
-                              );
-                              return;
-                            }
-                            setState(() => _loading = true);
-                            try {
-                              await ref.read(eventoRepositoryProvider).create(
-                                    organizadorEmail: _organizadorCtrl.text,
-                                    tituloRuta: _tituloRutaCtrl.text,
-                                    puntoSalida: _puntoSalidaCtrl.text,
-                                    fechaInicio: _fechaInicioCtrl.text,
-                                    cita: _citaCtrl.text,
-                                    salida: _salidaCtrl.text,
-                                    nivel: _nivelCtrl.text,
-                                    logoGrupo: _logoGrupoCtrl.text,
-                                    lugarDestino: _lugarDestinoCtrl.text,
-                                  );
-                              if (context.mounted) Navigator.of(context).pop();
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('No se pudo crear: $e')),
-                                );
-                              }
-                            } finally {
-                              if (mounted) setState(() => _loading = false);
-                            }
-                          },
-                    child: Text(_loading ? 'Creando...' : 'Crear'),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

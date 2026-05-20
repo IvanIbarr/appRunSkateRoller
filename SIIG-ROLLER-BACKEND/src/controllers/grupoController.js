@@ -1,6 +1,24 @@
 const Grupo = require('../models/Grupo');
 const Usuario = require('../models/Usuario');
+const {pool} = require('../config/database');
 const {validationResult} = require('express-validator');
+
+const GRUPOS_SETUP_HINT =
+  'La tabla grupos no existe. Ejecuta: npm run db:grupos:setup (ver EJECUTAR-SQL-GRUPOS.md)';
+
+function isGruposTableMissingError(error) {
+  if (!error) return false;
+  if (error.code === '42P01') return true;
+  const msg = String(error.message || '');
+  return /does not exist|no existe la relaci[oó]n/i.test(msg);
+}
+
+function respondGruposTableMissing(res) {
+  return res.status(500).json({
+    success: false,
+    error: GRUPOS_SETUP_HINT,
+  });
+}
 
 /**
  * Obtener el nombre del grupo (disponible para todos los usuarios del grupo)
@@ -72,13 +90,10 @@ const getNombreGrupo = async (req, res) => {
     console.error('Error en getNombreGrupo:', error);
     
     // Verificar si el error es porque la tabla no existe
-    if (error.message && error.message.includes('does not exist')) {
-      return res.status(500).json({
-        success: false,
-        error: 'La tabla de grupos no existe. Por favor, ejecuta el script SQL para crear la tabla grupos primero. Ver EJECUTAR-SQL-GRUPOS.md',
-      });
+    if (isGruposTableMissingError(error)) {
+      return respondGruposTableMissing(res);
     }
-    
+
     res.status(500).json({
       success: false,
       error: `Error interno del servidor: ${error.message || 'Error desconocido'}`,
@@ -121,8 +136,25 @@ const updateNombreGrupo = async (req, res) => {
       });
     }
 
+    const nombreNorm = nombreGrupo.trim();
+    const grupoPrevio = await Grupo.findByLiderId(userId);
+
+    const dup = await pool.query(
+      `SELECT id FROM grupos
+       WHERE LOWER(TRIM(nombre_grupo)) = LOWER($1)
+         AND lider_id <> $2
+       LIMIT 1`,
+      [nombreNorm, userId],
+    );
+    if (dup.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Ya existe un grupo con ese nombre. Elige otro.',
+      });
+    }
+
     // Crear o actualizar el grupo
-    const grupo = await Grupo.createOrUpdate(userId, nombreGrupo.trim());
+    const grupo = await Grupo.createOrUpdate(userId, nombreNorm);
 
     if (!grupo) {
       return res.status(500).json({
@@ -136,22 +168,23 @@ const updateNombreGrupo = async (req, res) => {
     // Asegurar que el líder pertenezca a su propio grupo
     await Usuario.update(userId, {grupoId: grupoMapeado.id});
 
+    const created = !grupoPrevio;
     res.json({
       success: true,
       nombreGrupo: grupoMapeado.nombreGrupo,
-      message: 'Nombre del grupo guardado exitosamente',
+      created,
+      message: created
+        ? 'Grupo creado con exito'
+        : 'Nombre del grupo actualizado',
     });
   } catch (error) {
     console.error('Error en updateNombreGrupo:', error);
     
     // Verificar si el error es porque la tabla no existe
-    if (error.message && error.message.includes('does not exist')) {
-      return res.status(500).json({
-        success: false,
-        error: 'La tabla de grupos no existe. Por favor, ejecuta el script SQL para crear la tabla grupos primero. Ver EJECUTAR-SQL-GRUPOS.md',
-      });
+    if (isGruposTableMissingError(error)) {
+      return respondGruposTableMissing(res);
     }
-    
+
     res.status(500).json({
       success: false,
       error: `Error interno del servidor: ${error.message || 'Error desconocido'}`,
@@ -258,15 +291,11 @@ const getIntegrantesGrupo = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en getIntegrantesGrupo:', error);
-    
-    // Verificar si el error es porque la tabla no existe
-    if (error.message && error.message.includes('does not exist')) {
-      return res.status(500).json({
-        success: false,
-        error: 'La tabla de grupos no existe. Por favor, ejecuta el script SQL para crear la tabla grupos primero. Ver EJECUTAR-SQL-GRUPOS.md',
-      });
+
+    if (isGruposTableMissingError(error)) {
+      return respondGruposTableMissing(res);
     }
-    
+
     res.status(500).json({
       success: false,
       error: `Error interno del servidor: ${error.message || 'Error desconocido'}`,
@@ -388,10 +417,74 @@ const updateNombramiento = async (req, res) => {
   }
 };
 
+/**
+ * Salir del grupo actual (cualquier integrante; si es líder, disuelve el grupo)
+ */
+const salirDelGrupo = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const usuario = await Usuario.findById(userId);
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        error: 'Usuario no encontrado',
+      });
+    }
+
+    let grupoId = usuario.grupo_id;
+    let grupo = grupoId ? await Grupo.findById(grupoId) : null;
+
+    if (!grupo) {
+      const userTipoPerfil = req.user?.tipoPerfil;
+      if (userTipoPerfil === 'liderGrupo' || userTipoPerfil === 'administrador') {
+        grupo = await Grupo.findByLiderId(userId);
+        if (grupo) {
+          grupoId = grupo.id;
+        }
+      }
+    }
+
+    if (!grupoId || !grupo) {
+      return res.status(400).json({
+        success: false,
+        error: 'No perteneces a ningún grupo',
+      });
+    }
+
+    const isLeader = grupo.lider_id === userId;
+
+    if (isLeader) {
+      await Grupo.unlinkAllMembers(grupoId);
+      await Grupo.deleteById(grupoId);
+    } else {
+      await Usuario.update(userId, {grupoId: null, nombramiento: null});
+    }
+
+    const usuarioActualizado = await Usuario.findById(userId);
+    const usuarioMapeado = Usuario.mapToCamelCase(usuarioActualizado);
+
+    res.json({
+      success: true,
+      usuario: usuarioMapeado,
+      message: isLeader
+        ? 'Has salido del grupo y se ha disuelto para todos los integrantes'
+        : 'Has salido del grupo exitosamente',
+    });
+  } catch (error) {
+    console.error('Error en salirDelGrupo:', error);
+    res.status(500).json({
+      success: false,
+      error: `Error interno del servidor: ${error.message || 'Error desconocido'}`,
+    });
+  }
+};
+
 module.exports = {
   getNombreGrupo,
   updateNombreGrupo,
   getIntegrantesGrupo,
   updateNombramiento,
+  salirDelGrupo,
 };
 

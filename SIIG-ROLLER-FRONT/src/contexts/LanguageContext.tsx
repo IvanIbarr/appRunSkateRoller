@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import React, {createContext, useContext, useState, useEffect, ReactNode} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

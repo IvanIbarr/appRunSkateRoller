@@ -8,6 +8,10 @@ class AppTheme {
   static const Color border = Color.fromRGBO(226, 232, 240, 0.14);
   static const Color accent = Color(0xFFFF3EA5);
   static const Color primaryBlue = Color(0xFF38BDF8);
+  /// Botón principal tipo Login RN / iOS (`#007AFF`).
+  static const Color iosPrimaryButtonBlue = Color(0xFF007AFF);
+  /// CTA “Calcular ruta” (azul eléctrico vibrante, alineado con RN).
+  static const Color routeElectricCta = Color(0xFF00D4FF);
 
   static ThemeData dark() {
     final base = ThemeData.dark(useMaterial3: true);
@@ -15,6 +19,9 @@ class AppTheme {
       seedColor: accent,
       brightness: Brightness.dark,
       surface: surface,
+    ).copyWith(
+      // Evita capas grisáceas del M3 en inputs rellenos (especialmente Flutter Web).
+      surfaceContainerHighest: const Color(0xFF0F172A),
     );
 
     final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
@@ -79,22 +86,16 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        // Un poco más opaco para legibilidad en fondo fotográfico
-        fillColor: const Color.fromRGBO(15, 23, 42, 0.44),
+        // Plano y opaco: transparencias + M3 en Web suelen dibujar un “bloque gris” dentro del input.
+        fillColor: const Color(0xFF0F172A),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        // RN labelWhite: color #FFF + shadow negro (legibilidad sobre fondo/imagen)
         labelStyle: const TextStyle(
           color: Color(0xFFFFFFFF),
-          shadows: [
-            Shadow(color: Color.fromRGBO(0, 0, 0, 0.75), blurRadius: 3, offset: Offset(1, 1)),
-          ],
+          fontWeight: FontWeight.w600,
         ),
         floatingLabelStyle: const TextStyle(
           color: Color.fromRGBO(248, 250, 252, 0.92),
           fontWeight: FontWeight.w800,
-          shadows: [
-            Shadow(color: Color.fromRGBO(0, 0, 0, 0.70), blurRadius: 3, offset: Offset(1, 1)),
-          ],
         ),
         hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
         border: OutlineInputBorder(
@@ -109,6 +110,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: primaryBlue, width: 1.2),
         ),
+        // Sin “relleno material” extra que en canvas HTML se ve como sombra interna.
+        hoverColor: Colors.transparent,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

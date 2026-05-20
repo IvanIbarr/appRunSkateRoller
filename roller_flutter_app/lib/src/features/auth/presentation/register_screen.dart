@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/ui/background_scaffold.dart';
-import '../../../core/ui/app_theme.dart';
 import 'auth_controller.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -64,338 +63,514 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(authControllerProvider);
-    final isLoading = state.isLoading;
+    final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
-      body: BackgroundScaffold(
-        showLogo: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: ColoredBox(color: Color(0xFF0F172A))),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/patines-fondo-nuevo.jpeg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          const Positioned.fill(
+            child: ColoredBox(color: Color.fromRGBO(10, 12, 24, 0.55)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 48),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Registro',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    color: const Color(0xFFF8FAFC),
-                                    fontWeight: FontWeight.w900,
-                                    shadows: const [
-                                      Shadow(
-                                        color: Color.fromRGBO(0, 0, 0, 0.85),
-                                        blurRadius: 10,
-                                        offset: Offset(2, 2),
-                                      ),
-                                      Shadow(
-                                        color: Color.fromRGBO(255, 62, 165, 0.22),
-                                        blurRadius: 18,
-                                        offset: Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _emailCtrl,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(labelText: 'Correo'),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _aliasCtrl,
-                              decoration: const InputDecoration(
-                                labelText: 'Alias',
-                                hintText: 'Ej: RollerPro2024',
-                              ),
-                              maxLength: 100,
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _passwordCtrl,
-                              obscureText: true,
-                              decoration: const InputDecoration(labelText: 'Contraseña'),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _confirmPasswordCtrl,
-                              obscureText: true,
-                              decoration: const InputDecoration(labelText: 'Confirmar contraseña'),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'Datos básicos',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: const Color(0xFFF8FAFC),
-                                  ),
-                            ),
-                            const SizedBox(height: 10),
-                            LayoutBuilder(
-                              builder: (context, c) {
-                                final wide = c.maxWidth >= 520;
-                                if (wide) {
-                                  return Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _edadCtrl,
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(labelText: 'Edad (>= 13)'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: DropdownButtonFormField<String>(
-                                          initialValue: _sexo,
-                                          items: const [
-                                            DropdownMenuItem(value: 'masculino', child: Text('Masculino')),
-                                            DropdownMenuItem(value: 'femenino', child: Text('Femenino')),
-                                            DropdownMenuItem(value: 'ambos', child: Text('Ambos')),
-                                          ],
-                                          onChanged: isLoading ? null : (v) => setState(() => _sexo = v ?? 'ambos'),
-                                          decoration: const InputDecoration(labelText: 'Sexo'),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                }
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    TextField(
-                                      controller: _edadCtrl,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(labelText: 'Edad (>= 13)'),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    DropdownButtonFormField<String>(
-                                      initialValue: _sexo,
-                                      items: const [
-                                        DropdownMenuItem(value: 'masculino', child: Text('Masculino')),
-                                        DropdownMenuItem(value: 'femenino', child: Text('Femenino')),
-                                        DropdownMenuItem(value: 'ambos', child: Text('Ambos')),
-                                      ],
-                                      onChanged: isLoading ? null : (v) => setState(() => _sexo = v ?? 'ambos'),
-                                      decoration: const InputDecoration(labelText: 'Sexo'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              initialValue: _nacionalidad,
-                              items: const [
-                                DropdownMenuItem(value: 'español', child: Text('Español')),
-                                DropdownMenuItem(value: 'inglés', child: Text('Inglés')),
-                              ],
-                              onChanged: isLoading ? null : (v) => setState(() => _nacionalidad = v ?? 'español'),
-                              decoration: const InputDecoration(labelText: 'Nacionalidad'),
-                            ),
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<String>(
-                              initialValue: _tipoPerfil,
-                              items: const [
-                                DropdownMenuItem(value: 'liderGrupo', child: Text('Líder de grupo')),
-                                DropdownMenuItem(value: 'roller', child: Text('Roller')),
-                              ],
-                              onChanged: isLoading ? null : (v) => setState(() => _tipoPerfil = v ?? 'roller'),
-                              decoration: const InputDecoration(labelText: 'Tipo de perfil'),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _cumpleCtrl,
-                              keyboardType: TextInputType.datetime,
-                              decoration: const InputDecoration(
-                                labelText: 'Cumpleaños',
-                                hintText: 'DD/MM/YYYY (ej: 15/01/1990)',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tip: asegúrate de que Edad y Cumpleaños coincidan.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: const Color.fromRGBO(226, 232, 240, 0.72),
-                                  ),
-                            ),
-                            const SizedBox(height: 12),
-                            InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Avatar (opcional)',
-                                hintText: 'Selecciona un avatar',
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _avatar.trim().isEmpty ? 'Sin avatar' : _avatar,
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            color: const Color.fromRGBO(248, 250, 252, 0.92),
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  OutlinedButton(
-                                    onPressed: isLoading
-                                        ? null
-                                        : () async {
-                                            final picked = await showModalBottomSheet<String>(
-                                              context: context,
-                                              showDragHandle: true,
-                                              builder: (context) {
-                                                final options = const [
-                                                  '',
-                                                  'skate-pink',
-                                                  'skate-blue',
-                                                  'flame',
-                                                  'star',
-                                                ];
-                                                return ListView(
-                                                  padding: const EdgeInsets.all(12),
-                                                  children: [
-                                                    Text(
-                                                      'Selecciona avatar',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleMedium
-                                                          ?.copyWith(fontWeight: FontWeight.w900),
-                                                    ),
-                                                    const SizedBox(height: 10),
-                                                    ...options.map((o) {
-                                                      final label = o.isEmpty ? 'Sin avatar' : o;
-                                                      return Card(
-                                                        child: ListTile(
-                                                          title: Text(label),
-                                                          trailing: _avatar == o
-                                                              ? const Icon(Icons.check_circle_rounded)
-                                                              : null,
-                                                          onTap: () => Navigator.of(context).pop(o),
-                                                        ),
-                                                      );
-                                                    }),
-                                                  ],
-                                                );
-                                              },
-                                            );
-                                            if (picked == null) return;
-                                            setState(() => _avatar = picked);
-                                          },
-                                    child: const Text('Cambiar'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () async {
-                                        final email = _emailCtrl.text.trim();
-                                        final pass = _passwordCtrl.text;
-                                        final confirm = _confirmPasswordCtrl.text;
-                                        if (email.isEmpty || !email.contains('@')) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Ingresa un correo válido')),
-                                          );
-                                          return;
-                                        }
-                                        if (pass.length < 6) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres')),
-                                          );
-                                          return;
-                                        }
-                                        if (pass != confirm) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Las contraseñas no coinciden')),
-                                          );
-                                          return;
-                                        }
-                                        final birth = _parseDdMmYyyy(_cumpleCtrl.text);
-                                        if (birth == null) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Cumpleaños inválido (usa DD/MM/YYYY)')),
-                                          );
-                                          return;
-                                        }
-                                        final edad = int.tryParse(_edadCtrl.text.trim()) ?? 0;
-                                        if (edad < 13) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Debes tener al menos 13 años')),
-                                          );
-                                          return;
-                                        }
-                                        final edadCalc = _calcAge(birth);
-                                        if (edadCalc != edad) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'La edad no coincide con el cumpleaños. Según la fecha, deberías tener $edadCalc años.',
-                                              ),
-                                            ),
-                                          );
-                                          return;
-                                        }
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Registro',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFF8FAFC),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
-                                        final ok = await ref.read(authControllerProvider.notifier).registro(
-                                              email: email,
-                                              password: pass,
-                                              confirmPassword: confirm,
-                                              edad: edad,
-                                              cumpleanosIso: birth.toIso8601String(),
-                                              sexo: _sexo,
-                                              nacionalidad: _nacionalidad,
-                                              tipoPerfil: _tipoPerfil,
-                                              avatar: _avatar.trim().isEmpty ? null : _avatar.trim(),
-                                              alias: _aliasCtrl.text.trim().isEmpty ? null : _aliasCtrl.text.trim(),
-                                            );
-                                        if (!context.mounted) return;
-                                        if (ok) {
-                                          context.go('/inicio');
-                                        } else {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('No se pudo registrar')),
-                                          );
-                                        }
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.accent,
-                                  foregroundColor: const Color(0xFFF8FAFC),
-                                  side: const BorderSide(color: Color.fromRGBO(255, 62, 165, 0.45)),
-                                ),
-                                child: Text(isLoading ? 'Creando...' : 'Crear cuenta'),
+                        _Label('Email'),
+                        _TextFieldRn(
+                          controller: _emailCtrl,
+                          enabled: !isLoading,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _Label('Idioma'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _ToggleButtonRn(
+                                text: 'Español',
+                                active: _nacionalidad == 'español',
+                                onTap: isLoading ? null : () => setState(() => _nacionalidad = 'español'),
                               ),
                             ),
-                            TextButton(
-                              onPressed: isLoading ? null : () => context.go('/login'),
-                              child: const Text('Ya tengo cuenta (volver a login)'),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _ToggleButtonRn(
+                                text: 'Inglés',
+                                active: _nacionalidad == 'inglés',
+                                onTap: isLoading ? null : () => setState(() => _nacionalidad = 'inglés'),
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 20),
+
+                        _Label('Tipo de perfil'),
+                        _ToggleButtonRn(
+                          text: 'Líder de grupo',
+                          active: _tipoPerfil == 'liderGrupo',
+                          onTap: isLoading ? null : () => setState(() => _tipoPerfil = 'liderGrupo'),
+                        ),
+                        const SizedBox(height: 8),
+                        _ToggleButtonRn(
+                          text: 'Roller',
+                          active: _tipoPerfil == 'roller',
+                          onTap: isLoading ? null : () => setState(() => _tipoPerfil = 'roller'),
+                        ),
+                        const SizedBox(height: 20),
+
+                        _Label('Sexo'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _ToggleButtonRn(
+                                text: 'Masculino',
+                                active: _sexo == 'masculino',
+                                onTap: isLoading ? null : () => setState(() => _sexo = 'masculino'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _ToggleButtonRn(
+                                text: 'Femenino',
+                                active: _sexo == 'femenino',
+                                onTap: isLoading ? null : () => setState(() => _sexo = 'femenino'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _ToggleButtonRn(
+                          text: 'Ambos',
+                          active: _sexo == 'ambos',
+                          onTap: isLoading ? null : () => setState(() => _sexo = 'ambos'),
+                        ),
+                        const SizedBox(height: 20),
+
+                        _Label('Alias'),
+                        _TextFieldRn(
+                          controller: _aliasCtrl,
+                          enabled: !isLoading,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _Label('Contraseña'),
+                        _TextFieldRn(
+                          controller: _passwordCtrl,
+                          enabled: !isLoading,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _Label('Confirmar contraseña'),
+                        _TextFieldRn(
+                          controller: _confirmPasswordCtrl,
+                          enabled: !isLoading,
+                          obscureText: true,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _Label('Cumpleaños'),
+                        _TextFieldRn(
+                          controller: _cumpleCtrl,
+                          enabled: !isLoading,
+                          keyboardType: TextInputType.datetime,
+                        ),
+                        const SizedBox(height: 16),
+
+                        _Label('Edad'),
+                        _TextFieldRn(
+                          controller: _edadCtrl,
+                          enabled: !isLoading,
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 20),
+
+                        _Label('Avatar (opcional)'),
+                        _PickerButtonRn(
+                          text: _avatar.trim().isEmpty ? 'Selecciona un avatar' : _avatar,
+                          enabled: !isLoading,
+                          onTap: () async {
+                            if (isLoading) return;
+                            final picked = await showModalBottomSheet<String>(
+                              context: context,
+                              showDragHandle: true,
+                              builder: (context) {
+                                final options = const ['', 'skate-pink', 'skate-blue', 'flame', 'star'];
+                                return SafeArea(
+                                  child: ListView(
+                                    padding: const EdgeInsets.all(12),
+                                    children: [
+                                      Text(
+                                        'Selecciona avatar',
+                                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      ...options.map((o) {
+                                        final label = o.isEmpty ? 'Sin avatar' : o;
+                                        final active = _avatar == o;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 8),
+                                          child: _PickerOptionRn(
+                                            label: label,
+                                            active: active,
+                                            onTap: () => Navigator.of(context).pop(o),
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                            if (picked == null) return;
+                            setState(() => _avatar = picked);
+                          },
+                        ),
+                        const SizedBox(height: 8),
+
+                        _PrimaryButtonRn(
+                          title: isLoading ? 'Creando…' : 'Crear cuenta',
+                          enabled: !isLoading,
+                          onTap: () async {
+                            if (isLoading) return;
+                            final email = _emailCtrl.text.trim();
+                            final pass = _passwordCtrl.text;
+                            final confirm = _confirmPasswordCtrl.text;
+                            if (email.isEmpty || !email.contains('@')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Ingresa un correo válido')),
+                              );
+                              return;
+                            }
+                            if (pass.length < 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres')),
+                              );
+                              return;
+                            }
+                            if (pass != confirm) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Las contraseñas no coinciden')),
+                              );
+                              return;
+                            }
+                            final birth = _parseDdMmYyyy(_cumpleCtrl.text);
+                            if (birth == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Cumpleaños inválido (usa DD/MM/YYYY)')),
+                              );
+                              return;
+                            }
+                            final edad = int.tryParse(_edadCtrl.text.trim()) ?? 0;
+                            if (edad < 13) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Debes tener al menos 13 años')),
+                              );
+                              return;
+                            }
+                            final edadCalc = _calcAge(birth);
+                            if (edadCalc != edad) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'La edad no coincide con el cumpleaños. Según la fecha, deberías tener $edadCalc años.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            final ok = await ref.read(authControllerProvider.notifier).registro(
+                                  email: email,
+                                  password: pass,
+                                  confirmPassword: confirm,
+                                  edad: edad,
+                                  cumpleanosIso: birth.toIso8601String(),
+                                  sexo: _sexo,
+                                  nacionalidad: _nacionalidad,
+                                  tipoPerfil: _tipoPerfil,
+                                  avatar: _avatar.trim().isEmpty ? null : _avatar.trim(),
+                                  alias: _aliasCtrl.text.trim().isEmpty ? null : _aliasCtrl.text.trim(),
+                                );
+                            if (!context.mounted) return;
+                            if (ok) {
+                              context.go('/inicio');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('No se pudo registrar')),
+                              );
+                            }
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '¿Ya tienes cuenta? ',
+                              style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFCBD5F5)),
+                            ),
+                            GestureDetector(
+                              onTap: isLoading
+                                  ? null
+                                  : () {
+                                      context.go('/login');
+                                    },
+                              child: Text(
+                                'Inicia sesión',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: const Color(0xFF38BDF8),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            );
-          },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _TextFieldRn extends StatelessWidget {
+  const _TextFieldRn({
+    required this.controller,
+    required this.enabled,
+    this.keyboardType,
+    this.obscureText = false,
+  });
+
+  final TextEditingController controller;
+  final bool enabled;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDDDDDD)),
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        enableInteractiveSelection: true,
+        textAlignVertical: TextAlignVertical.center,
+        style: GoogleFonts.inter(fontSize: 16, color: const Color(0xFF333333)),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
   }
 }
 
+class _ToggleButtonRn extends StatelessWidget {
+  const _ToggleButtonRn({
+    required this.text,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String text;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: active ? const Color.fromRGBO(56, 189, 248, 0.18) : const Color.fromRGBO(15, 23, 42, 0.35),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: active ? const Color.fromRGBO(56, 189, 248, 0.8) : const Color.fromRGBO(148, 163, 184, 0.35),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: active ? const Color(0xFFF8FAFC) : const Color(0xFFCBD5F5),
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerButtonRn extends StatelessWidget {
+  const _PickerButtonRn({
+    required this.text,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String text;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.5,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFDDDDDD)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.person_outline, color: Color(0xFF333333), size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(text, style: GoogleFonts.inter(fontSize: 16, color: const Color(0xFF333333))),
+              ),
+              const Icon(Icons.expand_more, color: Color(0xFF333333)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerOptionRn extends StatelessWidget {
+  const _PickerOptionRn({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: active ? const Color.fromRGBO(56, 189, 248, 0.18) : const Color.fromRGBO(15, 23, 42, 0.35),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: active ? const Color.fromRGBO(56, 189, 248, 0.8) : const Color.fromRGBO(148, 163, 184, 0.35),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, style: GoogleFonts.inter(color: Colors.white))),
+            if (active) const Icon(Icons.check_circle_rounded, color: Color(0xFF38BDF8)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryButtonRn extends StatelessWidget {
+  const _PrimaryButtonRn({
+    required this.title,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String title;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.5,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF007AFF),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}

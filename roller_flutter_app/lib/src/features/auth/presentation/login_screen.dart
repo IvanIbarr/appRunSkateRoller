@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/ui/app_theme.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -25,8 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authControllerProvider);
-    final isLoading = authState.isLoading;
+    final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
       body: LoginLayout(
@@ -46,8 +46,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           }
         },
-        onForgot: () => context.go('/reset-password'),
-        onRegister: () => context.go('/register'),
+        onForgot: () {
+          context.go('/reset-password');
+        },
+        onRegister: () {
+          context.go('/register');
+        },
       ),
     );
   }
@@ -75,8 +79,8 @@ class LoginLayout extends StatelessWidget {
     const gutters = 68.0;
     final usable = (width - gutters).clamp(130.0, 2000.0);
     final fromWidth = (usable / 10.2).floorToDouble();
-    // Más grande para legibilidad (mock en iPhone y desktop)
-    return fromWidth.clamp(28.0, 64.0);
+    // Espejo RN: min 23, max 56
+    return fromWidth.clamp(23.0, 56.0);
   }
 
   @override
@@ -89,103 +93,89 @@ class LoginLayout extends StatelessWidget {
       fontSize: titleSize,
       height: 1.14,
       letterSpacing: (titleSize * 0.04).clamp(0.5, 4.0),
-      // En preview sobre foto, necesitamos contraste alto.
-      color: const Color(0xFFF8FAFC),
+      fontWeight: FontWeight.bold,
+      color: const Color(0xFF333333),
       shadows: const [
-        Shadow(color: Color.fromRGBO(0, 0, 0, 0.85), blurRadius: 10, offset: Offset(2, 2)),
-        Shadow(color: Color.fromRGBO(0, 0, 0, 0.65), blurRadius: 22, offset: Offset(0, 8)),
+        Shadow(color: Color.fromRGBO(255, 255, 255, 0.95), blurRadius: 5, offset: Offset(2, 2)),
       ],
     );
 
-    return Stack(
-      children: [
-        const Positioned.fill(
-          child: ColoredBox(color: Color(0xFFF5F5F5)),
-        ),
-        Positioned.fill(
-          child: Image.asset(
-            'assets/logo.jpeg',
-            fit: BoxFit.cover,
-          ),
-        ),
-        // Overlay oscuro para legibilidad (entre foto y textos)
-        Positioned.fill(
-          child: Container(color: Colors.black.withValues(alpha: 0.40)),
-        ),
-        SafeArea(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: padH, vertical: w < 420 ? 26 : 34),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: c.maxHeight),
-                  child: Column(
-                    children: [
-                      // Más espacio superior para que el título no quede pegado al notch/borde.
-                      SizedBox(height: w < 420 ? 18 : 26),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'RunSkateRoller',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: titleStyle,
-                        ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+          child: Stack(
+            children: [
+              // Logo de fondo (posición absoluta)
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/logo.jpeg',
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: padH),
+                child: Column(
+                  children: [
+                    // Espejo RN: paddingTop 40
+                    const SizedBox(height: 40),
+                    // titleContainer
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      // Espejo RN: margen superior ya lo da el paddingTop
+                      margin: const EdgeInsets.only(bottom: 20),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'RunSkateRoller',
+                        style: titleStyle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: w < 420 ? 34 : 56),
-                      ConstrainedBox(
+                    ),
+                    // form
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      margin: const EdgeInsets.only(top: 80, bottom: 20),
+                      alignment: Alignment.center,
+                      child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 400),
                         child: Column(
                           children: [
-                            TextField(
+                            _RnInput(
+                              label: 'Email',
                               controller: emailCtrl,
+                              labelColor: Colors.white,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
-                                hintText: 'correo@ejemplo.com',
-                              ).copyWith(
-                                labelStyle: const TextStyle(color: Colors.white),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              ),
-                              style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 16),
                             ),
-                            const SizedBox(height: 16),
-                            TextField(
+                            _RnInput(
+                              label: 'Contraseña',
                               controller: passwordCtrl,
+                              labelColor: Colors.white,
                               obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Contraseña',
-                                hintText: 'Ingresa tu contraseña',
-                              ).copyWith(
-                                labelStyle: const TextStyle(color: Colors.white),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              ),
-                              style: const TextStyle(color: Color(0xFFF8FAFC), fontSize: 16),
+                              showToggle: true,
                             ),
-                            const SizedBox(height: 20),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: loading ? null : onLogin,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-                                ),
-                                child: Text(loading ? 'Entrando...' : 'Iniciar Sesión'),
-                              ),
+                            const SizedBox(height: 8),
+                            _RnButton(
+                              title: loading ? 'Iniciando…' : 'Iniciar Sesión',
+                              onTap: loading ? null : onLogin,
+                              paddingVertical: 10,
+                              paddingHorizontal: 18,
+                              minHeight: 35,
+                              textFontSize: 13,
                             ),
                             const SizedBox(height: 12),
-                            InkWell(
+                            GestureDetector(
                               onTap: loading ? null : onForgot,
-                              child: const Text(
+                              child: Text(
                                 'Olvidé mi contraseña',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFF0A84FF),
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF0A84FF),
                                   fontWeight: FontWeight.w600,
-                                  shadows: [
+                                  shadows: const [
                                     Shadow(color: Color.fromRGBO(0, 0, 0, 0.6), blurRadius: 2, offset: Offset(1, 1)),
                                   ],
                                 ),
@@ -194,36 +184,165 @@ class LoginLayout extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 22),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              '¿No tienes una cuenta? ',
-                              style: TextStyle(color: Color(0xFFF8FAFC), fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      margin: const EdgeInsets.only(top: 20),
+                      constraints: const BoxConstraints(minWidth: 280),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '¿No tienes una cuenta? ',
+                            style: GoogleFonts.inter(fontSize: 14, color: Colors.black, fontWeight: FontWeight.bold),
+                          ),
+                          GestureDetector(
+                            onTap: loading ? null : onRegister,
+                            child: Text(
+                              'Regístrate',
+                              style: GoogleFonts.inter(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold),
                             ),
-                            InkWell(
-                              onTap: loading ? null : onRegister,
-                              child: const Text(
-                                'Regístrate',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      // bottom breathing room
-                      const SizedBox(height: 10),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _RnButton extends StatelessWidget {
+  const _RnButton({
+    required this.title,
+    required this.onTap,
+    required this.paddingVertical,
+    required this.paddingHorizontal,
+    required this.minHeight,
+    required this.textFontSize,
+  });
+
+  final String title;
+  final VoidCallback? onTap;
+  final double paddingVertical;
+  final double paddingHorizontal;
+  final double minHeight;
+  final double textFontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: onTap == null ? 0.5 : 1.0,
+        child: Container(
+          constraints: BoxConstraints(minHeight: minHeight),
+          padding: EdgeInsets.symmetric(vertical: paddingVertical, horizontal: paddingHorizontal),
+          decoration: BoxDecoration(
+            color: AppTheme.iosPrimaryButtonBlue,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: textFontSize,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RnInput extends StatefulWidget {
+  const _RnInput({
+    required this.label,
+    required this.controller,
+    required this.labelColor,
+    this.keyboardType,
+    this.obscureText = false,
+    this.showToggle = false,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final Color labelColor;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+  final bool showToggle;
+
+  @override
+  State<_RnInput> createState() => _RnInputState();
+}
+
+class _RnInputState extends State<_RnInput> {
+  bool _show = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveObscure = widget.obscureText && !_show;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              widget.label,
+              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: widget.labelColor),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDDDDDD)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: widget.controller,
+                    keyboardType: widget.keyboardType,
+                    obscureText: effectiveObscure,
+                    enableInteractiveSelection: true,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: GoogleFonts.inter(fontSize: 16, color: const Color(0xFF333333)),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+                if (widget.showToggle)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _show = !_show),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(_show ? '👁️' : '👁️‍🗨️', style: const TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

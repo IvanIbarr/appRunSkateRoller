@@ -1,177 +1,187 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/ui/background_scaffold.dart';
-import '../../../core/ui/app_theme.dart';
-import 'auth_controller.dart';
+import '../../../core/ui/rn_shell_bottom_tab_bar.dart';
+import 'auth_navigation.dart';
+import 'reset_password_new_nav.dart';
 
-class ResetPasswordScreen extends ConsumerStatefulWidget {
+/// Espejo de `ForgotPasswordScreen.tsx` (RN): solicitud de código por correo.
+class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
 
   @override
-  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _emailCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
 
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _codeCtrl.dispose();
-    _passwordCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(authControllerProvider);
-    final isLoading = state.isLoading;
-
     return Scaffold(
-      body: BackgroundScaffold(
-        showLogo: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 520),
-                    child: Card(
-                      child: Padding(
+      body: Stack(
+        children: [
+          const Positioned.fill(child: ColoredBox(color: Color(0xFF0F172A))),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/patines-fondo-nuevo.jpeg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          const Positioned.fill(
+            child: ColoredBox(color: Color.fromRGBO(10, 12, 24, 0.55)),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                32,
+                20,
+                RnBottomNavigationSlot.totalHeight + 40,
+              ),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(15, 23, 42, 0.55),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color.fromRGBO(255, 255, 255, 0.12)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color.fromRGBO(0, 0, 0, 0.25),
+                              blurRadius: 12,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Olvidé mi contraseña',
+                              'Recuperar contraseña',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    color: const Color(0xFFF8FAFC),
-                                    fontWeight: FontWeight.w900,
-                                    shadows: const [
-                                      Shadow(
-                                        color: Color.fromRGBO(0, 0, 0, 0.85),
-                                        blurRadius: 10,
-                                        offset: Offset(2, 2),
-                                      ),
-                                      Shadow(
-                                        color: Color.fromRGBO(56, 189, 248, 0.18),
-                                        blurRadius: 18,
-                                        offset: Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
+                              style: GoogleFonts.permanentMarker(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFF8FAFC),
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Te enviaremos un código de 4 dígitos al correo.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: const Color.fromRGBO(226, 232, 240, 0.78),
-                                    height: 1.2,
-                                  ),
                               textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 14),
-                            TextField(
-                              controller: _emailCtrl,
-                              decoration: const InputDecoration(labelText: 'Correo'),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () async {
-                                        final ok = await ref
-                                            .read(authControllerProvider.notifier)
-                                            .forgotPassword(_emailCtrl.text);
-                                        if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              ok
-                                                  ? 'Solicitud enviada, revisa tu correo'
-                                                  : 'No se pudo solicitar recuperación (SMTP)',
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryBlue,
-                                  foregroundColor: const Color(0xFF020617),
-                                  side: const BorderSide(color: Color.fromRGBO(56, 189, 248, 0.45)),
-                                ),
-                                child: const Text('Enviar código'),
+                              style: GoogleFonts.permanentMarker(
+                                fontSize: 13,
+                                color: const Color(0xFFCBD5F5),
+                                height: 18 / 13,
                               ),
-                            ),
-                            const SizedBox(height: 14),
-                            Container(
-                              height: 1,
-                              color: const Color.fromRGBO(226, 232, 240, 0.14),
-                            ),
-                            const SizedBox(height: 14),
-                            TextField(
-                              controller: _codeCtrl,
-                              decoration: const InputDecoration(labelText: 'Código (4 dígitos)'),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _passwordCtrl,
-                              obscureText: true,
-                              decoration: const InputDecoration(labelText: 'Nueva contraseña'),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () async {
-                                        final ok = await ref.read(authControllerProvider.notifier).resetPassword(
-                                              email: _emailCtrl.text,
-                                              code: _codeCtrl.text,
-                                              password: _passwordCtrl.text,
-                                            );
-                                        if (!context.mounted) return;
-                                        if (ok) {
-                                          context.go('/login');
-                                        } else {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('No se pudo actualizar la contraseña')),
-                                          );
-                                        }
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.accent,
-                                  foregroundColor: const Color(0xFFF8FAFC),
-                                  side: const BorderSide(color: Color.fromRGBO(255, 62, 165, 0.45)),
-                                ),
-                                child: const Text('Cambiar contraseña'),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: isLoading ? null : () => context.go('/login'),
-                              child: const Text('Regresar a login'),
                             ),
                           ],
                         ),
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromRGBO(15, 23, 42, 0.75),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color.fromRGBO(255, 255, 255, 0.12)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color.fromRGBO(0, 0, 0, 0.28),
+                              blurRadius: 16,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Email',
+                              style: GoogleFonts.permanentMarker(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFCBD5F5),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _emailCtrl,
+                              keyboardType: TextInputType.emailAddress,
+                              style: GoogleFonts.permanentMarker(fontSize: 15, color: const Color(0xFFF8FAFC)),
+                              decoration: InputDecoration(
+                                hintText: 'correo@ejemplo.com',
+                                hintStyle: GoogleFonts.permanentMarker(
+                                  fontSize: 13,
+                                  color: const Color.fromRGBO(226, 232, 240, 0.55),
+                                ),
+                                filled: true,
+                                fillColor: const Color.fromRGBO(2, 6, 23, 0.55),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color.fromRGBO(255, 255, 255, 0.12)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color.fromRGBO(255, 255, 255, 0.12)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(color: Color.fromRGBO(56, 189, 248, 0.55), width: 2),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: () => authGoNewPassword(context, _emailCtrl.text),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF38BDF8),
+                                  foregroundColor: const Color(0xFF0B1022),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                                child: Text(
+                                  'Enviar código',
+                                  style: GoogleFonts.permanentMarker(fontSize: 16, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        onTap: () => authGoLoginOrPop(context),
+                        child: Text(
+                          'Volver al login',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.permanentMarker(
+                            color: const Color(0xFF38BDF8),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

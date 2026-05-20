@@ -56,6 +56,47 @@ class RollerTipsRepository {
     }
     return Map<String, dynamic>.from(tip);
   }
+
+  Future<void> deleteTip(String id) async {
+    final res = await _dio.delete('/rollertips/$id');
+    final data = res.data;
+    if (data is! Map || data['success'] != true) {
+      throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo eliminar');
+    }
+  }
+
+  Future<Map<String, dynamic>> addReaction({
+    required String tipId,
+    required String reaction,
+  }) async {
+    final res = await _dio.post('/rollertips/$tipId/reactions', data: {'reaction': reaction});
+    final data = res.data;
+    if (data is! Map || data['success'] != true || data['data'] is! Map) {
+      throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo registrar la reacción');
+    }
+    return Map<String, dynamic>.from(data['data'] as Map);
+  }
+
+  Future<Map<String, dynamic>> addComment({
+    required String tipId,
+    required String text,
+    String? authorId,
+    String? authorName,
+  }) async {
+    final res = await _dio.post(
+      '/rollertips/$tipId/comments',
+      data: {
+        'text': text,
+        if (authorId != null) 'authorId': authorId,
+        if (authorName != null) 'authorName': authorName,
+      },
+    );
+    final data = res.data;
+    if (data is! Map || data['success'] != true || data['data'] is! Map) {
+      throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo comentar');
+    }
+    return Map<String, dynamic>.from(data['data'] as Map);
+  }
 }
 
 final rollertipsRepositoryProvider = Provider<RollerTipsRepository>((ref) {

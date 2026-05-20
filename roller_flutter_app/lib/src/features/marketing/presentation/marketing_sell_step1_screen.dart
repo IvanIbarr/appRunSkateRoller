@@ -36,7 +36,7 @@ class _MarketingSellStep1ScreenState extends State<MarketingSellStep1Screen> {
       return;
     }
     final draft = MarketingSellDraft(brandDetails: _brand.text.trim(), category: _category);
-    context.go('/marketing/vender/step3', extra: draft);
+    context.go('/marketing/vender/step2', extra: draft);
   }
 
   @override

@@ -16,6 +16,9 @@ const emails = [
   'roller@roller.com',
   'sacx2003@gmail.com',
   'yunuem2018@gmail.com',
+  'yunghappy@gmail.com',
+  'anyahappy@gmail.com',
+  'anyaamelieibarrag@gmail.com',
 ];
 
 const baseLat = 19.4326;

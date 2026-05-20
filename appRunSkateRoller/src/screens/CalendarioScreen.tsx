@@ -38,43 +38,7 @@ interface CalendarioScreenProps {
   navigation: any;
 }
 
-// Datos de ejemplo para eventos (en producción vendría del backend)
-const generateEventosMarzo = (): Evento[] => {
-  const year = 2026;
-  const monthIndex = 2; // Marzo (0-based)
-  const eventos: Evento[] = [];
-  const titles = [
-    'Rodada nocturna',
-    'Ruta urbana',
-    'Patinaje recreativo',
-  ];
-  const niveles = ['Básico', 'Intermedio', 'Avanzado'];
-
-  let idCounter = 1;
-  for (let weekStart = 1; weekStart <= 31; weekStart += 7) {
-    for (let i = 0; i < 3; i += 1) {
-      const day = Math.min(weekStart + i * 2, 31);
-      const fecha = new Date(year, monthIndex, day);
-      eventos.push({
-        id: `marzo-${idCounter}`,
-        titulo: titles[i],
-        tituloRuta: `${titles[i]} - Semana ${Math.ceil(weekStart / 7)}`,
-        fecha,
-        hora: i === 0 ? '19:00' : i === 1 ? '07:30' : '18:00',
-        salida: i === 0 ? '19:30' : i === 1 ? '08:00' : '18:30',
-        cita: i === 0 ? '19:10' : i === 1 ? '07:45' : '18:10',
-        nivel: niveles[i],
-        puntoSalida: 'Parque Central',
-        descripcion: 'Evento de prueba para visualizar calendario.',
-      });
-      idCounter += 1;
-    }
-  }
-
-  return eventos;
-};
-
-const eventosEjemplo: Evento[] = generateEventosMarzo();
+const eventosEjemplo: Evento[] = [];
 
 export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   navigation,
@@ -82,7 +46,7 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
   const insets = useSafeAreaInsets();
   const {width: windowWidth} = useWindowDimensions();
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
-  const [eventos, setEventos] = useState<Evento[]>(eventosEjemplo);
+  const [eventos, setEventos] = useState<Evento[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -134,14 +98,8 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
     try {
       const response = await eventoService.getEventos();
       if (response.success && response.eventos) {
-        // Filtrar eventos de ejemplo que hayan sido eliminados
-        const eventosEjemploFiltrados = eventosEjemplo.filter(
-          evento => evento.id && !eventosEliminados.has(evento.id)
-        );
-        
-        // Combinar eventos guardados con eventos de ejemplo filtrados
-        // Priorizar eventos guardados para que sobrescriban los de ejemplo
-        const todosEventos = [...response.eventos, ...eventosEjemploFiltrados];
+        // Solo usar eventos reales de API/storage (sin datos hardcodeados de marzo).
+        const todosEventos = [...response.eventos];
         
         // Filtrar eventos eliminados
         const eventosSinEliminados = todosEventos.filter(
@@ -210,19 +168,11 @@ export const CalendarioScreen: React.FC<CalendarioScreenProps> = ({
         });
         setEventos(eventosUnicos);
       } else {
-        // Si no hay eventos guardados, mostrar solo los de ejemplo que no hayan sido eliminados
-        const eventosEjemploFiltrados = eventosEjemplo.filter(
-          evento => !evento.id || !eventosEliminados.has(evento.id)
-        );
-        setEventos(eventosEjemploFiltrados);
+        setEventos([]);
       }
     } catch (error) {
       console.error('Error cargando eventos:', error);
-      // En caso de error, mostrar solo eventos de ejemplo que no hayan sido eliminados
-      const eventosEjemploFiltrados = eventosEjemplo.filter(
-        evento => !evento.id || !eventosEliminados.has(evento.id)
-      );
-      setEventos(eventosEjemploFiltrados);
+      setEventos([]);
     }
   };
 

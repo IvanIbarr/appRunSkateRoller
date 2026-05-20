@@ -1,7 +1,16 @@
 const {pool} = require('../config/database');
+const crypto = require('crypto');
 
 class Evento {
+  static isUuid(value) {
+    return (
+      typeof value === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    );
+  }
+
   static async findById(id) {
+    if (!this.isUuid(id)) return null;
     await this.ensureTable();
     const query = 'SELECT * FROM eventos WHERE id = $1';
     const result = await pool.query(query, [id]);
@@ -32,22 +41,78 @@ class Evento {
       )
     `;
     await pool.query(query);
+    try {
+      await pool.query(`
+        ALTER TABLE eventos
+          ALTER COLUMN logo_grupo TYPE TEXT,
+          ALTER COLUMN lugar_destino TYPE TEXT
+      `);
+    } catch (_) {
+      // columnas ya TEXT o tabla legacy distinta
+    }
+    // Legacy: hora/cita/salida como TIME fallan con "8:00 p. m." (PostgreSQL lee «p.» como huso horario)
+    for (const col of ['hora', 'cita', 'salida', 'fecha_inicio']) {
+      try {
+        await pool.query(
+          `ALTER TABLE eventos ALTER COLUMN ${col} TYPE TEXT USING ${col}::text`,
+        );
+      } catch (_) {}
+    }
+  }
+
+  /** Convierte "8:00 p. m." / "20:30" a "HH:mm" para BD o muestra legible en TEXT. */
+  static normalizeHoraText(value) {
+    if (value == null || value === '') return null;
+    const s = String(value).trim();
+    if (!s) return null;
+    const lower = s.toLowerCase().replace(/\s+/g, ' ');
+    const pm = /\b(p\.?\s*m\.?|pm)\s*$/i.test(lower);
+    const am = /\b(a\.?\s*m\.?|am)\s*$/i.test(lower);
+    const core = lower.replace(/\b(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)\s*$/i, '').trim();
+    const parts = core.split(':');
+    if (parts.length < 2) return s;
+    let h = parseInt(parts[0], 10);
+    let m = parseInt(String(parts[1]).replace(/\D/g, ''), 10);
+    if (Number.isNaN(h) || Number.isNaN(m)) return s;
+    if (pm && h < 12) h += 12;
+    if (am && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  static parseFechaToYmd(fechaInput) {
+    if (!fechaInput) return null;
+    if (fechaInput instanceof Date) {
+      const y = fechaInput.getFullYear();
+      const m = String(fechaInput.getMonth() + 1).padStart(2, '0');
+      const d = String(fechaInput.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    if (typeof fechaInput === 'string') {
+      const trimmed = fechaInput.trim();
+      const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
+      if (slash) {
+        const dd = slash[1].padStart(2, '0');
+        const mm = slash[2].padStart(2, '0');
+        const yyyy = slash[3];
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const iso = /^(\d{4}-\d{2}-\d{2})/.exec(trimmed);
+      if (iso) return iso[1];
+    }
+    return null;
   }
 
   static parseFecha(fechaInput) {
-    if (!fechaInput) return null;
-    if (fechaInput instanceof Date) return fechaInput;
-    if (typeof fechaInput === 'string') {
-      if (fechaInput.includes('/')) {
-        const [day, month, year] = fechaInput.split('/').map(Number);
-        if (!Number.isNaN(day) && !Number.isNaN(month) && !Number.isNaN(year)) {
-          return new Date(year, month - 1, day);
-        }
-      }
-      const parsed = new Date(fechaInput);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
+    const ymd = this.parseFechaToYmd(fechaInput);
+    if (!ymd) return null;
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  static formatFechaForClient(dbEvento) {
+    const fromInicio = this.parseFechaToYmd(dbEvento.fecha_inicio);
+    if (fromInicio) return fromInicio;
+    return this.parseFechaToYmd(dbEvento.fecha);
   }
 
   static async create(data) {
@@ -71,8 +136,12 @@ class Evento {
       lugarDestino,
     } = data;
 
-    const fechaParsed = this.parseFecha(fecha || fechaInicio);
-    const eventoId = id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const fechaParsed = this.parseFechaToYmd(fecha || fechaInicio);
+    const horaRaw = (hora || cita || salida || '00:00').toString().trim();
+    const horaValue = this.normalizeHoraText(horaRaw) || horaRaw;
+    const citaValue = cita != null ? this.normalizeHoraText(cita) || String(cita).trim() : null;
+    const salidaValue = salida != null ? this.normalizeHoraText(salida) || String(salida).trim() : null;
+    const eventoId = this.isUuid(id) ? id : crypto.randomUUID();
 
     const query = `
       INSERT INTO eventos (
@@ -117,7 +186,7 @@ class Evento {
       eventoId,
       titulo || tituloRuta || null,
       fechaParsed,
-      hora || null,
+      horaValue,
       puntoEncuentroLat || 0,
       puntoEncuentroLng || 0,
       puntoEncuentroDireccion || puntoSalida || null,
@@ -125,8 +194,8 @@ class Evento {
       tituloRuta || null,
       puntoSalida || null,
       fechaInicio || null,
-      cita || null,
-      salida || null,
+      citaValue,
+      salidaValue,
       nivel || null,
       logoGrupo || null,
       lugarDestino || null,
@@ -137,6 +206,7 @@ class Evento {
 
   static async getAll() {
     await this.ensureTable();
+    await this.purgeExpired(2);
     const query = `
       SELECT *
       FROM eventos
@@ -146,7 +216,25 @@ class Evento {
     return result.rows || [];
   }
 
+  static async purgeExpired(days = 2) {
+    await this.ensureTable();
+    const safeDays = Number.isFinite(days) ? Math.max(0, Math.floor(days)) : 2;
+    const query = `
+      DELETE FROM eventos
+      WHERE COALESCE(
+        CASE WHEN fecha IS NOT NULL THEN fecha::date END,
+        CASE
+          WHEN fecha_inicio ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'
+          THEN to_date(fecha_inicio, 'DD/MM/YYYY')
+        END,
+        created_at::date
+      ) < (CURRENT_DATE - ($1::int * INTERVAL '1 day'))
+    `;
+    await pool.query(query, [safeDays]);
+  }
+
   static async update(id, data) {
+    if (!this.isUuid(id)) return null;
     await this.ensureTable();
     const fields = [];
     const values = [];
@@ -175,7 +263,9 @@ class Evento {
       if (value === undefined) continue;
       let finalValue = value;
       if (key === 'fecha') {
-        finalValue = this.parseFecha(value);
+        finalValue = this.parseFechaToYmd(value);
+      } else if (key === 'hora' || key === 'cita' || key === 'salida') {
+        finalValue = this.normalizeHoraText(value) || String(value).trim();
       }
       fields.push(`${mapping[key]} = $${paramIndex}`);
       values.push(finalValue);
@@ -199,6 +289,7 @@ class Evento {
   }
 
   static async delete(id) {
+    if (!this.isUuid(id)) return null;
     await this.ensureTable();
     const query = 'DELETE FROM eventos WHERE id = $1 RETURNING id';
     const result = await pool.query(query, [id]);
@@ -210,7 +301,7 @@ class Evento {
     return {
       id: dbEvento.id,
       titulo: dbEvento.titulo,
-      fecha: dbEvento.fecha,
+      fecha: this.formatFechaForClient(dbEvento) || dbEvento.fecha_inicio,
       hora: dbEvento.hora,
       puntoEncuentroLat: dbEvento.punto_encuentro_lat,
       puntoEncuentroLng: dbEvento.punto_encuentro_lng,

@@ -9,6 +9,7 @@ class EventoDraft {
     this.logoGrupo,
     this.lugarDestino,
     this.organizadorEmail,
+    this.descripcion,
   });
 
   final String tituloRuta;
@@ -20,5 +21,7 @@ class EventoDraft {
   final String? logoGrupo;
   final String? lugarDestino;
   final String? organizadorEmail;
+  /// Texto libre (no enviado al API actual; solo UI / vista previa).
+  final String? descripcion;
 }
 

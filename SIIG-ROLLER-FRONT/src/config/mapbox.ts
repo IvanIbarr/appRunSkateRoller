@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 // Configuración de Mapbox
 // Obtener tu API key gratis en: https://account.mapbox.com/
 // Plan freemium: 50,000 map loads/mes gratis

@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const {prepareMarketingPhotos} = require('../utils/marketingImagePersist');
 
 const salesDir = path.join(__dirname, '..', '..', 'uploads', 'marketing');
 const salesFilePath = path.join(salesDir, 'sales.json');
@@ -59,6 +60,15 @@ const listSales = async (req, res) => {
 const createSale = async (req, res) => {
   try {
     const userId = req.userId;
+    let body = req.body || {};
+    try {
+      body = await prepareMarketingPhotos(body);
+    } catch (imgErr) {
+      return res.status(400).json({
+        success: false,
+        error: imgErr.message || 'No se pudieron guardar las fotos',
+      });
+    }
     const {
       brandModel,
       priceMx,
@@ -69,7 +79,7 @@ const createSale = async (req, res) => {
       deliveryFeeMx,
       saleType,
       listingFeeMx,
-    } = req.body;
+    } = body;
 
     let photoUris = Array.isArray(rawPhotoUris)
       ? rawPhotoUris.filter((u) => u && String(u).trim() !== '').map((u) => String(u))

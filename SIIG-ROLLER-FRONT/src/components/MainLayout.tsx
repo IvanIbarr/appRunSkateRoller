@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import React from 'react';
 import {View, StyleSheet, Platform} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';

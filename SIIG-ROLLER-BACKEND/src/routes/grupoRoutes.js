@@ -42,6 +42,7 @@ router.get('/nombre', authenticateToken, grupoController.getNombreGrupo);
 router.put('/nombre', authenticateToken, updateNombreGrupoValidation, grupoController.updateNombreGrupo);
 router.get('/integrantes', authenticateToken, grupoController.getIntegrantesGrupo);
 router.put('/nombramiento', authenticateToken, updateNombramientoValidation, grupoController.updateNombramiento);
+router.post('/salir', authenticateToken, grupoController.salirDelGrupo);
 
 module.exports = router;
 

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 // Polyfill para AsyncStorage en web usando localStorage
 const storage: {[key: string]: string} = {};
 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avance Migracion Flutter - Noche</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; line-height: 1.45; background: #0f172a; color: #e2e8f0; }
+    h1, h2 { color: #93c5fd; }
+    .ok { color: #22c55e; font-weight: 700; }
+    .warn { color: #f59e0b; font-weight: 700; }
+    .block { border: 1px solid #334155; border-radius: 10px; padding: 14px; margin: 14px 0; background: #111827; }
+    code { background: #1f2937; color: #d1d5db; padding: 2px 6px; border-radius: 6px; }
+    ul { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Migracion Flutter - Bitacora de Avance</h1>
+  <p>Fecha de ejecucion: <strong>2026-04-28 (noche)</strong></p>
+
+  <div class="block">
+    <h2>Bloque 0 - Preparacion y respaldo</h2>
+    <p class="ok">Completado</p>
+    <ul>
+      <li>Se verifico estado del entorno actual y repo.</li>
+      <li>Se genero respaldo de codigo + base de datos en carpeta timestamp.</li>
+      <li>Ruta de backup: <code>d:\curso kotlin\recursos de la app roller\backups\20260428-221417</code></li>
+      <li>Archivos clave: <code>siig_roller_db.sql</code> y <code>siig_roller_db_schema.sql</code>.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Bloque 1 - Instalacion base Flutter en D:</h2>
+    <p class="ok">Completado</p>
+    <ul>
+      <li>Flutter instalado en <code>d:\sacx2\tools\flutter</code>.</li>
+      <li>Version validada: <code>Flutter 3.41.8 / Dart 3.11.5</code>.</li>
+      <li>Android SDK corregido a version compatible para Flutter.</li>
+      <li><code>flutter doctor -v</code> en verde para Android/Web.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Bloque 2 - Scaffold Fase 1</h2>
+    <p class="ok">Completado</p>
+    <ul>
+      <li>Proyecto base creado: <code>roller_flutter_app</code>.</li>
+      <li>Ruta: <code>d:\curso kotlin\recursos de la app roller\appRunSkateRoller_repo\roller_flutter_app</code></li>
+      <li>Plataformas habilitadas: Android y Web.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Bloque 3 - Pendiente inmediato</h2>
+    <p class="ok">Completado parcialmente</p>
+    <ul>
+      <li>Arquitectura base feature-first creada (<code>core</code>, <code>features/auth</code>, <code>features/home</code>).</li>
+      <li>Dependencias instaladas: Riverpod, Dio, go_router y secure storage.</li>
+      <li>Flujo auth inicial implementado: login + forgot + reset.</li>
+      <li>Rutas funcionales: <code>/login</code>, <code>/reset-password</code>, <code>/home</code>.</li>
+      <li>Validacion tecnica: <code>flutter analyze</code> y <code>flutter test</code> sin errores.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Bloque 4 - Siguiente turno</h2>
+    <p class="ok">En progreso</p>
+    <ul>
+      <li>Sesion persistente implementada: token guardado + guard de rutas + logout real.</li>
+      <li>Menu principal implementado: tabs (Inicio, Historial, Calendario, Chat, Tips, Perfil).</li>
+      <li>Historial conectado (primer corte): consume <code>/api/seguimiento/history</code> y lista recorridos.</li>
+      <li>Calendario conectado (primer corte): lista eventos desde <code>/api/evento</code> y permite crear evento basico.</li>
+      <li>Chat general conectado (primer corte): lista mensajes <code>/api/chat/general</code> y permite enviar texto (requiere token).</li>
+      <li>Registro conectado: <code>/api/auth/registro</code> con campos requeridos (edad/cumpleaños/sexo/nacionalidad).</li>
+      <li>Perfil conectado (primer corte): <code>/api/auth/me</code> muestra datos básicos del usuario.</li>
+      <li>RollerTips conectado (primer corte): lista tips activos desde <code>/api/rollertips</code>. Crear tip requiere video (pendiente picker + multipart).</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Nota tecnica y de instalacion</h2>
+    <ul>
+      <li>No se requiere instalar nada adicional para Android/Web esta noche.</li>
+      <li>Visual Studio solo hace falta si en el futuro quieres compilar app de Windows escritorio.</li>
+      <li>SDK Flutter instalado en <code>D:\sacx2\tools\flutter</code>.</li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -9,13 +9,14 @@ import 'core/ui/app_theme.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/reset_password_screen.dart';
+import 'features/auth/presentation/new_password_screen.dart';
 import 'features/shell/presentation/app_shell.dart';
 import 'features/historial/presentation/historial_screen.dart';
 import 'features/calendario/presentation/calendario_screen.dart';
 import 'features/chat/presentation/chat_screen.dart';
 import 'features/rollertips/presentation/rollertips_screen.dart';
 import 'features/perfil/presentation/perfil_screen.dart';
-import 'features/inicio/presentation/inicio_screen.dart';
+import 'features/ruta/presentation/ruta_screen.dart';
 import 'features/marketing/presentation/marketing_screen.dart';
 import 'features/marketing/models/marketing_checkout_draft.dart';
 import 'features/marketing/models/marketing_sell_draft.dart';
@@ -23,9 +24,10 @@ import 'features/marketing/presentation/marketing_comprar_envio_screen.dart';
 import 'features/marketing/presentation/marketing_comprar_pago_screen.dart';
 import 'features/marketing/presentation/marketing_comprar_revision_screen.dart';
 import 'features/marketing/presentation/marketing_sell_step1_screen.dart';
-import 'features/marketing/presentation/marketing_sell_step3_screen.dart';
+import 'features/marketing/presentation/marketing_sell_step2_screen.dart';
 import 'features/marketing/presentation/marketing_sell_step4_screen.dart';
 import 'features/menu/presentation/menu_screen.dart';
+import 'features/menu/presentation/informacion_personal_screen.dart';
 import 'features/menu/presentation/menu_admin_screen.dart';
 import 'features/menu/presentation/menu_grupo_screen.dart';
 import 'features/menu/presentation/menu_suscripciones_screen.dart';
@@ -43,7 +45,9 @@ import 'features/grupo/presentation/integrantes_grupo_screen.dart';
 import 'features/support/presentation/support_help_screen.dart';
 import 'features/comunidad/presentation/comunidad_screen.dart';
 import 'features/calendario/models/evento_draft.dart';
+import 'features/calendario/presentation/crear_evento_screen.dart';
 import 'features/calendario/presentation/vista_previa_evento_screen.dart';
+import 'features/calendario/data/evento_realtime_bootstrap.dart';
 import 'features/admin/presentation/admin_home_screen.dart';
 import 'features/admin/presentation/admin_buzon_screen.dart';
 import 'features/admin/presentation/admin_chats_screen.dart';
@@ -60,7 +64,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final loggingIn = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
-          state.matchedLocation == '/reset-password';
+          state.matchedLocation == '/reset-password' ||
+          state.matchedLocation == '/reset-password/new';
 
       final isLoading = session.isLoading;
       final isAuthed = session.valueOrNull != null;
@@ -69,7 +74,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      final seguimientoQ = state.uri.queryParameters['seguimiento']?.trim() ?? '';
+      final inicioSpectador =
+          (state.uri.path == '/inicio' || state.matchedLocation == '/inicio') && seguimientoQ.isNotEmpty;
+
       if (!isAuthed && !loggingIn) {
+        if (inicioSpectador) {
+          return null;
+        }
         return '/login';
       }
 
@@ -81,6 +93,16 @@ final _routerProvider = Provider<GoRouter>((ref) {
     },
     routes: <RouteBase>[
       GoRoute(
+        path: '/',
+        redirect: (context, state) {
+          final seg = state.uri.queryParameters['seguimiento']?.trim() ?? '';
+          if (seg.isNotEmpty) {
+            return '/inicio?seguimiento=${Uri.encodeQueryComponent(seg)}';
+          }
+          return '/inicio';
+        },
+      ),
+      GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
@@ -91,6 +113,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/reset-password',
         builder: (context, state) => const ResetPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password/new',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'];
+          return NewPasswordScreen(email: email);
+        },
       ),
       GoRoute(
         path: '/alias/agregar',
@@ -115,16 +144,6 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/comunidad',
         builder: (context, state) => const ComunidadScreen(),
-      ),
-      GoRoute(
-        path: '/evento/preview',
-        builder: (context, state) {
-          final draft = state.extra as EventoDraft?;
-          if (draft == null) {
-            return const SupportHelpScreen();
-          }
-          return VistaPreviaEventoScreen(draft: draft);
-        },
       ),
       GoRoute(
         path: '/admin',
@@ -161,10 +180,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
           return ChatThreadScreen(chatType: chatType);
         },
       ),
-      GoRoute(
+        GoRoute(
         path: '/recap/crear',
         builder: (context, state) {
-          final input = state.extra as RecapInput?;
+          final raw = state.extra;
+          RecapInput? parsed;
+          if (raw is RecapInput) {
+            parsed = raw.normalized();
+          }
           final demo = RecapInput(
             route: const [
               LatLng(19.4326, -99.1332),
@@ -174,13 +197,17 @@ final _routerProvider = Provider<GoRouter>((ref) {
             ],
             distanceMeters: 3200,
             durationSeconds: 980,
-          );
-          return RecapCreateScreen(input: input ?? demo);
+          ).normalized();
+          return RecapCreateScreen(input: parsed ?? demo);
         },
       ),
       GoRoute(
         path: '/recap/plan',
         builder: (context, state) => const RecapCheckoutPlanScreen(),
+      ),
+      GoRoute(
+        path: '/menu/informacion-personal',
+        builder: (context, state) => const InformacionPersonalScreen(),
       ),
       GoRoute(
         path: '/menu/grupo',
@@ -199,11 +226,19 @@ final _routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MarketingSellStep1Screen(),
       ),
       GoRoute(
-        path: '/marketing/vender/step3',
+        path: '/marketing/vender/step2',
         builder: (context, state) {
           final draft = state.extra as MarketingSellDraft?;
           if (draft == null) return const MarketingSellStep1Screen();
-          return MarketingSellStep3Screen(draft: draft);
+          return MarketingSellStep2Screen(draft: draft);
+        },
+      ),
+      GoRoute(
+        path: '/marketing/vender/step3',
+        builder: (context, state) {
+          final draft = state.extra as MarketingSellDraft?;
+          if (draft != null) return MarketingSellStep2Screen(draft: draft);
+          return const MarketingSellStep1Screen();
         },
       ),
       GoRoute(
@@ -268,7 +303,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
           return RecapCheckoutPagoScreen(draft: draft);
         },
       ),
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
+        navigatorContainerBuilder: rollerStatefulShellNavigatorContainer,
         builder: (context, state, navigationShell) {
           return AppShell(navigationShell: navigationShell);
         },
@@ -277,7 +313,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/inicio',
-                builder: (context, state) => const InicioScreen(),
+                builder: (context, state) {
+                  final seg = state.uri.queryParameters['seguimiento']?.trim();
+                  return RutaScreen(spectadorInicialId: seg == null || seg.isEmpty ? null : seg);
+                },
               ),
             ],
           ),
@@ -302,6 +341,37 @@ final _routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/calendario',
                 builder: (context, state) => const CalendarioScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'crear',
+                    builder: (context, state) {
+                      Map<String, dynamic>? ev;
+                      var edicion = false;
+                      final ex = state.extra;
+                      if (ex is Map) {
+                        final raw = ex['evento'];
+                        if (raw is Map) {
+                          ev = Map<String, dynamic>.from(raw);
+                        }
+                        edicion = ex['esEdicion'] == true;
+                      }
+                      return CrearEventoScreen(
+                        eventoParaEditar: ev,
+                        esEdicion: edicion,
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: 'vista-previa',
+                    builder: (context, state) {
+                      final draft = state.extra as EventoDraft?;
+                      if (draft == null) {
+                        return const CalendarioScreen();
+                      }
+                      return VistaPreviaEventoScreen(draft: draft);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -349,10 +419,12 @@ class RollerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(_routerProvider);
+    ref.watch(eventoRealtimeBootstrapProvider);
     return MaterialApp.router(
       title: 'Roller Flutter',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
+      scaffoldMessengerKey: eventoReminderMessengerKey,
       routerConfig: router,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

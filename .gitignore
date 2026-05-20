@@ -1,6 +1,12 @@
 
 PostgreSQL/
 bds/
+backups/
+node_modules/
+
+# Flutter / local (secretos)
+roller_flutter_app/.env
+roller_flutter_app/mapbox.local.env
 
 # Subidas y builds locales (límite GitHub 100MB/archivo; no versionar)
 SIIG-ROLLER-BACKEND/uploads/

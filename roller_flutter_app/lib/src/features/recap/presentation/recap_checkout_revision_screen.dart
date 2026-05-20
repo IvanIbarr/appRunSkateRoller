@@ -45,6 +45,11 @@ class RecapCheckoutRevisionScreen extends StatelessWidget {
                 }
                 context.go('/recap/pago', extra: draft);
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF007AFF),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+              ),
               child: Text(isFree ? 'Finalizar' : 'Siguiente · Forma de pago'),
             ),
           ),

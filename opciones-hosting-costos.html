@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Opciones de hosting y costos — RunSkateRoller (Flutter, API Node, PostgreSQL, correo 2026)." />
+  <title>RunSkateRoller — Hosting &amp; costos (Flutter · 2026)</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e8eef4;
+      --muted: #9fb0c3;
+      --accent: #3d9be9;
+      --accent2: #4fd1c5;
+      --warn: #f6ad55;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 12px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      font-size: clamp(14px, 2vw, 16px);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 800px at 10% -10%, #1e3a5f 0%, transparent 55%),
+                  radial-gradient(900px 600px at 100% 0%, #164e4f 0%, transparent 45%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.58;
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2.5rem 1.35rem 4rem;
+    }
+    header.doc-header {
+      background: linear-gradient(135deg, var(--surface) 0%, #1c2838 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 2rem 1.75rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      border: 1px solid rgba(79, 209, 197, 0.35);
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-weight: 700;
+      font-size: clamp(1.65rem, 4vw, 2.05rem);
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      font-size: 1rem;
+    }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.55rem 1.65rem 1.4rem;
+      margin-bottom: 1.35rem;
+    }
+    section h2 {
+      margin: 0 0 1rem;
+      font-size: 1.22rem;
+      font-weight: 650;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    h2 .num {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 8px;
+      background: rgba(61, 155, 233, 0.2);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    section h3 {
+      margin: 1.35rem 0 0.6rem;
+      font-size: 1.02rem;
+      color: var(--accent2);
+    }
+    p { margin: 0 0 0.85rem; }
+    p:last-child { margin-bottom: 0; }
+    ul.pills {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    ul.pills li {
+      background: var(--surface2);
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    ul.pills li strong { color: var(--text); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 0.75rem 0 0;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tr.highlight td {
+      background: rgba(246, 173, 85, 0.08);
+      color: var(--warn);
+      font-weight: 600;
+    }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .note {
+      font-size: 0.86rem;
+      color: var(--muted);
+      border-left: 3px solid var(--accent);
+      padding: 0.65rem 0.85rem;
+      margin-top: 0.95rem;
+      background: rgba(61, 155, 233, 0.06);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    .callout-email {
+      border: 1px solid rgba(246, 173, 85, 0.45);
+      background: rgba(246, 173, 85, 0.07);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      margin-top: 1rem;
+    }
+    .callout-email strong { color: var(--warn); }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 2rem 1rem 0;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+    kbd.inv {
+      background: rgba(255,255,255,0.06);
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.82em;
+    }
+    .link-doc {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 1px dotted rgba(61, 155, 233, 0.5);
+    }
+    .link-doc:hover {
+      border-bottom-style: solid;
+      color: #7ec4fc;
+    }
+    .phase-summary {
+      display: grid;
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 640px) {
+      .phase-summary { grid-template-columns: 1fr 1fr; }
+    }
+    .phase-summary-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      font-size: 0.9rem;
+    }
+    .phase-summary-card strong { display: block; margin-bottom: 0.35rem; color: var(--accent2); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .chart-wrap {
+      margin-top: 1.25rem;
+      padding: 1rem 1rem 1.25rem;
+      background: rgba(0, 0, 0, 0.22);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .chart-wrap figcaption {
+      margin: 0 0 0.75rem;
+      font-size: 0.86rem;
+      color: var(--muted);
+      max-width: 52rem;
+    }
+    .chart-svg-bar {
+      font-family: system-ui, sans-serif;
+    }
+    @media print {
+      body { background: #fff !important; color: #222 !important; }
+      header.doc-header, section { box-shadow: none; border-color: #ccc; }
+      :root {
+        --text: #222; --muted: #444;
+        --surface: #fafafa;
+        --surface2: #f0f0f0;
+        --accent: #1a659e;
+      }
+      .badge { border-color: #999; color: #0d5c4f; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="doc-header">
+      <span class="badge">Actualizado · mayo 2026</span>
+      <h1>RunSkateRoller — Opciones de hosting y costos</h1>
+      <p class="subtitle">
+        Fuente vivo: proyecto con <strong>Flutter</strong> (iOS, Android y web opcional), <strong>API Node/Express</strong> y <strong>PostgreSQL</strong>.
+        Tipo de cambio orientativo: <strong>1 USD ≈ 18 MXN</strong> — verificar en el momento del pago.
+      </p>
+      <ul class="pills" style="margin-top:1rem">
+        <li><strong>Hosting API + BD</strong> igual que antes (Flutter no aumenta ese costo).</li>
+        <li><strong>Flutter Web</strong> → <kbd class="inv">flutter build web</kbd> como estático gratis (Pages / Vercel).</li>
+        <li><strong>Correo</strong>: SendGrid sin plan gratuito permanente desde 2025 — presupuestar alternativas (abajo).</li>
+      </ul>
+    </header>
+
+    <section>
+      <h2><span class="num">1</span> Qué marca el gasto recurrente</h2>
+      <p>
+        El servidor (API siempre disponible HTTPS), la base Postgres y el volumen real de uso son lo que mueve MXN mensuales.
+        Las cuentas de <strong>desarrollador App Store (~99&nbsp;USD/año Apple)</strong> y <strong>Google Play</strong> son gasto aparte — no sustituyen al hosting backend.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Componente</th>
+            <th>Impacto en costos (Flutter)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Backend Node + PostgreSQL</td>
+            <td>Igual que con cualquier cliente móvil; prioridad número uno en presupuesto.</td>
+          </tr>
+          <tr>
+            <td><code>Flutter Web</code> estático</td>
+            <td>Tiers hobby/gratis habitualmente suficientes al inicio.</td>
+          </tr>
+          <tr>
+            <td>Correo transaccional (reset, verify)</td>
+            <td>Variable: entre <strong>0</strong> (Resend capado) y <strong>~20&nbsp;USD/mes</strong> en plan inicial estable.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2><span class="num">!</span> Correo desde 2025–2026: costos concretos</h2>
+      <p>
+        Twilio dejó sin <strong>plan gratuito permanente</strong> a SendGrid — prevalecen <strong>pruebas limitadas</strong> antes de tener que pagar.
+        Para recuperación de contraseña en producción realista necesitás al menos uno de estos enfoques:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Proveedor / modo</th>
+            <th>Costo típico</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Resend</strong> · Free</td>
+            <td class="num">0 USD/mes</td>
+            <td>~hasta <strong>3&nbsp;000</strong> correos/mes y habitualmente ~<strong>100/día</strong> de tope. Buen punto de arranque para beta.</td>
+          </tr>
+          <tr class="highlight">
+            <td><strong>Resend Pro</strong> / <strong>SendGrid Essentials</strong></td>
+            <td class="num">~20 USD/mes</td>
+            <td>Orientación típica: paquete del orden <strong>~50&nbsp;k correos/mes</strong> sin el techo diario severo del free. En MXN: <strong>~360–390</strong> (TC).</td>
+          </tr>
+          <tr>
+            <td><strong>Amazon SES</strong></td>
+            <td class="num">Por volumen muy bajo</td>
+            <td>Muy barato por mil envíos si dominás infra y reputación SPF/DKIM — más trabajo de integración.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout-email">
+        <strong>Línea de planificación:</strong>
+        Beta con pocas recuperaciones al día suele poder vivir meses en <strong>Resend free</strong>.
+        Para v1 en comunidad grande o muchos mails el mismo día, reservá en cabeza <strong>+360&nbsp;MXN/mes (~20&nbsp;USD)</strong> cuando el tier gratuito ya no aplique — es el mismo orden de magnitud que Resend Pro o SendGrid pagado inicial.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="num">2</span> Rangos mensuales (MXN orientativos)</h2>
+      <table>
+        <thead>
+          <tr><th>Perfil</th><th class="num">MXN / mes</th><th>Uso típico</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Arranque mínimo (free tiers agresivos)</td>
+            <td class="num">0 – 250</td>
+            <td>Beta controlada; aceptás cold starts o límites.</td>
+          </tr>
+          <tr>
+            <td>Recomendado “en serio” + correo estable opcional</td>
+            <td class="num">280 – ~720</td>
+            <td>API+DB fijos (~300+) más <strong>hasta ~360 MXN</strong> si llevas correo de pago.</td>
+          </tr>
+          <tr>
+            <td>Más cómodo / margen RAM y extras</td>
+            <td class="num">700 – ~2&nbsp;500</td>
+            <td>Planes mayores Mapbox/CDN/email volumen.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note">
+        Los rangos <strong>no</strong> incluyen dominio anual prorrateado, ni cargos de tiendas Apple/Google ni excesos de Mapbox.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="num">3</span> Fases RunSkateRoller · Infra · Costos mensuales y anuales</h2>
+      <p>
+        La <strong>Fase&nbsp;1</strong> (beta) desde el lado de producto se documenta en
+        <a class="link-doc" href="./RunSkateRoller-FASE1-REPORTE-EJECUTIVO.html" target="_blank" rel="noopener">RunSkateRoller‑FASE1‑REPORTE‑EJECUTIVO.html</a>
+        (alcance técnico, matriz §3.1, API <code>:3001</code>, Postgres estable recomendado, cold starts).
+        Ese archivo <strong>no fija montos MXN</strong>; las cifras de hosting aquí están alineadas a <strong>opciones-hosting-costos.md</strong> §9–§11 (<em>Escenarios A–D</em>).
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Fase</th>
+            <th>Infra modelo (Flutter + API)</th>
+            <th class="num">MXN / mes<br /><span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-size:.72rem">banda típica</span></th>
+            <th class="num">MXN / año<br /><span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-size:.72rem">banda típica</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Fase 1</strong><br /><span style="color:var(--muted);font-size:.85rem">Beta controlada · reporte ejecutivo</span></td>
+            <td>
+              <strong>Máximo uso de gratis:</strong> Cloudflare&nbsp;Pages / Vercel (web), Neon free o Postgres mínimo, API en Railway muy bajo o créditos, <strong>Resend&nbsp;free</strong> (&lt;cupo diario).
+              Meta operativa según informe&nbsp;F1: <em>PostgreSQL accesible y <code>/health</code>; validar límites y cold start antes de comunicar beta masiva.</em>
+            </td>
+            <td class="num">0 – <strong>120</strong></td>
+            <td class="num">0 – <strong>1&nbsp;440</strong></td>
+          </tr>
+          <tr class="highlight">
+            <td><strong>Fase 2</strong><br /><span style="color:var(--muted);font-size:.85rem">Público suave · servidor “sin dormir”</span></td>
+            <td>
+              Render Web Service + Render Postgres (+ opcional mismo panel static), Flutter Web estático gratis, dominio ya contabilizado (~25&nbsp;MXN/mes mental), <strong>Resend free</strong> si alcanza el volumen (= <strong>Escenario&nbsp;B</strong>).
+            </td>
+            <td class="num"><strong>300 – 340</strong></td>
+            <td class="num"><strong>~3&nbsp;300 – ~4&nbsp;100</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Fase 2 +</strong><br /><span style="color:var(--muted);font-size:.85rem">Correo estable de pago</span></td>
+            <td>
+              Misma infra&nbsp;F2 + envíos transaccionales en plan típico <strong>~20&nbsp;USD/mes</strong> (~360&nbsp;MXN): Resend Pro / SendGrid Essentials (= <strong>Escenario&nbsp;B′</strong> cuando el tier gratuito no basta).
+            </td>
+            <td class="num"><strong>630 – 690</strong></td>
+            <td class="num"><strong>~7&nbsp;560 – ~8&nbsp;300</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Fase 3</strong><br /><span style="color:var(--muted);font-size:.85rem">Crecimiento con métricas</span></td>
+            <td>
+              Más RAM/DB, picos fines de semana, Mapbox/Cloudinary cercanos al techo pagado si hace falta, correo según volumen real (= mezcla <strong>D</strong> parcial).
+            </td>
+            <td class="num">450 – 1&nbsp;080+</td>
+            <td class="num">~5&nbsp;400 – ~13&nbsp;000+</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note">
+        Dominio típico <strong>~250–350&nbsp;MXN</strong>/año (un solo pago) ya está distribuido en la banda mensual/anual mental de&nbsp;F2; en&nbsp;F1 puede ser opcional hasta salir a público.
+      </div>
+
+      <h3>Gráfico: costos anuales típicos (punto medio de cada banda)</h3>
+      <div class="chart-wrap">
+        <figure>
+          <figcaption>
+            Comparación sólo hosting/correo/dominio prorrateado (sin Apple/Google&nbsp;Developer ni excedentes Mapbox agresivos). Cada barra usa un <strong>valor de referencia dentro de la banda</strong> de la tabla de fases (F3: punto medio entre ~5,4&nbsp;k y ~13&nbsp;k anuales).
+          </figcaption>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 548 218" role="img" aria-label="Costo anual MXN por fase: Fase 1 unos setecientos cincuenta; Fase 2 unos tres mil setecientos; Fase dos más correo unos ocho mil; Fase 3 unos nueve mil doscientos con techo hasta trece mil" class="chart-svg-bar" width="100%" height="auto" style="max-width:548px;display:block">
+            <!-- Escala proporcional máx ~13&nbsp;000 MXN/año (402 px de barra desde x=92) -->
+            <defs>
+              <linearGradient id="gBar" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stop-color="#3d9be9" />
+                <stop offset="100%" stop-color="#4fd1c5" />
+              </linearGradient>
+            </defs>
+            <text x="0" y="14" fill="#9fb0c3" font-size="11">MXN/año · referencias medias dentro de cada banda (escala máx. 13&nbsp;k)</text>
+            <line x1="92" y1="28" x2="494" y2="28" stroke="rgba(255,255,255,0.12)" stroke-width="1" />
+            <text x="92" y="26" fill="#68788a" font-size="9">0</text>
+            <text x="280" y="26" fill="#68788a" font-size="9">6,5&nbsp;k</text>
+            <text x="458" y="26" fill="#68788a" font-size="9">13&nbsp;k</text>
+            <!-- F1 ~750 (750/13000*402 = 23.2) -->
+            <text x="0" y="52" fill="#e8eef4" font-size="13" font-weight="600">Fase 1</text>
+            <text x="0" y="66" fill="#94a3b8" font-size="10">Beta</text>
+            <rect x="92" y="40" width="23.2" height="26" rx="4" fill="url(#gBar)" opacity=".95"><title>Fase 1 Beta: ~750 MXN/año (referencia)</title></rect>
+            <text x="122" y="57" fill="#9fb0c3" font-size="11">~750</text>
+            <!-- F2 ~3700 (114.6) -->
+            <text x="0" y="102" fill="#e8eef4" font-size="13" font-weight="600">Fase 2</text>
+            <text x="0" y="116" fill="#94a3b8" font-size="10">Público</text>
+            <rect x="92" y="90" width="114.6" height="26" rx="4" fill="url(#gBar)" opacity=".95"><title>Fase 2 Público: ~3700 MXN/año (referencia)</title></rect>
+            <text x="214" y="107" fill="#e8eef4" font-size="11">~3&nbsp;700</text>
+            <!-- F2+ ~7940 (245.8) -->
+            <text x="0" y="151" fill="#e8eef4" font-size="13" font-weight="600">Fase 2+</text>
+            <text x="0" y="165" fill="#94a3b8" font-size="10">Correo pago</text>
+            <rect x="92" y="140" width="245.8" height="26" rx="4" fill="#f6ad55" opacity=".92"><title>Fase 2 con correo pago estable: ~7940 MXN/año</title></rect>
+            <text x="344" y="157" fill="#1a1520" font-size="11" font-weight="600">~7&nbsp;940</text>
+            <!-- F3 punto medio banda anual ~9,2 k (5400+13000)/2 ; (9200/13000*402 = 284.6) -->
+            <text x="0" y="200" fill="#e8eef4" font-size="13" font-weight="600">Fase 3</text>
+            <text x="0" y="214" fill="#94a3b8" font-size="10">Escala · banda alta</text>
+            <rect x="92" y="189" width="284.6" height="26" rx="4" fill="url(#gBar)" opacity=".5"><title>Fase 3: punto medio de banda anual ~9200 MXN; techo ~13 k</title></rect>
+            <text x="384" y="206" fill="#e8eef4" font-size="11">~9&nbsp;200 (hasta ~13&nbsp;k)</text>
+          </svg>
+        </figure>
+      </div>
+
+      <h3>Recomendación resumida por fases</h3>
+      <div class="phase-summary">
+        <div class="phase-summary-card">
+          <strong>Fase&nbsp;1</strong>
+          Máximo free tiers con Postgres real para no engañarte con mock permanente · seguí el <a class="link-doc" href="./RunSkateRoller-FASE1-REPORTE-EJECUTIVO.html">reporte ejecutivo</a> para matriz de pruebas; presupuesto caja típico <strong>≤120&nbsp;MXN/mes</strong> hasta validar comunidad cerrada.
+        </div>
+        <div class="phase-summary-card">
+          <strong>Fase&nbsp;2</strong>
+          En cuanto haya instalaciones “de verdad” y calendario compartido, saltá a <strong>Render API+Postgres (~300–340&nbsp;MXN/mes)</strong>; dominio sí o sí para confianza.
+        </div>
+        <div class="phase-summary-card">
+          <strong>Fase&nbsp;2+</strong>
+          Si los envíos rompen el cupo gratuito (~100 mails/día) o necesitás plan estable día&nbsp;1, sumá desde el modelo <strong>B′</strong> (~<strong>630–690&nbsp;MXN/mes</strong>; ~<strong>7,9k–8,3k/año</strong>).
+        </div>
+        <div class="phase-summary-card">
+          <strong>Fase&nbsp;3</strong>
+          Escala sólo componentes que midas (DB, RAM, Mapbox, almacén); la banda anual va aproximadamente de <strong>5,4&nbsp;k a 13&nbsp;k+&nbsp;MXN</strong> según uso.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="num">4</span> Escenarios rápidos (tabla ejecutiva)</h2>
+      <table>
+        <thead>
+          <tr><th>Escenario</th><th class="num">USD/mes · aprox.</th><th class="num">MXN/mes · aprox.</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>A</strong> Mínimo (Neon/Railway bajo + Resend free)</td><td class="num">0–5</td><td class="num">0 – 90</td></tr>
+          <tr><td><strong>B</strong> Equilibrado (Render API+PG + Pages; Resend free)</td><td class="num">15–17</td><td class="num">270 – 310 + dominio</td></tr>
+          <tr class="highlight"><td><strong>B′</strong> Igual infra + correo pagado estable (~20 USD)</td><td class="num">35–37</td><td class="num">630 – 690 + dominio</td></tr>
+          <tr><td><strong>C</strong> Todo Render (static+API+PG, correo variable)</td><td class="num">16–45</td><td class="num">290 – 870</td></tr>
+          <tr><td><strong>D</strong> v1 cargada (+ mapas CDN, más correo/volumen)</td><td class="num">35+</td><td class="num">630+</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        Para el “paquete Iván”: Render líneas Web + Postgres típicamente <strong>~14&nbsp;USD (~252&nbsp;MXN)</strong> sólo servidor;
+        dominio típico <strong>+~25&nbsp;MXN/mes mental</strong> (anual ÷ 12); correo <strong>0</strong> o <strong>+~360&nbsp;MXN</strong> según proveedor.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="num">5</span> Principales líneas por proveedor (referencia)</h2>
+      <table>
+        <thead>
+          <tr><th>Servicio</th><th>USD/mes · ref.</th><th class="num">MXN (×18)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Cloudflare Pages / Vercel Hobby (Flutter Web)</td><td>0</td><td class="num">0</td></tr>
+          <tr><td>Render Web Service API</td><td>~7</td><td class="num">126</td></tr>
+          <tr><td>Render PostgreSQL básico</td><td>~7</td><td class="num">126</td></tr>
+          <tr><td>Neon Postgres (paid mínimo)</td><td>15–19</td><td class="num">270–342</td></tr>
+          <tr><td>Railway (uso)</td><td>3–8</td><td class="num">54–144</td></tr>
+          <tr><td><strong>SendGrid</strong> Essentials (pago inicial)</td><td>~19,95</td><td class="num">~360</td></tr>
+          <tr><td><strong>Resend</strong> Free / Pro</td><td>0 / ~20</td><td class="num">0 / ~360</td></tr>
+          <tr><td>Dominio .com (mental ÷12)</td><td>~0,8–1,2</td><td class="num">15–22</td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        Precios públicos cambian según país e impuestos; confirmar siempre en el sitio oficial antes de cotizar financiero.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="num">6</span> Recomendación técnica resumida</h2>
+      <ol style="margin:0 0 0 1rem; padding:0;">
+        <li style="margin-bottom:0.5rem"><strong>Web:</strong> desplegar <code>build/web</code> en Pages o Vercel — costo marginal.</li>
+        <li style="margin-bottom:0.5rem"><strong>Prioridad estable:</strong> API + Postgres con plan que no duerma en horario punta de tus rodadas (p. ej. Render o Railway con alertas de gasto).</li>
+        <li style="margin-bottom:0.5rem"><strong>Correo:</strong> empezá con Resend capado; ante v1 pública o picos (&gt;100 mails/día) migrá mentalmente el presupuesto a <strong>B′</strong> (~630–690&nbsp;MXN/mes combinado con Render según ejemplo).</li>
+        <li><strong>Fases beta → público:</strong> igual lógica del documento fuente Markdown: no prometer SLA de tienda gratis sin monitoreo.</li>
+      </ol>
+      <div class="note" style="margin-top:1rem">
+        El detalle amplio (carta técnico–financiero, fases comunidad WhatsApp y tablas CSV heredadas) está en
+        <strong>opciones-hosting-costos.md</strong> dentro del mismo repositorio — este HTML sirve como <strong>hoja ejecutiva imprimible</strong> (<kbd class="inv">Ctrl+P</kbd>).
+      </div>
+    </section>
+
+    <footer>
+      RunSkateRoller · Opciones hosting &amp; costos · Derivado de <strong>opciones-hosting-costos.md</strong> · Cifras estimadas, no cotización legal de proveedores.
+    </footer>
+  </div>
+</body>
+</html>

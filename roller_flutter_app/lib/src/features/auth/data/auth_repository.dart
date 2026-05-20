@@ -156,6 +156,49 @@ class AuthRepository {
     }
     return Map<String, dynamic>.from(data['usuario'] as Map);
   }
+
+  /// Espejo de `authService.updatePersonalInfo` (PUT `/auth/personal-info`).
+  Future<({bool success, Map<String, dynamic>? usuario, String? error})> updatePersonalInfo({
+    required int edad,
+    required String cumpleanosIsoDateOnly,
+    required String sexo,
+    required String nacionalidad,
+    String? telefono,
+  }) async {
+    try {
+      final res = await _dio.put(
+        '/auth/personal-info',
+        data: {
+          'edad': edad,
+          'cumpleaños': cumpleanosIsoDateOnly,
+          'sexo': sexo,
+          'nacionalidad': nacionalidad,
+          'telefono': telefono,
+        },
+      );
+      final data = res.data;
+      if (data is! Map) {
+        return (success: false, usuario: null, error: 'Respuesta inválida');
+      }
+      if (data['success'] == true && data['usuario'] is Map) {
+        return (
+          success: true,
+          usuario: Map<String, dynamic>.from(data['usuario'] as Map),
+          error: null,
+        );
+      }
+      return (
+        success: false,
+        usuario: null,
+        error: data['error']?.toString() ?? 'No se pudo guardar',
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data is Map ? (e.response!.data as Map)['error']?.toString() : null;
+      return (success: false, usuario: null, error: msg ?? e.message ?? 'Error de red');
+    } catch (e) {
+      return (success: false, usuario: null, error: e.toString());
+    }
+  }
 }
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {

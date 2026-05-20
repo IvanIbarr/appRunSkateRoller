@@ -150,9 +150,6 @@ Future<void> generateAndDownloadRecapWebm({
   String title = 'RunSkateRoller',
 }) async {
   if (route.length < 2) throw Exception('Ruta insuficiente para generar recap');
-  // ignore: avoid_dynamic_calls
-  final mrCtor = (html.window as dynamic).MediaRecorder;
-  if (mrCtor == null) throw Exception('MediaRecorder no está disponible en este navegador.');
 
   // Canvas vertical (reel)
   const w = 720;
@@ -163,30 +160,25 @@ Future<void> generateAndDownloadRecapWebm({
   final b = _bounds(route);
   final projected = route.map((p) => _project(p, w, h, b)).toList(growable: false);
 
-  // Capture stream + recorder
+  // Capture stream + recorder (API tipada: no usar window.MediaRecorder vía dynamic).
   final stream = canvas.captureStream(30);
-  final mime = _pickMimeType() ?? 'video/webm';
-  // Usamos dynamic para compatibilidad con SDKs donde MediaRecorder no está tipado completo.
-  // ignore: avoid_dynamic_calls
-  final dynamic recorder = mrCtor(stream, {'mimeType': mime});
+  final mime = _pickMimeType();
+  final html.MediaRecorder recorder =
+      mime != null ? html.MediaRecorder(stream, {'mimeType': mime}) : html.MediaRecorder(stream);
   final chunks = <html.Blob>[];
 
   final done = Completer<void>();
-  // ignore: avoid_dynamic_calls
-  recorder.addEventListener(
-    'dataavailable',
-    (html.Event e) {
-      // ignore: avoid_dynamic_calls
-      final data = (e as dynamic).data;
-      if (data is html.Blob && data.size > 0) {
-        chunks.add(data);
-      }
-    },
-  );
-  // ignore: avoid_dynamic_calls
-  recorder.addEventListener('stop', (html.Event _) => done.complete());
+  recorder.addEventListener('dataavailable', (html.Event e) {
+    if (e is! html.BlobEvent) return;
+    final data = e.data;
+    if (data != null && data.size > 0) {
+      chunks.add(data);
+    }
+  });
+  recorder.addEventListener('stop', (html.Event _) {
+    if (!done.isCompleted) done.complete();
+  });
 
-  // ignore: avoid_dynamic_calls
   recorder.start(250);
 
   // Render loop: 15s, line draws progressively.
@@ -207,11 +199,11 @@ Future<void> generateAndDownloadRecapWebm({
     await Future<void>.delayed(const Duration(milliseconds: 8));
   }
 
-  // ignore: avoid_dynamic_calls
   recorder.stop();
   await done.future;
 
-  final blob = html.Blob(chunks, mime);
+  final outMime = mime ?? 'video/webm';
+  final blob = html.Blob(chunks, outMime);
   final url = html.Url.createObjectUrlFromBlob(blob);
   try {
     final a = html.AnchorElement(href: url)
@@ -249,8 +241,6 @@ void _drawBackground(html.CanvasRenderingContext2D ctx, int w, int h) {
 }
 
 String? _pickMimeType() {
-  // ignore: avoid_dynamic_calls
-  final mr = (html.window as dynamic).MediaRecorder;
   final candidates = <String>[
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
@@ -258,10 +248,9 @@ String? _pickMimeType() {
   ];
   for (final c in candidates) {
     try {
-      // ignore: avoid_dynamic_calls
-      if (mr.isTypeSupported(c) == true) return c;
+      if (html.MediaRecorder.isTypeSupported(c)) return c;
     } catch (_) {
-      // ignore
+      // Navegador sin MediaRecorder / API incompleta.
     }
   }
   return null;

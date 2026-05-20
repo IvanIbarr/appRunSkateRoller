@@ -24,6 +24,14 @@ class _NetworkReelVideoState extends State<NetworkReelVideo> {
   bool _failed = false;
 
   void _onVideoTick() {
+    final c = _controller;
+    if (c != null && c.value.isInitialized && c.value.isPlaying) {
+      final dur = c.value.duration;
+      final pos = c.value.position;
+      if (dur.inMilliseconds > 0 && pos >= dur - const Duration(milliseconds: 300)) {
+        c.pause();
+      }
+    }
     if (mounted) setState(() {});
   }
 
@@ -48,7 +56,7 @@ class _NetworkReelVideoState extends State<NetworkReelVideo> {
         await c.dispose();
         return;
       }
-      await c.setLooping(true);
+      await c.setLooping(false);
       c.addListener(_onVideoTick);
       setState(() => _controller = c);
     } catch (_) {
@@ -148,6 +156,18 @@ class _LocalFileReelVideoState extends State<LocalFileReelVideo> {
   VideoPlayerController? _controller;
   bool _failed = false;
 
+  void _onVideoTick() {
+    final c = _controller;
+    if (c != null && c.value.isInitialized && c.value.isPlaying) {
+      final dur = c.value.duration;
+      final pos = c.value.position;
+      if (dur.inMilliseconds > 0 && pos >= dur - const Duration(milliseconds: 300)) {
+        c.pause();
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -164,7 +184,8 @@ class _LocalFileReelVideoState extends State<LocalFileReelVideo> {
         await c.dispose();
         return;
       }
-      await c.setLooping(true);
+      await c.setLooping(false);
+      c.addListener(_onVideoTick);
       setState(() => _controller = c);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
@@ -173,6 +194,7 @@ class _LocalFileReelVideoState extends State<LocalFileReelVideo> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_onVideoTick);
     _controller?.dispose();
     super.dispose();
   }
@@ -180,7 +202,16 @@ class _LocalFileReelVideoState extends State<LocalFileReelVideo> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return SizedBox(height: widget.height, child: const Center(child: Text('Vista previa: usa publicar o prueba en móvil', style: TextStyle(color: Colors.white54, fontSize: 12))));
+      return SizedBox(
+        height: widget.height,
+        child: const Center(
+          child: Text(
+            'Vista previa disponible tras elegir el archivo',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+        ),
+      );
     }
     if (_failed || _controller == null || !_controller!.value.isInitialized) {
       return SizedBox(

@@ -2,16 +2,30 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Roller · app (main.dart)",
+      "name": "Roller · producción (main.dart)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart"
     },
     {
-      "name": "Roller · previews (preview_main.dart)",
+      "name": "Roller · Chrome (Mapbox: env MAPBOX_ACCESS_TOKEN)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/preview_main.dart"
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}"
+      ]
+    },
+    {
+      "name": "Roller · Chrome (Mapbox: mapbox.local.env)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/mapbox.local.env"
+      ]
     }
   ]
 }

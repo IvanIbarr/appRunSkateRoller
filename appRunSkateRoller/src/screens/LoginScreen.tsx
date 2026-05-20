@@ -199,11 +199,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
             </Text>
           </View>
 
-          <Text
-            style={styles.marketingExploreLink}
-            onPress={() => navigation.navigate('Marketing')}>
-            Ver publicaciones de Marketing
-          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -333,22 +328,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFF',
     fontWeight: 'bold',
-  },
-  marketingExploreLink: {
-    marginTop: 16,
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#0A84FF',
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-    zIndex: 10,
-    ...(Platform.OS === 'web'
-      ? {textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)'}
-      : {
-          textShadowColor: 'rgba(0, 0, 0, 0.5)',
-          textShadowOffset: {width: 1, height: 1},
-          textShadowRadius: 2,
-        }),
   },
 });
 

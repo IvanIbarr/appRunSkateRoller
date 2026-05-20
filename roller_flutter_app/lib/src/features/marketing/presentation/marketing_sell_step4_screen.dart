@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/page_scaffold.dart';
+import '../../calendario/presentation/widgets/evento_image_uploader.dart';
 import '../data/marketing_repository.dart';
 import '../models/marketing_sell_draft.dart';
 import 'marketing_screen.dart';
@@ -24,6 +25,12 @@ class _MarketingSellStep4ScreenState extends ConsumerState<MarketingSellStep4Scr
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Falta categoría.')));
       return;
     }
+    if (widget.draft.photoUris.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Adjunta al menos una foto en el paso 2.')),
+      );
+      return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     setState(() => _busy = true);
@@ -36,6 +43,7 @@ class _MarketingSellStep4ScreenState extends ConsumerState<MarketingSellStep4Scr
             deliveryFeeMx: widget.draft.deliveryFeeMx,
             saleType: widget.draft.saleType,
             listingFeeMx: widget.draft.listingFeeMx,
+            photoUris: widget.draft.photoUris,
           );
       if (!mounted) return;
       ref.invalidate(marketingSalesProvider);
@@ -64,6 +72,26 @@ class _MarketingSellStep4ScreenState extends ConsumerState<MarketingSellStep4Scr
           _Row(label: 'Categoría', value: d.category ?? '—'),
           _Row(label: 'Precio', value: d.priceMx.isEmpty ? '—' : '\$${d.priceMx} MXN'),
           _Row(label: 'Entrega', value: d.homeDelivery ? 'A domicilio (\$${d.deliveryFeeMx})' : 'No'),
+          _Row(label: 'Fotos', value: '${d.photoUris.length} adjunta(s)'),
+          if (d.photoUris.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 88,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: d.photoUris.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) => ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 88,
+                    height: 88,
+                    child: EventoDraftImage(uri: d.photoUris[i], fit: BoxFit.cover),
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,

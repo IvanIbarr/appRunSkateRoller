@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/page_scaffold.dart';
 import '../data/grupo_repository.dart';
@@ -19,6 +20,9 @@ class _NombreGrupoScreenState extends ConsumerState<NombreGrupoScreen> {
   final _ctrl = TextEditingController();
   String _original = '';
   bool _busy = false;
+  bool _hydrated = false;
+  String? _feedback;
+  bool _feedbackIsError = false;
 
   @override
   void dispose() {
@@ -26,33 +30,92 @@ class _NombreGrupoScreenState extends ConsumerState<NombreGrupoScreen> {
     super.dispose();
   }
 
+  void _showFeedback(String message, {required bool isError}) {
+    setState(() {
+      _feedback = message;
+      _feedbackIsError = isError;
+    });
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? const Color(0xFFFF3B30) : const Color(0xFF34C759),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final v = _ctrl.text.trim();
     if (v.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El nombre del grupo es requerido')));
+      _showFeedback('El nombre del grupo es requerido', isError: true);
       return;
     }
     if (v.length > 255) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Máximo 255 caracteres')));
+      _showFeedback('Maximo 255 caracteres', isError: true);
       return;
     }
     if (v == _original) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No hay cambios para guardar')));
+      _showFeedback(
+        _original.isEmpty
+            ? 'Escribe un nombre para crear tu grupo'
+            : 'Este nombre ya es el de tu grupo',
+        isError: true,
+      );
       return;
     }
-    setState(() => _busy = true);
+
+    setState(() {
+      _busy = true;
+      _feedback = null;
+    });
+
     try {
-      await ref.read(grupoRepositoryProvider).updateNombre(v);
+      final wasCreate = _original.isEmpty;
+      final result = await ref.read(grupoRepositoryProvider).updateNombre(v);
       ref.invalidate(nombreGrupoProvider);
-      _original = v;
+      _original = result.nombreGrupo;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✓ Nombre guardado')));
+
+      final msg = result.created || wasCreate
+          ? 'Grupo creado con exito'
+          : 'Nombre del grupo actualizado';
+      _showFeedback(msg, isError: false);
+
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      if (mounted) context.go('/menu');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+      final msg = GrupoRepository.readApiError(e);
+      _showFeedback(msg, isError: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Widget? _feedbackBanner() {
+    final text = _feedback;
+    if (text == null || text.isEmpty) return null;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: (_feedbackIsError ? const Color(0xFFFF3B30) : const Color(0xFF34C759))
+            .withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: _feedbackIsError ? const Color(0xFFFF3B30) : const Color(0xFF34C759),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: _feedbackIsError ? const Color(0xFFFFCDD2) : const Color(0xFFC8E6C9),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 
   @override
@@ -63,11 +126,14 @@ class _NombreGrupoScreenState extends ConsumerState<NombreGrupoScreen> {
       maxWidth: 820,
       child: async.when(
         data: (name) {
-          if (_ctrl.text.isEmpty) {
+          if (!_hydrated) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              _original = name;
-              _ctrl.text = name;
+              if (!mounted || _hydrated) return;
+              setState(() {
+                _hydrated = true;
+                _original = name;
+                _ctrl.text = name;
+              });
             });
           }
           return Column(
@@ -75,10 +141,16 @@ class _NombreGrupoScreenState extends ConsumerState<NombreGrupoScreen> {
             children: [
               const Text('Establece el nombre de tu grupo.'),
               const SizedBox(height: 12),
+              if (_feedbackBanner() != null) _feedbackBanner()!,
               TextField(
                 controller: _ctrl,
                 maxLength: 255,
-                decoration: const InputDecoration(labelText: 'Nombre del grupo', hintText: 'Ej: Grupo de Rollers CDMX'),
+                textInputAction: TextInputAction.done,
+                onSubmitted: _busy ? null : (_) => _save(),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del grupo',
+                  hintText: 'Ej: Grupo de Rollers CDMX',
+                ),
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -88,13 +160,34 @@ class _NombreGrupoScreenState extends ConsumerState<NombreGrupoScreen> {
                   child: Text(_busy ? 'Guardando...' : 'Guardar'),
                 ),
               ),
+              TextButton(
+                onPressed: _busy ? null : () => context.go('/menu'),
+                child: const Text('Regresar al Menú'),
+              ),
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Text('Error cargando nombre del grupo: $e'),
+        loading: () => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Center(child: CircularProgressIndicator()),
+            TextButton(
+              onPressed: () => context.go('/menu'),
+              child: const Text('Regresar al Menú'),
+            ),
+          ],
+        ),
+        error: (e, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Error cargando nombre del grupo: $e'),
+            TextButton(
+              onPressed: () => context.go('/menu'),
+              child: const Text('Regresar al Menú'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-

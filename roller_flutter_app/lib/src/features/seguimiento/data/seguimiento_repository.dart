@@ -25,6 +25,36 @@ class SeguimientoRepository {
     }
   }
 
+  /// GET público (sin credenciales requeridas) — mismo contrato que RN `SEGUIMIENTO.PUBLIC`.
+  Future<Map<String, dynamic>> fetchPublic(String id) async {
+    final res = await _dio.get('/seguimiento/${Uri.encodeComponent(id)}');
+    final root = res.data;
+    if (root is! Map || root['success'] != true || root['data'] is! Map) {
+      throw Exception('Respuesta de seguimiento inválida');
+    }
+    return Map<String, dynamic>.from(root['data'] as Map);
+  }
+
+  /// Punto GPS durante recorrido (misma ruta que RN `SEGUIMIENTO.LOCATION_POINT`).
+  Future<void> addLocationPoint({
+    required String seguimientoId,
+    required double latitude,
+    required double longitude,
+    int? timestampMs,
+  }) async {
+    await _dio.post(
+      '/seguimiento/location-point',
+      data: {
+        'seguimientoId': seguimientoId,
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracy': null,
+        'speed': null,
+        'timestamp': timestampMs ?? DateTime.now().millisecondsSinceEpoch,
+      },
+    );
+  }
+
   Future<Map<String, dynamic>> userStats({String period = 'all'}) async {
     final res = await _dio.get('/seguimiento/user-stats', queryParameters: {'period': period});
     final data = res.data;

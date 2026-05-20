@@ -39,7 +39,10 @@ class MarketingRepository {
         'deliveryFeeMx': deliveryFeeMx,
         'saleType': saleType,
         'listingFeeMx': listingFeeMx,
-        if (photoUris.isNotEmpty) 'photoUris': photoUris,
+        if (photoUris.isNotEmpty) ...{
+          'photoUris': photoUris,
+          'photoUri': photoUris.first,
+        },
       },
     );
     final data = res.data;

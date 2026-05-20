@@ -180,13 +180,23 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         {routeFeatureCollection && (
           <Mapbox.ShapeSource id="routeLine" shape={routeFeatureCollection}>
             <Mapbox.LineLayer
-              id="routeLineLayer"
+              id="routeLineLayerCasing"
               style={{
-                lineColor: '#38BDF8',
-                lineWidth: 5,
+                lineColor: '#FFFFFF',
+                lineWidth: 9,
                 lineCap: 'round',
                 lineJoin: 'round',
-                lineOpacity: 0.9,
+                lineOpacity: 0.95,
+              }}
+            />
+            <Mapbox.LineLayer
+              id="routeLineLayer"
+              style={{
+                lineColor: '#FF4D6D',
+                lineWidth: 6,
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineOpacity: 0.98,
               }}
             />
           </Mapbox.ShapeSource>

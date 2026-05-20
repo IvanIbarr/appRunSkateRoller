@@ -7,12 +7,11 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/ui/background_scaffold.dart';
 import '../../../core/ui/glass_card.dart';
+import '../data/perfil_providers.dart';
 import '../data/perfil_repository.dart';
 import '../../auth/data/auth_repository.dart';
 
-final meProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  return ref.watch(perfilRepositoryProvider).me();
-});
+final meProvider = currentMeProvider;
 
 class PerfilScreen extends ConsumerStatefulWidget {
   const PerfilScreen({super.key});

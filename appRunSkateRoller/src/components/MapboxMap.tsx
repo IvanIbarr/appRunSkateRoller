@@ -512,10 +512,34 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         const source = map.getSource('route');
         if (source) {
           source.setData(routeGeometry);
+          if (map.getLayer?.('route-casing')) {
+            map.setPaintProperty('route-casing', 'line-color', '#FFFFFF');
+            map.setPaintProperty('route-casing', 'line-opacity', 0.95);
+            map.setPaintProperty('route-casing', 'line-width', 9);
+          }
+          if (map.getLayer?.('route')) {
+            map.setPaintProperty('route', 'line-color', '#FF4D6D');
+            map.setPaintProperty('route', 'line-opacity', 0.98);
+            map.setPaintProperty('route', 'line-width', 6);
+          }
         } else {
           map.addSource('route', {
             type: 'geojson',
             data: routeGeometry,
+          });
+          map.addLayer({
+            id: 'route-casing',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#FFFFFF',
+              'line-width': 9,
+              'line-opacity': 0.95,
+            },
           });
           map.addLayer({
             id: 'route',
@@ -526,9 +550,9 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
               'line-cap': 'round',
             },
             paint: {
-              'line-color': '#3887be',
-              'line-width': 5,
-              'line-opacity': 0.75,
+              'line-color': '#FF4D6D',
+              'line-width': 6,
+              'line-opacity': 0.98,
             },
           });
         }

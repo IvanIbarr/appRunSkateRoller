@@ -758,7 +758,7 @@ export const NavegacionScreen: React.FC = () => {
           <>
             <View style={styles.routeCard}>
             <Text style={styles.addressHint}>
-              Tip: escribe calle, colonia y código postal para ubicar mejor origen y destino en el mapa.
+              Escribe o ten a la mano la calle y codigo postal para ubicar mejor origen y destino en el mapa.
             </Text>
             <View style={[styles.inputRow, styles.inputRowTop]}>
               <AutocompleteInput

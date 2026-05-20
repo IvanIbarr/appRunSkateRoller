@@ -74,7 +74,7 @@ class _RecapCheckoutPagoScreenState extends State<RecapCheckoutPagoScreen> {
                       padding: const EdgeInsets.only(top: 2),
                       child: _RadioDot(active: _forma == o.key),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,6 +96,11 @@ class _RecapCheckoutPagoScreenState extends State<RecapCheckoutPagoScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _confirmar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF007AFF),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+              ),
               child: const Text('Confirmar compra (demo)'),
             ),
           ),

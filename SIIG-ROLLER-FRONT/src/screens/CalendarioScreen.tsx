@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,

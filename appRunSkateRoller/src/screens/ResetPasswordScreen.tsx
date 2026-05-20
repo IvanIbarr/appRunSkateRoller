@@ -7,6 +7,8 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Image,
+  Dimensions,
 } from 'react-native';
 import {Button} from '../components/Button';
 import {Input} from '../components/Input';
@@ -95,6 +97,14 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}>
+      <View style={styles.backgroundImageContainer}>
+        <Image
+          source={require('../../assets/patines-fondo-nuevo.jpeg')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
+        <View style={styles.backgroundOverlay} />
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
           <Text style={styles.title}>Restablecer contraseña</Text>
@@ -144,6 +154,13 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
             loading={loading}
             style={styles.primaryButton}
           />
+
+          <Button
+            title="Regresar a inicio"
+            onPress={() => navigation.reset({index: 0, routes: [{name: 'Login'}]})}
+            variant="outline"
+            style={styles.backButton}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -153,31 +170,66 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#020617',
+    position: 'relative',
+  },
+  backgroundImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    zIndex: 0,
+  },
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
+  },
+  backgroundOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(10, 12, 24, 0.58)',
   },
   scrollContent: {
     flexGrow: 1,
     padding: 24,
+    zIndex: 1,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
+    backgroundColor: 'rgba(2, 6, 23, 0.65)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.16)',
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#333',
+    color: '#F8FAFC',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(226, 232, 240, 0.86)',
     marginBottom: 24,
     textAlign: 'center',
   },
   primaryButton: {
     marginTop: 12,
     paddingVertical: 14,
+  },
+  backButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderColor: 'rgba(226, 232, 240, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.25)',
   },
 });

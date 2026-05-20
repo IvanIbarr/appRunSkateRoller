@@ -28,6 +28,9 @@ module.exports = {
         __dirname,
         'src/shims/notifee.web.ts',
       ),
+      // Módulos nativos que no existen en web → shims
+      'react-native-video': path.resolve(__dirname, 'src/shims/react-native-video.web.tsx'),
+      'react-native-image-picker': path.resolve(__dirname, 'src/shims/react-native-image-picker.web.ts'),
     },
   },
   module: {
@@ -55,6 +58,10 @@ module.exports = {
               '@babel/preset-typescript',
             ],
             plugins: [
+              // Mantener el mismo modo "loose" entre estos transforms para evitar warnings
+              ['@babel/plugin-transform-class-properties', {loose: true}],
+              ['@babel/plugin-transform-private-methods', {loose: true}],
+              ['@babel/plugin-transform-private-property-in-object', {loose: true}],
               [
                 'module-resolver',
                 {

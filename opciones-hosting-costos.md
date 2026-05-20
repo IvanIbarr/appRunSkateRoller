@@ -1,6 +1,6 @@
 # Opciones de hosting y costos (RunSkateRoller)
 
-**Fecha:** 2026-04-14 · **Contexto:** costeo de los **primeros meses** tras integrar API + PostgreSQL (eventos/calendario y datos compartidos entre usuarios). Incluye tablas detalladas por proveedor y estrategia de pago.
+**Fecha:** 2026-05-15 · **Contexto:** costeo de los **primeros meses** tras integrar API + PostgreSQL (eventos/calendario y datos compartidos entre usuarios). **Cliente actual:** Flutter (iOS, Android y, si aplica, **Flutter Web**). El backend sigue siendo Node/Express + Postgres; los **rangos de hosting de API + DB no cambian** por usar Flutter frente a React Native. Incluye tablas por proveedor, correo transaccional (actualizado a situación **2025–2026**) y estrategia de pago.
 
 ---
 
@@ -10,13 +10,43 @@ Con lo implementado recientemente, la app ya no depende solo de datos locales en
 
 | Componente | Rol | Implicación para hosting |
 |------------|-----|---------------------------|
-| **Backend Node/Express** (`SIIG-ROLLER-BACKEND`) | Auth JWT, REST (`/api/...`, p. ej. eventos) | Debe estar **siempre en HTTPS** en producción; la app móvil y web consumen la misma API. |
+| **Backend Node/Express** (`SIIG-ROLLER-BACKEND`) | Auth JWT, REST (`/api/...`, p. ej. eventos) | Debe estar **siempre en HTTPS** en producción; **Flutter** (móvil y web) consume la misma API. |
 | **PostgreSQL** | Usuarios, eventos del calendario, datos transaccionales | **Base gestionada** o VPS con backups; sin DB persistente los usuarios no ven los mismos eventos. |
-| **Email (Nodemailer + SMTP)** | Recuperación de contraseña, notificaciones por correo | Tier gratuito de SendGrid/Resend/Mailgun suele bastar al inicio; luego pago por volumen. |
-| **Front web estático** (React Native Web / build) | Panel o versión web | Puede ir en **Pages/Netlify/Vercel** casi gratis; el costo real está en API + DB. |
+| **Email (Nodemailer + SMTP o API)** | Recuperación de contraseña, verificación, avisos | Ver **§1 ter**: **SendGrid ya no tiene plan gratuito permanente** (solo prueba temporal); hay que presupuestar **Resend free limitado**, **SES** (~pago por uso) o **plan de pago** (~20 USD/mes en muchos proveedores). |
+| **Front web estático** (**build Flutter Web**) | Landing o versión navegador | Salida **`flutter build web`** → igual que cualquier SPA: **Cloudflare Pages / Netlify / Vercel** casi gratis; el costo real sigue siendo **API + DB**. |
+| **Apps en tiendas** (Flutter → **APK/IPA**) | Distribución móvil | **No es “hosting” del backend**, pero sí costo de producto: **Google Play** (cargo de registro de desarrollador) y **Apple Developer** (~99 USD/año). Fuera del mes-a-mes del servidor si pagás anualizado. |
 | **Socket.io** (si lo usas en producción) | Tiempo real | Mismo proceso que Express o servicio separado; en PaaS conviene **un servicio** con WebSockets soportados (Render, Railway, Fly, etc.). |
 
-**Conclusión:** en los primeros meses el gasto recurrente razonable se concentra en **API + PostgreSQL** y, si aplica, **dominio**; el front estático puede seguir en **0**.
+**Conclusión:** en los primeros meses el gasto recurrente razonable se concentra en **API + PostgreSQL**, **correo** (según volumen y proveedor) y, si aplica, **dominio**; Flutter Web puede alojarse en **0** como front estático.
+
+### 1 bis. Flutter: ¿cambia algo en los números de este documento?
+
+| Tema | Efecto en costos |
+|------|------------------|
+| **API + Postgres + dominio + PaaS** | **Igual**: Flutter solo cambia la capa cliente; los mismos tableros Render/Railway/Neon aplican. |
+| **Hosting del “sitio web”** | **`flutter build web`** → archivos estáticos; mismos tiers **gratis** (Pages/Vercel) que antes con otro SPA. |
+| **Mapbox / Firebase / otros SDK** | **Igual** lógica de facturación por uso/tier; revisar quotas en cada consola (no depende del framework). |
+| **Tiendas Apple / Google** | **Cargo de cuenta desarrollador** (no confundir con servidor); contabilízalo aparte si haces cuenta anualizada. |
+
+---
+
+## 1 ter. Correo transaccional (2026): qué cambió y cuánto puede costar
+
+En **mayo de 2025** Twilio anunció el fin del **plan gratuito permanente de SendGrid**; queda **prueba temporal** (p. ej. ~60 días con límites), no una base “para siempre” sin tarjeta. Si antes el documento asumía **“email en 0 con SendGrid”**, ese supuesto **ya no sirve como plan estable**.
+
+**Orientación práctica para RunSkateRoller:**
+
+| Opción | Costo orientativo | Límites / notas |
+|--------|-------------------|----------------|
+| **Resend — Free** | **0 USD/mes** | **Hasta ~3 000 correos/mes**, con **techo ~100 correos/día** (sirve recuperación de contraseña en beta si el volumen es bajo). SMTP/API; integración típica con backend Node. |
+| **Resend — Pro** | **~20 USD/mes** (~**360–390 MXN** con TC ×18–19.5) | **~50 000 correos/mes** en plan típico; sin límite diario como el free según especificación del plan pagado. |
+| **SendGrid — Essentials** (referencia mercado) | **Desde ~19,95 USD/mes** (~**360–385 MXN**) | Suele partir de **paquete ~50 k correos/mes** en el escalón inicial de pago; confirmar en pricing actual. Solo trial gratuito inicial, no plan free permanente. |
+| **Amazon SES** | **Casi proporcional al envío** (muy bajo SI ya tienes infra AWS y dominio verificado) | Del orden de **centavos de USD por 1 000 envíos** + posible costo de **salida/mensajes** según región; más **ingeniería** (IAM, reputación, rebotes). Opción **barata en volumen** si toleras configuración. |
+| **SMTP del propio servidor / VPS** | **0 incremental** pero **no recomendado** como única vía | Reputación, SPF/DKIM, listas negras: coste oculto en soporte y entregabilidad; solo con experiencia correo/SMTP. |
+
+**Cuántos correos consumes (orden de magnitud):** recuperación de contraseña típica = **pocos cientos/mes** en beta; si añades **verificación al registro**, **recordatorios** o **marketing**, el volumen multiplica rápido. Con **solo reset** y pocas cuentas, **Resend free** puede bastar meses; en **v1 pública** conviene **reservar ~350–420 MXN/mes** (**~20 USD**) para no quedarte sin envíos si superás el cap diario/del tier gratuito.
+
+**Impacto en escenarios más abajo:** donde decía **“email 0 MXN”** sustituye mentalmente por **0 si Resend free alcanza** o **~360 MXN/mes** si necesitas **plan Pro / equivalente**.
 
 ---
 
@@ -34,16 +64,16 @@ Con lo implementado recientemente, la app ya no depende solo de datos locales en
 | Perfil | Rango mensual aprox. | Para quién |
 |--------|----------------------|------------|
 | **Arranque mínimo (free tiers)** | **0 – 250** | Primeras 1–3 meses, tráfico muy bajo, aceptar límites de CPU/sleep. |
-| **Recomendado “primeros meses serios”** | **280 – 650** | API + DB siempre activas, menos sorpresas al crecer. |
-| **Cómodo / más margen** | **700 – 2 200** | Más RAM, réplicas, o todo en un proveedor con soporte. |
+| **Recomendado “primeros meses serios”** | **280 – 720** | API + DB siempre activas; sumá **~0–390 MXN/mes** si el correo pasa de **Resend free** a plan **~20 USD**. |
+| **Cómodo / más margen** | **700 – 2 500** | Más RAM, réplicas, o todo en un proveedor con soporte (+ email de volumen medio si aplica). |
 
-*No incluyen dominio anual ni exceso de mapas (Mapbox) ni almacenamiento masivo de imágenes.*
+*No incluyen dominio anual, cuotas de tiendas Apple/Google, ni exceso de mapas (Mapbox) ni almacenamiento masivo de imágenes.*
 
 ---
 
 ## 4. Para Iván: la recomendación en texto (no solo tablas)
 
-Hola, **Iván**. Lo que va abajo (tablas) sirve para **comparar cifras**; lo que suele faltar es **criterio** sobre cuánta infra **merece** la etapa en la que estás. Aquí va una lectura clara, alineada con **RunSkateRoller** (API en Node, PostgreSQL para datos compartidos, app móvil + web) y con la idea de **no quedarte en cero** en el sentido malo: **no depender toda la vida de “todo gratis” que se apaga, limita o te deja a los usuarios sin servicio el día del evento**—pero tampoco **pagar de más** el día 1.
+Hola, **Iván**. Lo que va abajo (tablas) sirve para **comparar cifras**; lo que suele faltar es **criterio** sobre cuánta infra **merece** la etapa en la que estás. Aquí va una lectura clara, alineada con **RunSkateRoller** (**Flutter** iOS/Android y web si la usás, API en Node, PostgreSQL para datos compartidos) y con la idea de **no quedarte en cero** en el sentido malo: **no depender toda la vida de “todo gratis” que se apaga, limita o te deja a los usuarios sin servicio el día del evento**—pero tampoco **pagar de más** el día 1.
 
 ### Qué significa aquí “no quedarnos en ceros”
 
@@ -55,7 +85,7 @@ Hola, **Iván**. Lo que va abajo (tablas) sirve para **comparar cifras**; lo que
 
 1. **Front web (build estático):** quédate en **Cloudflare Pages o Vercel (gratis)**. Ahí el “0” no te perjudica: el front no es el cuello de botella.  
 2. **Lo que nunca debería ser “cero” a largo plazo:** un **par API + PostgreSQL** que tú controles. La opción **más simple mentalmente** es **Render** (mismo sitio: Web Service + Managed Postgres) o, si te gusta ahorrar al inicio, **Neon free + API en Railway/Render** con **alertas y tope** de gasto.  
-3. **Email:** con **SendGrid/Resend en free** alcanzas bien la recuperación de contraseña; subes a pago **solo** cuando haya muchos envíos.  
+3. **Email:** **Resend free** puede alcanzar al inicio (**~100/día**); **SendGrid ya no tiene free permanente**. Si el volumen crece o chocás el tope diario, presupuesta **~20 USD/mes (~360–390 MXN)** en Resend Pro o equivalente (ver **§1 ter**).  
 4. **Dominio:** no es obligatorio el primer día, pero **sí** en cuanto pases a “público suave” (Fase 2 abajo); separa el proyecto de un `localhost` o URL fea de PaaS y da **confianza**. Cuesta **~200–350 MXN/año**; en tu presupuesto mental reparte **~20–30 MXN/mes**.  
 5. **Mapas e imágenes (Mapbox, Cloudinary, etc.):** déjalos en **free o casi** hasta **Fase 3**, cuando tengas **números** (usuarios activos, no solo instalaciones). Ahí el gasto deja de ser intuición y pasa a ser **decisión con datos**.
 
@@ -69,13 +99,13 @@ Esta traza conecta **qué debería estar hecho en el código** con **qué contra
 |------|----------------------------------|---------------------------------|---------------------------|
 | **0 – Sólo dev** | Features en local: login, calendario, eventos, etc. probados en `localhost` o red interna. | Puede ser **0** o deploys de prueba. Sin compromiso. | Cero o casi cero; no confundas esto con “producción”. |
 | **1 – Beta** | Build **TestFlight/Play interno** o pocos testers; quieres validar flujos y bugs **sin** prometer a cientos. Eventos y usuarios reales en BD, pero poca carga. | **Escenario A** (sección 9, totales): mucho free, quizá un **dolarillo** de Railway si ya quieres API estable. | Presupuesto **0–200 MXN/mes**; acepta fricción de límites. Ojo: si el calendario crítico depende al 100 % del free, ten plan de salto a Fase 2. |
-| **2 – Público suave (tu “v1” de verdad)** | Misma app, pero con **gente de verdad** bajando la app, rodadas, eventos compartidos **entre cuentas**. Aquí aplica “lo que añadiste”: **eventos vía API + Postgres** para *todos* los usuarios. | **Escenario B o C:** API+Postgres **de pago fijo o casi fijo** (p. ej. Render ~7+7 USD + dominio). Front sigue en Pages. Email free. | A partir de **~300–500 MXN/mes** (más el dominio prorrateado) es razonable; es **el piso** para no vivir atrapado en el límite del tier gratis. |
+| **2 – Público suave (tu “v1” de verdad)** | Misma app **Flutter**, con **gente de verdad** bajando la app, rodadas, eventos compartidos **entre cuentas**. Aquí aplica **eventos vía API + Postgres** para *todos* los usuarios. | **Escenario B o C:** API+Postgres **de pago fijo o casi fijo** (p. ej. Render ~7+7 USD + dominio). Front **`flutter build web`** en Pages. Correo: **Resend free** si alcanza, o **+~360 MXN/mes** si necesitás plan de pago. | A partir de **~300–500 MXN/mes** de **servidor** (más dominio); sumá **~360 MXN/mes** más si cerrás correo en plan **Pro** desde el día 1. |
 | **2.1 – Ajuste** | Monitoreas: errores 5xx, tiempos de API, registro, envío de correos, picos de fin de semana. | Sube RAM o plan de DB **solo** si el monitoreo lo pide; no por ansiedad. | Incrementos de **cientos** de MXN, no miles, salvo crecimiento claro. |
 | **3 – Escala (cuando entra tracción o dinero)** | Más tráfico, posible notificaciones push, más subida de fotos, websockets a full, más consultas a mapa. | **Parte de escenario D** (Mapbox/Cloudinary/email pago) según métrica. | Aquí el gasto **sí** sube, pero con **sponsor, cuotas, donaciones, etc.** o con datos que justifiquen. |
 
 **Qué evitar, Iván:** lanzar a tienda pública diciendo “ya está todo en servidor” mientras en producción aún vives 100 % en free **sin** alertas, **sin** tope, **sin** probar carga de 20 personas abriendo el calendario el mismo día. **Qué priorizar en cambio:** en cuanto tengas **un solo rodada publicitada o comunidad** usando la app, pasa a **Fase 2 mínima** (B/C): con eso el documento y las tablas dejan de ser números sueltos y se convierten en un **plano** que podés comentar a quien te pregunte *“en qué andas invirtiendo en la app”*.
 
-**Resumen de una línea para ti:** *Empieza barato (Fase 1), nunca mientas a los usuarios con estabilidad que el free no te da; y cuando pases a público, apunta a **~300–500 MXN/mes** de base en API+DB+dominio—eso es el “no quedarnos en ceros” con cabeza.*
+**Resumen de una línea para ti:** *Empieza barato (Fase 1); cuando pases a público, apunta a **~300–500 MXN/mes** de base en API+DB+dominio y **definí correo**: **0** con **Resend free** si tu volumen entra en el cupo, o **+~360 MXN/mes** si necesitás un plan estable tipo **~20 USD**—eso es el “no quedarnos en ceros” con cabeza.*
 
 ---
 
@@ -86,7 +116,7 @@ Esta traza conecta **qué debería estar hecho en el código** con **qué contra
 1. **Front web:** **Cloudflare Pages** o **Vercel** (gratis en tier hobby).  
 2. **API:** **Railway** o **Render** en plan de **pago bajo** o **créditos iniciales** (evita que el servicio “duerma” y corte WebSockets o tareas largas).  
 3. **PostgreSQL:** **Neon** (free tier con límites) o **Supabase** (free tier) **o** Postgres incluido en el mismo **Render** si prefieres **una sola factura**.  
-4. **Email:** **SendGrid / Resend** free tier para transaccionales.  
+4. **Email:** **Resend** (free con techo **~100/día** como referencia habitual) para transaccionales **o**, si el free ya no te alcanza, **Resend Pro / SendGrid pago desde ~20 USD/mes**.  
 5. **Dominio:** opcional al inicio; **~200 – 350 MXN/año** en .com/.mx.
 
 **Por qué esta mezcla:** costea poco al inicio, alinea con el backend y PostgreSQL ya en uso, y permite pasar a Neon/Render pagos cuando el calendario y el registro de usuarios generen carga real.
@@ -111,7 +141,7 @@ Esta traza conecta **qué debería estar hecho en el código** con **qué contra
 - Front: **Cloudflare Pages** — **0**  
 - API: **Render** Web Service — **~120–200** (según plan/instancia)  
 - DB: **Render Postgres** — **~120–200**  
-- Email: SendGrid free / pago por uso  
+- Email: **Resend free** (con techo diario); si no alcanza, **~360–390 MXN/mes** (~20 USD) en plan inicial de Resend/SendGrid  
 
 **Total base:** **~260 – 450 MXN/mes** + dominio opcional.
 
@@ -120,7 +150,7 @@ Esta traza conecta **qué debería estar hecho en el código** con **qué contra
 - Front: **Vercel** — **0**  
 - API: **Railway** (uso variable) — **~0–200**  
 - DB: **Neon** free o pago mínimo — **~0–150**  
-- Email: SendGrid free tier  
+- Email: **Resend free** o pago desde **~360 MXN/mes** (~20 USD)  
 
 **Total:** **~0 – 220 MXN/mes** (puede subir de golpe si se dispara el uso; conviene activar alertas de facturación).
 
@@ -148,8 +178,10 @@ Esta traza conecta **qué debería estar hecho en el código** con **qué contra
 - Neon / Supabase free tiers: **0** con topes; managed pagado **~150 – 450 MXN/mes** según plan.  
 - Render Postgres: **~120 – 200+** en tier básico.
 
-**Email (recuperación de contraseña, Nodemailer)**  
-- Free tier limitado; escalado **~0 – 350 MXN/mes** según volumen.
+**Email (reset, verify, SMTP/API vía backend)**  
+- **Resend free:** **0 MXN/mes** con **~100 correos/día** y ~3 k/mes (techo habitual; revisar web).  
+- **Plan inicial de pago (Resend Pro / SendGrid Essentials):** típico **~20 USD/mes → ~360–390 MXN/mes**.  
+- **Amazon SES:** muy bajo **por volumen**, más trabajo de configuración.
 
 **Dominio y SSL**  
 - Dominio .com/.mx: **~200 – 350 MXN/año**  
@@ -178,8 +210,8 @@ Cada fila es un **cargo recurrente** típico en etapa de arranque. Los USD son *
 | 6 | **Neon** | Free tier | 0,00 | 0 | N/A | Límites de almacenamiento/CPU. |
 | 7 | **Neon** | Plan pago mínimo (si sales del free) | 15,00–19,00 | 270–342 | Revisar en Neon: a veces **migran** a créditos | Postgres serverless. |
 | 8 | **Supabase** | Free / Pro aprox. | 0 / 25 | 0 / 450 | **Pro** a veces con **descuento anual** (revisar web) | DB + auth extra si lo usas. |
-| 9 | **SendGrid** | Free (hasta límite de correos) | 0,00 | 0 | Planes de pago: a veces **%** anual | Solo SMTP transaccional. |
-| 10 | **Resend** | Free tier / Essentials | 0 / 20 | 0 / 360 | Revisar | Alternativa a SendGrid. |
+| 9 | **SendGrid** | Essentials **(~50 k mails/mes**, referencia inicial de pago) | **19,95** | **~360** | A veces **%** en planes superiores; **trial** inicial, sin free permanente desde 2025 | Si ya dominás Twilio/ecosistema; mismo orden de magnitud USD que Resend Pro. |
+| 10 | **Resend** | Free (transaccional) / Pro ~50 k | **0 / 20** | **0 / ~360** | Revisar | **Free:** ~100/día típico; **Pro:** sin ese tope según especificación vigente del plan pagado. |
 | 11 | **Namecheap / Cloudflare** | **Dominio** .com (costo/ año ÷ 12) | ~0,80–1,20 | ~15–22 | Sí: **años 2+** o **multianual** suelen bajar $/año | No es “mensual” en la factura: se paga el año. |
 | 12 | **Mapbox** | Free + uso | 0–20 | 0–360 | Típico **mensual o por uso** | Dependiendo de map loads. |
 | 13 | **Hetzner / Contabo** | VPS 1 vCPU (solo referencia) | 4,00–6,00 | 72–108 | A veces **%** pago anual adelantado en VPS | Tú administras OS + Postgres. |
@@ -195,20 +227,23 @@ La **tabla recomendada para iniciar** en serio (cuando ya quieres **API + Postgr
 | Sí | **1** o **2** | Cloudflare **o** Vercel | Front web (elige **uno**) | 0 | 0 |
 | Sí | **3** | Render | Web Service = tu API Node | 7 | 126 |
 | Sí | **4** | Render | PostgreSQL gestionado | 7 | 126 |
-| Sí | **9** | SendGrid | Email transaccional (free) | 0 | 0 |
+| Sí | **10** | **Resend** | Email transaccional (**free** si alcanza tope ~100/día) | **0** | **0** |
+| Opcional día 1 | **9** o **10 pagado** | SendGrid Essentials **o** Resend Pro | **~20 USD/mes** si el **free no alcanza** | **20** | **~360** |
 | Sí (cuando salgas a público) | **11** | Dominio .com | Costo **mental** mes a mes (anual ÷ 12) | ~1 | **~18–25** |
 | No al inicio | **12** | Mapbox | Déjalo en free hasta Fase 3 | 0 | 0 |
 | No mezclar sin criterio | **5** | Railway | Solo si **no** usas Render para la API (elige un camino) | var. | var. |
 
-**Suma del pack “Iván – arranque producción” (solo filas 3+4+1 o 2+9+11):**
+**Suma del pack “Iván – arranque producción” (filas **3 + 4 + (1 ó 2) + 10 + 11** con **Resend free**; si el correo debe ser **pagado desde el día 1**, sumá **+20 USD** ≈ **+360 MXN** — fila **9** o equivalente pagado):
 
 | Concepto | USD/mes | MXN/mes |
 |----------|--------:|--------:|
 | Render API + Postgres (filas 3 + 4) | **14** | **252** |
 | Front Cloudflare o Vercel (fila 1 o 2) | 0 | 0 |
-| Email SendGrid (fila 9) | 0 | 0 |
-| Dominio prorrateado (fila 11, ~300 MXN/año) | — | **~25** |
-| **Total presupuesto mensual fijo (orden de magnitud)** | **~15** | **~277** → **~300–330** con TC/impuestos |
+| Email **Resend free** (fila 10; tope habitual **~100/día**) | 0 | 0 |
+| Email **pagado estable** (**Resend Pro / SendGrid**, ~20 USD) — *opcional* | **+20** | **+~360** |
+| Dominio prorrateado (fila **11**) | ~1 | **~25** |
+| **Total orden de magnitud (sin correo pagado)** | **~15** | **~277 → ~300–330** con TC/impuestos |
+| **Total mismo pack + correo ~20 USD** | **~35** | **~630–690** |
 
 **Totales anuales (para tu hoja de caja, Iván):**
 
@@ -216,9 +251,10 @@ La **tabla recomendada para iniciar** en serio (cuando ya quieres **API + Postgr
 |----------|---------|-------------------:|
 | Solo API + DB (Render 14 USD × 12 meses, TC 18) | 252 × 12 | **3 024** |
 | Dominio (1 pago típico .com) | — | **~250–350** |
-| **Total año 1 (hosting + dominio)** | 3 024 + dominio | **~3 300 – 3 400** |
+| **Total año 1 solo API+DB+dominio (+ Resend free)** | igual arriba | **~3 300 – 3 400** |
+| Si sumás correo pagado (**+240 USD/año**) | +360×12 sobre eso | sumar **~4 320** MXN orden de magnitud |
 
-*(Mapbox, Resend de pago, etc. van **aparte** cuando subas de fase; aquí no los sumamos.)*
+*(Mapbox, Dedicated IP correo, etc. van **aparte** cuando subas de fase.)*
 
 ### 8.2 Mi plan Iván: mes 1, mes 2… (una fila por mes)
 
@@ -236,7 +272,7 @@ Números **fijos orientativos** para no improvisar; ajusta el **mes en que pasas
 **Acumulado aprox. primeros 6 meses (si meses 1–2 ~80 MXN y 3–6 ~315 MXN):**  
 80+80+315×4 = 160 + 1 260 = **~1 420 MXN** + **dominio** si lo pagas en un mes suelto (~300) → **~1 720 MXN** en el semestre (orden de magnitud; no incluye el laptop ni tiendas de apps).
 
-**Frase de cierre:** *“Nos arrancamos con”* **las filas 1 (o 2) + 3 + 4 + 9 + 11** de la tabla de la sección 8, **~300–330 MXN/mes** en producción, y **~3,3k MXN** en el año con dominio. El resto de filas (Mapbox, email de pago, etc.) **cuando tengas tracción**.
+**Frase de cierre:** Nos arrancamos con las **filas 1 o 2, 3, 4, 10 y 11** (~**300–330 MXN/mes**) si **Resend free** alcanza el volumen diario; con **correo estable de ~20 USD** desde el día 1, sube a **~630–690 MXN/mes**. Año 1 tipo **~3,3k MXN** (servidor+dominio+Resend free) o **~+4,3k MXN** extra anuales aproximados si el correo es siempre de pago.
 
 ---
 
@@ -246,10 +282,11 @@ Suma aproximada con **TC 18**; redondea en tu hoja al TC real.
 
 | Escenario | Qué incluye (resumido) | Suma USD/mes (rango) | **Total MXN/mes** (rango) | **Total MXN / año** (rango) |
 |-----------|------------------------|----------------------|---------------------------|----------------------------|
-| **A – Mínimo (free max)** | Cloudflare + Railway bajo + Neon free + email free, sin Mapbox pago | 0–5 | **0 – 90** | **0 – 1 080** |
-| **B – Equilibrado (recomendado al arrancar “en serio”)** | Cloudflare + Render API + Render Postgres + dominio prorrateado, email free | ~15–17 | **~270 – 310** + dominio | **~3 200 – 3 800** + **~250–400/año** dominio |
-| **C – Un solo panel** | Render (static + API + Postgres) todo pagado, email free | ~16–25 | **~290 – 450** | **~3 500 – 5 400** |
-| **D – v1 con todo** | C + Resend/SendGrid pago ligero + Mapbox cerca del techo + Cloudinary básico | 35–60 | **~630 – 1 080** | **~7 500 – 13 000** |
+| **A – Mínimo (free max)** | Cloudflare + Railway bajo + Neon free + **Resend free** (cap diario), sin Mapbox pago | 0–5 | **0 – 90** | **0 – 1 080** |
+| **B – Equilibrado (recomendado al arrancar “en serio”)** | Render API + Postgres + front en Pages/Vercel + dominio prorrateado; **correo: solo Resend free** (superá este escenario si el cap diario te frena — ver **§1 ter**) | ~15–17 | **~270 – 310** + dominio | **~3 200 – 3 800** + **~250–400/año** dominio |
+| **B′ – Como B pero correo de pago estable** | Igual infra + **~20 USD/mes** (Resend Pro / SendGrid Essentials u otro escalón inicial) — para cuando **no** podés depender del free ni del trial corto | ~35–37 | **~630 – 690** + dominio | **~7 500 – 8 400** + dominio |
+| **C – Un solo panel** | Render (static + API + Postgres) todo pagado; **correo según necesidad** (**0** si Resend free alcanza, **ó +~20 USD**) | ~16–25 **o ~36–45** | **~290 – 450** **ó ~660 – 870** | Rango proporcional año |
+| **D – v1 con todo** | Como C ampliado + Mapbox alto + Cloudinary básico + **correo ya en plan de pago** si el volumen lo exige | 35–60+ | **~630 – 1 080+** | **~7 500 – 13 000+** |
 
 *Dominio: muchos registradores cobran **1 vez al año**; en la tabla B el “+ dominio” es **~15–25 MXN/mes** de costo promedio si divides el pago anual entre 12.*
 
@@ -287,11 +324,11 @@ Suma aproximada con **TC 18**; redondea en tu hoja al TC real.
 
 | Fase | Qué activas | Alcance o detalle (qué cubre) | Objetivo de negocio | Ref. de coste | **Suma aprox. MXN/mes** | **Suma aprox. MXN/año** |
 |------|------------|---------------------------------|--------------------|---------------|-------------------------:|--------------------------:|
-| **1 – Beta** | Free tiers: front + (Railway/Render mín) + Neon free + email free; dominio opcional | **Cubre:** probar con **pocos** usuarios a la vez; aceptar **límites** del free (CPU, conexiones, a veces “sueño” del servicio). **Incluye:** registro, login, calendario/eventos en servidor con carga baja. **No cubre aún:** disponibilidad tipo 24/7 “de tienda”, ni escala a cientos en paralelo; el foco es **encontrar bugs y validar flujos**, no marketing masivo. **Detalle de números y frases (pocos, límites, 24/7, flujos):** ver **§11.1** debajo. | Probar con grupo cerrado, calendario y auth en serio | A (sec. 9) | **0 – 90** | **0 – 1 080** |
-| **2 – Público suave** | API+DB de pago fijo (Render o similar), **sin** dejar de dormir; dominio propio; alertas de billing | **Cubre:** **mismos** flujos que en beta pero con **gente real** descargando la app, rodadas y eventos en vivo; datos **unificados** en PostgreSQL para **todos** los usuarios (misma lógica que eventos vía API). **Incluye:** HTTPS con dominio, servicio despierto, alertas de facturación, correo transaccional en free si alcanza. **No es obligatorio aún:** mapas/imgs a nivel de pago, email masivo, CDN caro. | Primeras descargas y rodadas; ingresar feedback | B o C (sec. 9) | **~300 – 450** | **~3 500 – 5 400** |
+| **1 – Beta** | Free tiers: front + (Railway/Render mín) + Neon free + **Resend free**; dominio opcional | **Cubre:** probar con **pocos** usuarios a la vez; aceptar **límites** del free (CPU, conexiones, a veces “sueño” del servicio). **Incluye:** registro, login, calendario/eventos en servidor con carga baja. **No cubre aún:** disponibilidad tipo 24/7 “de tienda”, ni escala a cientos en paralelo; el foco es **encontrar bugs y validar flujos**, no marketing masivo. **Detalle de números y frases (pocos, límites, 24/7, flujos):** ver **§11.1** debajo. | Probar con grupo cerrado, calendario y auth en serio | A (sec. 9) | **0 – 90** | **0 – 1 080** |
+| **2 – Público suave** | API+DB de pago fijo (Render o similar), **sin** dejar de dormir; dominio propio; alertas de billing; **correo: Resend free o plan ~20 USD** | **Cubre:** **mismos** flujos que en beta pero con **gente real** descargando la **app Flutter**, rodadas y eventos en vivo; datos **unificados** en PostgreSQL para **todos** los usuarios (misma lógica que eventos vía API). **Incluye:** HTTPS con dominio, servicio despierto, alertas de facturación, correo (**free capado** o **pago** según volumen — **§1 ter**). **No es obligatorio aún:** mapas/imgs a nivel de pago, email masivo, CDN caro. | Primeras descargas y rodadas; ingresar feedback | **B**, **C** **o B′** (sec. 9) | **~300 – 450** **(~630 – 690 con B′)** | **~3 500 – 8 400** |
 | **3 – Crecer** | Más RAM/DB, email de pago si haces muchos envíos, Mapbox/Cloudinary si hace falta | **Cubre:** **más** usuarios en paralelo, picos (fines de semana), y **costos variables** (mapas, almacenamiento, miles de correos) según **datos reales** (retención, DAU, picos de API). **Incluye:** ajuste de recursos, posible monitoreo/backup extra. **Escala solo** lo que las **métricas** justifiquen, no “por si acaso” enteros. | Cuando ya hay **métrica** (usuarios activos, retención) | D parcial (sec. 9) | **~450 – 1 080+** | **~5 400 – 13 000+** |
 
-*Cifras alineadas a la **sección 9** (escenarios A–D), tipo de cambio **~18 MXN/USD**; el dominio en B/C puede ser un **pago anual** separado: suma unos **+250–400 MXN/año** al dominio según registrador. En Fase 1, si usas un mínimo de Railway/Render, puedes acercarte a **~120 MXN/mes**; no contradice el techo de **90** en free puro (sec. 9-A).*
+*Cifras alineadas a la **sección 9** (escenarios **A**, **B**, **B′**, **C**, **D**), tipo de cambio **~18 MXN/USD**; el dominio en B/C puede ser un **pago anual** separado: suma unos **+250–400 MXN/año** al dominio según registrador. En Fase 1, si usas un mínimo de Railway/Render, puedes acercarte a **~120 MXN/mes**; no contradice el techo de **90** en free puro (sec. 9-A). Si en Fase 2 necesitás **correo de pago estable**, usá el rango del escenario **B′** (**~630–690 MXN/mes**).*
 
 ### 11.1 Fase 1 (Beta): qué significa cada frase (números y términos)
 
@@ -403,11 +440,10 @@ Por eso en Fase 1 no “vendes” a terceros que la app **nunca** fallará ni **
 - Front estático: **0**  
 - API (un dyno/servicio pequeño siempre activo): **~150 – 280**  
 - Postgres gestionado mínimo: **~120 – 220**  
-- Email (dentro de free tier): **0**  
+- Email **Resend free** si el volumen está bajo (**~360 MXN/mes** adicionales en plan inicial **~20 USD** si necesitás límite diario alto o marca blanca estable)  
 - Dominio prorrateado: **~20 – 30 / mes**  
 
-**Banda total razonable:** **~290 – 530 MXN/mes**  
-(Si te quedas solo en free tiers agresivos, puedes bajar a **~0 – 150**, con riesgo de límites o cold starts según proveedor.)
+**Banda total razonable:** **~290 – 530 MXN/mes** **solo** con **correo en free limitado**; sumá **~360 MXN/mes** si ese mes contratás correo estable de **~20 USD**.
 
 ---
 
@@ -415,6 +451,7 @@ Por eso en Fase 1 no “vendes” a terceros que la app **nunca** fallará ni **
 
 - Definir si **WebSocket** en producción va en el **mismo** servicio que Express (afecta RAM mínima).  
 - Estimar **MAU** y **requests/día** tras 1–2 meses en beta.  
+- Medir volumen mensual/anual estimado de **correos transaccionales** (§1 ter) antes de fichar solo “free”.  
 - Decidir si **un solo proveedor** (Render) vs **mejor free tier** (Neon + Railway).
 
 **Nota de tip de cambio:** los importes en USD de los sitios de Render/Railway/Neon cambian; convierte con el tipo del día al presupuestar.
@@ -424,11 +461,13 @@ Por eso en Fase 1 no “vendes” a terceros que la app **nunca** fallará ni **
 ## 15. Historial de documento
 
 - **2026-03-05:** versión inicial (200–500 usuarios, stack Node + Postgres).  
-- **2026-04-14:** stack actual (API centralizada, PostgreSQL, email, WebSocket); costeo primeros meses; recomendación free tiers / Render. **Ampliación:** tablas **por proveedor** (estilo Excel), **totales por escenario** (MXN/mes y MXN/año), **pago anual vs mensual** y **tarjeta / flujo de caja**; estrategia **por fases vs. v1 completa** (híbrido).
+- **2026-04-14:** stack actual (API centralizada, PostgreSQL, email vía SMTP, WebSocket); costeo primeros meses; recomendación free tiers / Render. Ampliación con tablas por proveedor, escenarios MXN/año y fases vs. v1 completa (híbrido).  
+- **2026-05-15:** **Cliente Flutter** (los costos API+DB siguen igual); **correo 2025–2026:** SendGrid sin free permanente — **§1 ter**, escenario **B′**, tabla **§8** y pack **§8.1** con **Resend** y opción pagada (~20 USD). HTML: `opciones-hosting-costos.html`.
 
 **Export a Excel / vista clara (misma carpeta del repositorio):**
 
-- `RunSkateRoller-hosting-VISUAL.html` — abrir con el **navegador** (doble clic): tablas con formato legible; imprimible a PDF (Ctrl+P).
+- **`opciones-hosting-costos.html`** — mismo documento (Flutter + correo actualizado); vista imprimible.
+- `RunSkateRoller-hosting-VISUAL.html` — vista previa genérica anterior; puede quedar **desfasada** frente al `.md`/HTML nuevo.
 - `RunSkateRoller-hosting-proveedores.csv`, `RunSkateRoller-hosting-escenarios.csv`, `RunSkateRoller-hosting-flujo-caja.csv`, `RunSkateRoller-hosting-fases.csv`, `RunSkateRoller-hosting-comparativo.csv` — **doble clic** abre en **Excel**; si los acentos fallan, en Excel: *Datos → Desde texto/CSV* y codificación **UTF-8**.  
 - `RunSkateRoller-paquete-ivan-suma.csv` — filas 8.1 a sumar + totales mes/año. `RunSkateRoller-plan-ivan-meses.csv` — plan mes 1…6.  
 - **Sección 4 (nueva):** carta a **Iván** — recomendación en prosa; “no quedarnos en ceros en infra” explicado; fases 0–3 ligadas a desarrollo y a la caja; el HTML de vista incluye un resumen arriba.  

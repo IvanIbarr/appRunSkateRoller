@@ -7,6 +7,8 @@ class MarketingSellDraft {
     this.deliveryFeeMx = 0,
     this.saleType = 'gratis',
     this.listingFeeMx = 0,
+    this.photoUris = const [],
+    this.condition,
   });
 
   final String brandDetails;
@@ -16,6 +18,8 @@ class MarketingSellDraft {
   final int deliveryFeeMx;
   final String saleType;
   final int listingFeeMx;
+  final List<String> photoUris;
+  final String? condition;
 
   MarketingSellDraft copyWith({
     String? brandDetails,
@@ -25,6 +29,8 @@ class MarketingSellDraft {
     int? deliveryFeeMx,
     String? saleType,
     int? listingFeeMx,
+    List<String>? photoUris,
+    String? condition,
   }) {
     return MarketingSellDraft(
       brandDetails: brandDetails ?? this.brandDetails,
@@ -34,7 +40,8 @@ class MarketingSellDraft {
       deliveryFeeMx: deliveryFeeMx ?? this.deliveryFeeMx,
       saleType: saleType ?? this.saleType,
       listingFeeMx: listingFeeMx ?? this.listingFeeMx,
+      photoUris: photoUris ?? this.photoUris,
+      condition: condition ?? this.condition,
     );
   }
 }
-

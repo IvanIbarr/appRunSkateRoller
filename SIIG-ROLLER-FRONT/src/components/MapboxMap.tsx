@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import React, {useEffect, useRef, useState} from 'react';
 import {View, Platform, ActivityIndicator, Text, StyleSheet, Alert} from 'react-native';
 import {MAPBOX_ACCESS_TOKEN, isExampleToken} from '../config/mapbox';

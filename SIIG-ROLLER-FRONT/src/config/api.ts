@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 // Configuración de la API
 // En desarrollo, usar localhost
 // En producción, cambiar a la URL del servidor

@@ -295,6 +295,9 @@ const buildMailer = () => {
   });
 };
 
+const isSmtpConfigured = () =>
+  Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
 /**
  * Solicita código de recuperación
  */
@@ -321,16 +324,35 @@ const forgotPassword = async (req, res) => {
     const {code, expiresAt} = PasswordResetService.createReset(email);
     const transporter = buildMailer();
     const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+    const smtpReady = isSmtpConfigured() && Boolean(transporter && fromEmail);
+    let emailSent = false;
 
-    if (transporter && fromEmail) {
-      await transporter.sendMail({
-        from: fromEmail,
-        to: email,
-        subject: 'Código de recuperación - RunSkateRoller',
-        text: `Tu código de recuperación es: ${code}. Expira en 10 minutos.`,
-      });
-    } else {
-      console.warn('SMTP no configurado, código de recuperación:', code);
+    if (smtpReady) {
+      try {
+        await transporter.sendMail({
+          from: fromEmail,
+          to: email,
+          subject: 'Código de recuperación - RunSkateRoller',
+          text: `Tu código de recuperación es: ${code}. Expira en 10 minutos.`,
+        });
+        emailSent = true;
+      } catch (mailError) {
+        console.error('Fallo al enviar correo de recuperación:', mailError);
+      }
+    }
+
+    if (!emailSent) {
+      console.error('Correo de recuperación NO enviado. Revisa SMTP_* en .env');
+      const devResponse = {
+        success: false,
+        error:
+          'No se pudo enviar el correo de recuperación. Verifica configuración SMTP y revisa logs del backend.',
+      };
+      if (process.env.NODE_ENV !== 'production') {
+        devResponse.devCode = code;
+        devResponse.expiresAt = expiresAt;
+      }
+      return res.status(503).json(devResponse);
     }
 
     const response = {

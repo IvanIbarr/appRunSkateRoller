@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import React, {useEffect, useMemo, useState} from 'react';
 import {View, Text, StyleSheet, ActivityIndicator, Platform} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';

@@ -1,5 +1,6 @@
 const Mensaje = require('../models/Mensaje');
 const Usuario = require('../models/Usuario');
+const {canAccessStaffChat} = require('../utils/staffChatAccess');
 
 const UPLOADS_CHAT_PREFIX = '/uploads/chat/';
 
@@ -48,14 +49,11 @@ const getMessages = async (req, res) => {
     }
 
     // Verificar permisos para chat staff
-    if (chatType === 'staff') {
-      const currentUser = req.user;
-      if (currentUser.tipoPerfil !== 'administrador' && currentUser.tipoPerfil !== 'liderGrupo') {
-        return res.status(403).json({
-          success: false,
-          error: 'No tienes permisos para acceder al chat staff',
-        });
-      }
+    if (chatType === 'staff' && !canAccessStaffChat(req.user)) {
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes permisos para acceder al chat staff',
+      });
     }
 
     const messages = await Mensaje.findByChatType(chatType);
@@ -154,14 +152,11 @@ const createMessage = async (req, res) => {
     }
 
     // Verificar permisos para chat staff
-    if (chatType === 'staff') {
-      const currentUser = req.user;
-      if (currentUser.tipoPerfil !== 'administrador' && currentUser.tipoPerfil !== 'liderGrupo') {
-        return res.status(403).json({
-          success: false,
-          error: 'No tienes permisos para enviar mensajes al chat staff',
-        });
-      }
+    if (chatType === 'staff' && !canAccessStaffChat(req.user)) {
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes permisos para enviar mensajes al chat staff',
+      });
     }
 
     const mensajeData = {

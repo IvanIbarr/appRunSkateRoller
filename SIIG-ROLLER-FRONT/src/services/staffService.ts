@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import apiService from './apiService';
 import {API_ENDPOINTS} from '../config/api';
 import {Usuario, AuthResponse} from '../types';

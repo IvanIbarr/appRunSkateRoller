@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 export type TipoPerfil = 'administrador' | 'liderGrupo' | 'roller';
 export type Sexo = 'masculino' | 'femenino' | 'ambos';
 export type Nacionalidad = 'español' | 'inglés';

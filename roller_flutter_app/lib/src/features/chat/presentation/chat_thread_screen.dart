@@ -18,8 +18,8 @@ final _meProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) asyn
   }
 });
 
-final _threadProvider =
-    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, chatType) async {
+final chatThreadMessagesProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, chatType) async {
   return ref.watch(chatRepositoryProvider).getMessages(chatType: chatType);
 });
 
@@ -46,6 +46,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   void initState() {
     super.initState();
     _textCtrl.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(chatThreadMessagesProvider(widget.chatType));
+    });
   }
 
   @override
@@ -75,11 +79,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
             }(),
             timestamp: _parseTs(it['timestamp']),
             attachmentUrl: () {
-              final u = (it['attachmentUrl'] ?? '').toString();
+              final u = (it['attachmentUrl'] ?? it['mediaUrl'] ?? '').toString();
               return u.isEmpty ? null : u;
             }(),
             attachmentType: () {
-              final t = (it['attachmentType'] ?? '').toString();
+              final t = (it['attachmentType'] ?? it['mediaType'] ?? '').toString();
               return t.isEmpty ? null : t;
             }(),
           ),
@@ -100,6 +104,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     setState(() => _uploading = true);
     try {
       final up = await ref.read(chatRepositoryProvider).uploadMedia(file);
+      debugPrint(
+        'CHAT UPLOAD ok url=${up.url} mediaType=${up.mediaType} '
+        'resolved=${ApiConfig.resolveMediaUrl(up.url)} name=${file.name}',
+      );
       setState(() {
         _pendingMediaUrl = up.url;
         _pendingMediaType = up.mediaType;
@@ -151,7 +159,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
         _pendingMediaUrl = null;
         _pendingMediaType = null;
       });
-      ref.invalidate(_threadProvider(widget.chatType));
+      ref.invalidate(chatThreadMessagesProvider(widget.chatType));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo enviar: $e')));
@@ -165,7 +173,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final u = _pendingMediaUrl;
     if (u == null || u.isEmpty) return null;
     if (_pendingMediaType != 'image') return null;
-    return u.startsWith('/uploads/') ? '${ApiConfig.baseUrl()}$u' : u;
+    return ApiConfig.resolveMediaUrl(u);
   }
 
   @override
@@ -173,11 +181,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final me = ref.watch(_meProvider).valueOrNull;
     final myEmail = (me?['email'] ?? '').toString().toLowerCase();
     final myId = (me?['id'] ?? '').toString();
-    final async = ref.watch(_threadProvider(widget.chatType));
+    final async = ref.watch(chatThreadMessagesProvider(widget.chatType));
     final isStaff = widget.chatType == 'staff';
 
     ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
-      _threadProvider(widget.chatType),
+      chatThreadMessagesProvider(widget.chatType),
       (prev, next) {
         next.whenData((_) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -191,71 +199,87 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
     final hasReady = _pendingMediaUrl != null && _pendingMediaUrl!.isNotEmpty;
     final canSend = !_sending && !_uploading && (_textCtrl.text.trim().isNotEmpty || hasReady);
 
-    final body = SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SizedBox(
-            height: constraints.maxHeight,
-            width: constraints.maxWidth,
-            child: async.when(
-              skipLoadingOnReload: true,
-              data: (items) {
-                final msgs = _mapMessages(items);
-                return ChatRnThreadColumn(
-                  isStaffChat: isStaff,
-                  scrollController: _scroll,
-                  messages: msgs,
-                  resolveOwn: (m) => _resolveOwn(m, myId, myEmail),
-                  showPendingBar: _pendingMediaUrl != null,
-                  pendingIsVideo: _pendingMediaType == 'video',
-                  pendingThumbUrl: _pendingThumbResolved(),
-                  onClearPending: () => setState(() {
-                    _pendingMediaUrl = null;
-                    _pendingMediaType = null;
-                  }),
-                  inputController: _textCtrl,
-                  onImage: _uploading ? () {} : _pickImage,
-                  onVideo: _uploading ? () {} : _pickVideo,
-                  onEmoji: () {
-                    showChatRnEmojiPickerModal(
-                      context: context,
-                      onSelect: (e) {
-                        _textCtrl.text = '${_textCtrl.text}$e';
-                        _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
-                        setState(() {});
-                      },
-                    );
-                  },
-                  onSend: _send,
-                  canSend: canSend,
-                  sending: _sending,
-                  uploading: _uploading,
-                  onRefresh: () async {
-                    ref.invalidate(_threadProvider(widget.chatType));
-                    await ref.read(_threadProvider(widget.chatType).future);
-                  },
-                  childAboveList: null,
-                );
-              },
-              loading: () => ChatRnLoading(isStaff: isStaff),
-              error: (e, st) => SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Error cargando chat: $e',
-                  style: TextStyle(color: Colors.red.shade200),
-                ),
-              ),
-            ),
+    Widget threadContent(AsyncValue<List<Map<String, dynamic>>> async) {
+      return async.when(
+        skipLoadingOnReload: true,
+        data: (items) {
+          final msgs = _mapMessages(items);
+          return ChatRnThreadColumn(
+            isStaffChat: isStaff,
+            scrollController: _scroll,
+            messages: msgs,
+            resolveOwn: (m) => _resolveOwn(m, myId, myEmail),
+            showPendingBar: _pendingMediaUrl != null,
+            pendingIsVideo: _pendingMediaType == 'video',
+            pendingThumbUrl: _pendingThumbResolved(),
+            onClearPending: () => setState(() {
+              _pendingMediaUrl = null;
+              _pendingMediaType = null;
+            }),
+            inputController: _textCtrl,
+            onImage: _uploading ? () {} : _pickImage,
+            onVideo: _uploading ? () {} : _pickVideo,
+            onEmoji: () {
+              showChatRnEmojiPickerModal(
+                context: context,
+                onSelect: (e) {
+                  _textCtrl.text = '${_textCtrl.text}$e';
+                  _textCtrl.selection = TextSelection.collapsed(offset: _textCtrl.text.length);
+                  setState(() {});
+                },
+              );
+            },
+            onSend: _send,
+            canSend: canSend,
+            sending: _sending,
+            uploading: _uploading,
+            onRefresh: () async {
+              ref.invalidate(chatThreadMessagesProvider(widget.chatType));
+              await ref.read(chatThreadMessagesProvider(widget.chatType).future);
+            },
+            childAboveList: null,
           );
         },
-      ),
-    );
+        loading: () => ChatRnLoading(isStaff: isStaff),
+        error: (e, st) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Error cargando chat: $e',
+            style: TextStyle(color: Colors.red.shade200),
+          ),
+        ),
+      );
+    }
 
     if (widget.shellEmbedded) {
-      return Scaffold(backgroundColor: AppTheme.bg, body: body);
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight;
+          final w = constraints.maxWidth;
+          if (!h.isFinite || h <= 0 || !w.isFinite || w <= 0) {
+            return const SizedBox.shrink();
+          }
+          return SizedBox(
+            width: w,
+            height: h,
+            child: threadContent(async),
+          );
+        },
+      );
     }
+
+    final body = SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: threadContent(async)),
+        ],
+      ),
+    );
     return Scaffold(
       backgroundColor: AppTheme.bg,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(isStaff ? 'Chat staff' : 'Chat general'),
         leading: IconButton(

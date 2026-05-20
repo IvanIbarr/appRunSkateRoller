@@ -1,13 +1,18 @@
 // Calco visual de `appRunSkateRoller/src/components/ChatThread.tsx` (StyleSheet.create).
 // Sin Card/ListTile: solo valores del StyleSheet RN.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/network/api_config.dart';
+import 'chat_rn_media_widgets.dart';
 
 /// Modelo mínimo para pintar un mensaje como en RN.
+enum ChatRnSendState { sending, sent }
+
 class ChatRnMessageVm {
   const ChatRnMessageVm({
     required this.id,
@@ -18,6 +23,7 @@ class ChatRnMessageVm {
     this.timestamp,
     this.attachmentUrl,
     this.attachmentType,
+    this.sendState,
   });
 
   final String id;
@@ -28,6 +34,8 @@ class ChatRnMessageVm {
   final DateTime? timestamp;
   final String? attachmentUrl;
   final String? attachmentType;
+  /// Solo aplica a mensajes propios: relojito/check.
+  final ChatRnSendState? sendState;
 }
 
 abstract final class ChatRnTokens {
@@ -148,6 +156,45 @@ String chatRnFormatTime(DateTime? d) {
   return '$h:$m';
 }
 
+/// Métricas respecto al ancho del contenedor unificado (tabs + lista + input).
+class ChatRnLayoutMetrics {
+  ChatRnLayoutMetrics({
+    required BoxConstraints constraints,
+    required Size screen,
+  }) {
+    contentWidth = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+        ? constraints.maxWidth
+        : screen.width;
+    isCompact = contentWidth < 600;
+    listPaddingH = isCompact ? 10.0 : 12.0;
+    inputPaddingH = listPaddingH;
+    innerWidth = math.max(0, contentWidth - listPaddingH * 2);
+
+    var bubble = innerWidth > 0 ? innerWidth * 0.82 : 280.0;
+    var media = innerWidth > 0 ? innerWidth * 0.78 : 240.0;
+    final mediaH = isCompact ? 240.0 : 260.0;
+
+    media = math.min(media, math.max(120.0, bubble - 28));
+    maxBubbleWidth = bubble;
+    mediaMaxWidth = media;
+    mediaMaxHeight = mediaH;
+    mediaCardHeight = math.min(
+      mediaMaxHeight,
+      math.max(160.0, mediaMaxWidth * 0.62),
+    );
+  }
+
+  late final double contentWidth;
+  late final bool isCompact;
+  late final double listPaddingH;
+  late final double inputPaddingH;
+  late final double innerWidth;
+  late final double maxBubbleWidth;
+  late final double mediaMaxWidth;
+  late final double mediaMaxHeight;
+  late final double mediaCardHeight;
+}
+
 class ChatRnMessageBubble extends StatelessWidget {
   const ChatRnMessageBubble({
     super.key,
@@ -155,14 +202,16 @@ class ChatRnMessageBubble extends StatelessWidget {
     required this.isStaffChat,
     required this.isOwn,
     required this.maxBubbleWidth,
-    required this.host,
+    required this.mediaMaxWidth,
+    required this.mediaMaxHeight,
   });
 
   final ChatRnMessageVm msg;
   final bool isStaffChat;
   final bool isOwn;
   final double maxBubbleWidth;
-  final String host;
+  final double mediaMaxWidth;
+  final double mediaMaxHeight;
 
   bool get _system => msg.userId == 'system';
 
@@ -222,11 +271,7 @@ class ChatRnMessageBubble extends StatelessWidget {
       );
     }
 
-    final mediaUri = msg.attachmentUrl != null && msg.attachmentUrl!.isNotEmpty
-        ? (msg.attachmentUrl!.startsWith('/uploads/')
-              ? '$host${msg.attachmentUrl}'
-              : msg.attachmentUrl!)
-        : '';
+    final mediaUri = ApiConfig.resolveMediaUrl(msg.attachmentUrl);
 
     final bubbleDecoration = () {
       if (isOwn) {
@@ -251,11 +296,10 @@ class ChatRnMessageBubble extends StatelessWidget {
       );
     }();
 
-    final align = isOwn ? Alignment.centerRight : Alignment.centerLeft;
+    final mediaW = mediaMaxWidth;
+    final mediaH = mediaMaxHeight;
 
-    return Align(
-      alignment: align,
-      child: ConstrainedBox(
+    final bubble = ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxBubbleWidth),
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -295,50 +339,32 @@ class ChatRnMessageBubble extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               if (msg.attachmentType == 'image' && mediaUri.isNotEmpty) ...[
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 280),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ColoredBox(
-                      color: const Color.fromRGBO(15, 23, 42, 0.2),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: Image.network(
-                          mediaUri,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ),
-                      ),
+                Align(
+                  alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+                  child: _ChatRnMediaCard(
+                    width: mediaW,
+                    height: mediaH,
+                    child: ChatRnMessageNetworkImage(
+                      messageId: msg.id,
+                      url: mediaUri,
+                      width: mediaW,
+                      height: mediaH,
                     ),
                   ),
                 ),
                 const SizedBox(height: 8),
               ],
               if (msg.attachmentType == 'video' && mediaUri.isNotEmpty) ...[
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 240),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ColoredBox(
-                      color: const Color(0xFF0F172A),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 200,
-                        child: Center(
-                          child: Text(
-                            'Video',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFF94A3B8),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
+                Align(
+                  alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+                  child: _ChatRnMediaCard(
+                    width: mediaW,
+                    height: math.min(mediaH, 220.0),
+                    child: ChatRnMessageNetworkVideo(
+                      messageId: msg.id,
+                      url: mediaUri,
+                      width: mediaW,
+                      height: math.min(mediaH, 220.0),
                     ),
                   ),
                 ),
@@ -360,22 +386,70 @@ class ChatRnMessageBubble extends StatelessWidget {
                     staff: isStaffChat && isOwn,
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    child: Text(
-                      chatRnFormatTime(msg.timestamp),
-                      style: ChatRnTokens.timestamp(
-                        own: isOwn,
-                        staff: isStaffChat && isOwn,
-                      ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          chatRnFormatTime(msg.timestamp),
+                          style: ChatRnTokens.timestamp(
+                            own: isOwn,
+                            staff: isStaffChat && isOwn,
+                          ),
+                        ),
+                        if (isOwn && msg.sendState != null) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            msg.sendState == ChatRnSendState.sending
+                                ? Icons.schedule_rounded
+                                : Icons.check_rounded,
+                            size: 12,
+                            color: (isStaffChat && isOwn)
+                                ? const Color.fromRGBO(240, 253, 244, 0.9)
+                                : (isOwn ? const Color(0xFFBFDBFE) : const Color.fromRGBO(226, 232, 240, 0.72)),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      );
+
+    return SizedBox(
+      width: double.infinity,
+      child: Align(
+        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+        child: bubble,
+      ),
+    );
+  }
+}
+
+class _ChatRnMediaCard extends StatelessWidget {
+  const _ChatRnMediaCard({
+    required this.width,
+    required this.height,
+    required this.child,
+  });
+
+  final double width;
+  final double height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: ColoredBox(
+          color: const Color.fromRGBO(15, 23, 42, 0.2),
+          child: child,
         ),
       ),
     );
@@ -413,11 +487,14 @@ class ChatRnPendingBar extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                thumbUrl!,
+                ApiConfig.resolveMediaUrl(thumbUrl),
                 width: 48,
                 height: 48,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _pendingPlaceholder(isVideo),
+                errorBuilder: (context, error, _) {
+                  debugPrint('MEDIA IMAGE ERROR (pending): $error');
+                  return _pendingPlaceholder(isVideo);
+                },
               ),
             )
           else
@@ -503,7 +580,8 @@ class ChatRnInputOuter extends StatelessWidget {
         : null;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 6, bottom: 4),
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       decoration: BoxDecoration(
         color: const Color.fromRGBO(2, 6, 23, 0.62),
@@ -545,10 +623,12 @@ class ChatRnInputOuter extends StatelessWidget {
                         Expanded(
                           child: TextField(
                             controller: controller,
+                            enabled: !sending && !uploading,
                             minLines: 1,
                             maxLines: 5,
                             maxLength: 1000,
                             maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                            textInputAction: TextInputAction.send,
                             style: GoogleFonts.inter(
                               fontSize: 16,
                               color: const Color.fromRGBO(248, 250, 252, 0.96),
@@ -560,8 +640,9 @@ class ChatRnInputOuter extends StatelessWidget {
                               hintText: 'Mensaje…',
                               hintStyle: TextStyle(color: Color(0xFF94A3B8)),
                               counterText: '',
-                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                             ),
+                            onSubmitted: canSend ? (_) => onSend() : null,
                             onTapOutside: (_) =>
                                 FocusScope.of(context).unfocus(),
                           ),
@@ -745,7 +826,7 @@ Future<void> showChatRnEmojiPickerModal({
             maxHeight: MediaQuery.of(ctx).size.height * 0.7,
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
               Container(
                 padding: const EdgeInsets.all(16),
@@ -787,7 +868,7 @@ Future<void> showChatRnEmojiPickerModal({
                   ],
                 ),
               ),
-              Flexible(
+              Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: _EmojiPickerRnBody(
@@ -1111,93 +1192,116 @@ class ChatRnThreadColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final host = ApiConfig.baseUrl();
     final mq = MediaQuery.sizeOf(context);
-    final maxBubble = mq.width * 0.88;
 
-    Widget list;
-    if (messages.isEmpty) {
-      list = ListView(
-        controller: scrollController,
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-        children: [
-          if (childAboveList != null) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: childAboveList,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = ChatRnLayoutMetrics(constraints: constraints, screen: mq);
+        const listBottomPad = 12.0;
+        final padH = layout.listPaddingH;
+
+        Widget list;
+        if (messages.isEmpty) {
+          list = ListView(
+            controller: scrollController,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
             ),
-          ],
-          const SizedBox(height: 80),
-          Center(
-            child: Text(
-              'Sin mensajes todavía',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                color: const Color(0xFF94A3B8),
+            padding: EdgeInsets.fromLTRB(padH, 12, padH, listBottomPad),
+            children: [
+              if (childAboveList != null) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: childAboveList,
+                ),
+              ],
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: Text(
+                  'Sin mensajes todavía',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
-      );
-    } else {
-      list = ListView.builder(
-        controller: scrollController,
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-        itemCount: messages.length + (childAboveList != null ? 1 : 0),
-        itemBuilder: (context, i) {
-          if (childAboveList != null && i == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: childAboveList,
-            );
-          }
-          final idx = childAboveList != null ? i - 1 : i;
-          final m = messages[idx];
-          final own = resolveOwn(m);
-          return ChatRnMessageBubble(
-            msg: m,
-            isStaffChat: isStaffChat,
-            isOwn: own,
-            maxBubbleWidth: maxBubble,
-            host: host,
+            ],
           );
-        },
-      );
-    }
+        } else {
+          list = ListView.builder(
+            controller: scrollController,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: EdgeInsets.fromLTRB(padH, 12, padH, listBottomPad),
+            itemCount: messages.length + (childAboveList != null ? 1 : 0),
+            itemBuilder: (context, i) {
+              if (childAboveList != null && i == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: childAboveList,
+                );
+              }
+              final idx = childAboveList != null ? i - 1 : i;
+              final m = messages[idx];
+              final own = resolveOwn(m);
+              return ChatRnMessageBubble(
+                msg: m,
+                isStaffChat: isStaffChat,
+                isOwn: own,
+                maxBubbleWidth: layout.maxBubbleWidth,
+                mediaMaxWidth: layout.mediaMaxWidth,
+                mediaMaxHeight: layout.mediaCardHeight,
+              );
+            },
+          );
+        }
 
-    if (onRefresh != null) {
-      list = RefreshIndicator(onRefresh: onRefresh!, child: list);
-    }
+        if (onRefresh != null) {
+          list = RefreshIndicator(onRefresh: onRefresh!, child: list);
+        }
 
-    return Column(
-      mainAxisSize: MainAxisSize.max,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(child: list),
-        if (showPendingBar)
-          ChatRnPendingBar(
-            isVideo: pendingIsVideo,
-            thumbUrl: pendingThumbUrl,
-            onClear: onClearPending,
+        final composer = Padding(
+          padding: EdgeInsets.fromLTRB(
+            layout.inputPaddingH,
+            6,
+            layout.inputPaddingH,
+            MediaQuery.viewInsetsOf(context).bottom + 8,
           ),
-        ChatRnInputOuter(
-          isStaffChat: isStaffChat,
-          controller: inputController,
-          onImage: onImage,
-          onVideo: onVideo,
-          onEmoji: onEmoji,
-          onSend: onSend,
-          canSend: canSend,
-          sending: sending,
-          uploading: uploading,
-        ),
-      ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showPendingBar)
+                ChatRnPendingBar(
+                  isVideo: pendingIsVideo,
+                  thumbUrl: pendingThumbUrl,
+                  onClear: onClearPending,
+                ),
+              ChatRnInputOuter(
+                isStaffChat: isStaffChat,
+                controller: inputController,
+                onImage: onImage,
+                onVideo: onVideo,
+                onEmoji: onEmoji,
+                onSend: onSend,
+                canSend: canSend,
+                sending: sending,
+                uploading: uploading,
+              ),
+            ],
+          ),
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: list),
+            composer,
+          ],
+        );
+      },
     );
   }
 }

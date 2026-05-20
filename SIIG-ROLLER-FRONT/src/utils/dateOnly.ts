@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 export type YMD = `${number}-${number}-${number}`;
 
 function pad2(n: number): string {

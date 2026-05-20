@@ -110,6 +110,25 @@ class Grupo {
   }
 
   /**
+   * Desvincula a todos los usuarios de un grupo
+   */
+  static async unlinkAllMembers(grupoId) {
+    await pool.query(
+      'UPDATE usuarios SET grupo_id = NULL, nombramiento = NULL WHERE grupo_id = $1',
+      [grupoId],
+    );
+  }
+
+  /**
+   * Elimina un grupo por ID
+   */
+  static async deleteById(id) {
+    const query = 'DELETE FROM grupos WHERE id = $1 RETURNING id';
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  }
+
+  /**
    * Obtiene todos los usuarios de un grupo
    */
   static async getUsuariosByGrupoId(grupoId) {

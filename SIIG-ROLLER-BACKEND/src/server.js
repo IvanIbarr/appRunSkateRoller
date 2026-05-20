@@ -156,6 +156,12 @@ const startServer = async () => {
         {port: PORT, host: HOST, env: process.env.NODE_ENV || 'development'},
       );
       logger.info(`Bitácora en carpeta logs/ (rotación automática, retención 3 días)`);
+      try {
+        const {startEventoReminderScheduler} = require('./services/eventoReminderScheduler');
+        startEventoReminderScheduler();
+      } catch (schedErr) {
+        logger.warn('Recordatorios de eventos no iniciados', {error: schedErr.message});
+      }
     });
   } catch (error) {
     logger.error('Error al iniciar el servidor', {error: error.message, stack: error.stack});

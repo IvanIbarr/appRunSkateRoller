@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Salvador Ivan Ibarra Garcia. Todos los derechos reservados.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Usuario, LoginCredentials, RegistroData, AuthResponse} from '../types';
 import apiService from './apiService';
