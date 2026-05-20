@@ -14,7 +14,8 @@
     "db:chat:setup": "node scripts/setup-chat-db.js",
     "db:compat:setup": "node scripts/setup-compat-columns.js",
     "db:grupos:setup": "node scripts/create-grupos-table.js",
-    "db:grupos:check": "node scripts/create-grupos-table.js --check"
+    "db:grupos:check": "node scripts/create-grupos-table.js --check",
+    "db:backup": "node scripts/backup-db.js"
   },
   "keywords": [
     "roller",
