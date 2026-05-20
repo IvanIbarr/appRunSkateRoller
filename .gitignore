@@ -7,6 +7,7 @@ node_modules/
 # Flutter / local (secretos)
 roller_flutter_app/.env
 roller_flutter_app/mapbox.local.env
+roller_flutter_app/release.local.env
 
 # Subidas y builds locales (límite GitHub 100MB/archivo; no versionar)
 SIIG-ROLLER-BACKEND/uploads/

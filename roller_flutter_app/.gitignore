@@ -43,6 +43,8 @@ app.*.map.json
 .env
 # Mapbox solo desarrollo local (Flutter: --dart-define-from-file=mapbox.local.env)
 mapbox.local.env
+# Producción: --dart-define-from-file=release.local.env
+release.local.env
 
 # Android Studio will place build artifacts here
 /android/app/debug

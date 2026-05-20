@@ -1,17 +1,39 @@
-# roller_flutter_app
+# RunSkateRoller (Flutter)
 
-A new Flutter project.
+Cliente multiplataforma **Web · Android · iOS** para la comunidad roller.
 
-## Getting Started
+## Inicio rápido (desarrollo)
 
-This project is a starting point for a Flutter application.
+```powershell
+cd roller_flutter_app
+flutter pub get
+Copy-Item .env.example .env
+# Edita .env con REACT_APP_MAPBOX_ACCESS_TOKEN=pk...
 
-A few resources to get you started if this is your first Flutter project:
+# Web
+.\scripts\run_chrome_mapbox.ps1
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+# Backend en otra terminal (puerto 3001)
+cd ..\SIIG-ROLLER-BACKEND
+npm run start
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Release (producción)
+
+Ver **[RELEASE.md](RELEASE.md)** y el script:
+
+```powershell
+Copy-Item release.local.env.example release.local.env
+# Configura API_BASE_URL y Mapbox
+.\scripts\build_release.ps1 -Platform web      # o android | ios
+```
+
+## Estructura
+
+- `lib/src/app.dart` — GoRouter y shell principal
+- `lib/src/core/network/api_config.dart` — URL del API (`API_BASE_URL`, `API_HOST`, `API_PORT`)
+- `lib/src/core/maps/mapbox_service.dart` — Mapbox (paridad con React Native)
+
+## Identificador
+
+- Android / iOS: `com.siigroller` (mismo que `appRunSkateRoller`)

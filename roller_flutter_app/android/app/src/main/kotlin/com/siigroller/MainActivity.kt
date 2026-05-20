@@ -1,4 +1,4 @@
-package com.example.roller_flutter_app
+package com.siigroller
 
 import io.flutter.embedding.android.FlutterActivity
 
