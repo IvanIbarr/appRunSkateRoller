@@ -98,11 +98,9 @@ class _SportHeader extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            UserProfileAvatar.fromUser(
+            UserProfileAvatar.header(
               me,
-              size: 72,
               borderColor: HistorialSportTheme.cyan.withValues(alpha: 0.65),
-              borderWidth: 2,
               backgroundColor: const Color.fromRGBO(2, 6, 23, 0.72),
             ),
             const SizedBox(width: 14),

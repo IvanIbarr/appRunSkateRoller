@@ -449,6 +449,27 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
             onTap: () => nav('/grupo/integrantes'),
           ),
         MenuSportActionButton(
+          label: '🎬 Mis archivos RollerTips',
+          accent: MenuSportTheme.violet,
+          onTap: () => nav('/rollertips'),
+        ),
+        MenuSportActionButton(
+          label: '⭐ Mis suscripciones',
+          accent: MenuSportTheme.orange,
+          onTap: () => nav('/menu/suscripciones'),
+        ),
+        MenuSportActionButton(
+          label: '🛒 Ventas / Marketplace',
+          accent: MenuSportTheme.teal,
+          onTap: () => nav('/marketing'),
+        ),
+        if (email.toLowerCase() == 'admin@roller.com')
+          MenuSportActionButton(
+            label: '⚙️ Panel administrador',
+            accent: MenuSportTheme.orange,
+            onTap: () => nav('/menu/admin'),
+          ),
+        MenuSportActionButton(
           label: '💬 Soporte',
           accent: MenuSportTheme.cyan,
           onTap: () => nav('/soporte'),

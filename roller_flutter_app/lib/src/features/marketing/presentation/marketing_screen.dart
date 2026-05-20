@@ -303,10 +303,8 @@ class _MarketingScreenState extends ConsumerState<MarketingScreen> {
           if (me != null)
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: UserProfileAvatar.fromUser(
+              child: UserProfileAvatar.header(
                 me,
-                size: 48,
-                borderColor: const Color(0xFF38BDF8).withValues(alpha: 0.5),
                 backgroundColor: const Color(0xFF1E293B),
               ),
             ),

@@ -183,7 +183,7 @@ class MenuSportAvatar extends StatelessWidget {
     super.key,
     required this.me,
     required this.fotoMode,
-    this.size = 96,
+    this.size = AppAvatarSizes.menuProfile,
   });
 
   final Map<String, dynamic> me;

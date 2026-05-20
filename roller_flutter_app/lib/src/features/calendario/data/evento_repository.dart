@@ -111,6 +111,30 @@ class EventoRepository {
       throw Exception('No se pudo eliminar el evento');
     }
   }
+
+  Future<({int participantCount, bool isRegistered})> register(String eventoId) async {
+    final res = await _dio.post('/evento/$eventoId/register');
+    final data = res.data;
+    if (data is! Map || data['success'] != true) {
+      throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo registrar');
+    }
+    return (
+      participantCount: (data['participantCount'] as num?)?.toInt() ?? 0,
+      isRegistered: data['isRegistered'] == true,
+    );
+  }
+
+  Future<({int participantCount, bool isRegistered})> unregister(String eventoId) async {
+    final res = await _dio.delete('/evento/$eventoId/register');
+    final data = res.data;
+    if (data is! Map || data['success'] != true) {
+      throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo cancelar');
+    }
+    return (
+      participantCount: (data['participantCount'] as num?)?.toInt() ?? 0,
+      isRegistered: data['isRegistered'] == true,
+    );
+  }
 }
 
 final eventoRepositoryProvider = Provider<EventoRepository>((ref) {

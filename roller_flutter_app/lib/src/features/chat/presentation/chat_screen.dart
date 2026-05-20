@@ -112,12 +112,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             children: [
-              UserProfileAvatar.fromUser(
-                me,
-                size: 45,
-                borderColor: const Color(0xFF38BDF8).withValues(alpha: 0.45),
-                backgroundColor: const Color.fromRGBO(12, 16, 28, 0.85),
-              ),
+              UserProfileAvatar.header(me),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -2,7 +2,7 @@ const {validationResult} = require('express-validator');
 const AuthService = require('../services/authService');
 const PasswordResetService = require('../services/passwordResetService');
 const Usuario = require('../models/Usuario');
-const nodemailer = require('nodemailer');
+const {sendEmail, isEmailConfigured} = require('../services/emailService');
 
 /**
  * Login de usuario
@@ -266,38 +266,6 @@ const updatePersonalInfo = async (req, res) => {
   }
 };
 
-const buildMailer = () => {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const rejectUnauthorizedEnv = process.env.SMTP_TLS_REJECT_UNAUTHORIZED;
-  const rejectUnauthorized =
-    rejectUnauthorizedEnv === undefined
-      ? true
-      : rejectUnauthorizedEnv !== 'false';
-
-  if (!host || !user || !pass) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: {
-      user,
-      pass,
-    },
-    tls: {
-      rejectUnauthorized,
-    },
-  });
-};
-
-const isSmtpConfigured = () =>
-  Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-
 /**
  * Solicita código de recuperación
  */
@@ -322,15 +290,11 @@ const forgotPassword = async (req, res) => {
     }
 
     const {code, expiresAt} = PasswordResetService.createReset(email);
-    const transporter = buildMailer();
-    const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
-    const smtpReady = isSmtpConfigured() && Boolean(transporter && fromEmail);
     let emailSent = false;
 
-    if (smtpReady) {
+    if (isEmailConfigured()) {
       try {
-        await transporter.sendMail({
-          from: fromEmail,
+        await sendEmail({
           to: email,
           subject: 'Código de recuperación - RunSkateRoller',
           text: `Tu código de recuperación es: ${code}. Expira en 10 minutos.`,
@@ -342,11 +306,11 @@ const forgotPassword = async (req, res) => {
     }
 
     if (!emailSent) {
-      console.error('Correo de recuperación NO enviado. Revisa SMTP_* en .env');
+      console.error('Correo de recuperación NO enviado. Revisa RESEND_API_KEY o SMTP_* en .env');
       const devResponse = {
         success: false,
         error:
-          'No se pudo enviar el correo de recuperación. Verifica configuración SMTP y revisa logs del backend.',
+          'No se pudo enviar el correo de recuperación. Verifica RESEND_API_KEY o SMTP y revisa logs del backend.',
       };
       if (process.env.NODE_ENV !== 'production') {
         devResponse.devCode = code;

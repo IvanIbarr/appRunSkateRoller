@@ -16,6 +16,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/auth/auth_session.dart';
+import '../../../core/location/device_location.dart';
 import '../../../core/maps/mapbox_service.dart';
 import '../../../core/ui/app_theme.dart';
 import '../../../core/ui/rn_layered_styles.dart';
@@ -549,19 +550,12 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
   }
 
   Future<void> _obtenerGps({required bool origenSilent}) async {
-    if (kIsWeb) {
-      // Geolocator web sigue necesitando HTTPS o localhost.
-    }
     setState(() => _gpsLoading = true);
     try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        if (!mounted) return;
-        if (!origenSilent) {
-          _toast('Permiso de ubicación denegado o bloqueado.', kind: RutaToastKind.danger);
+      final access = await DeviceLocation.ensureForTracking();
+      if (!access.ok) {
+        if (!origenSilent && mounted) {
+          _toast(access.message ?? 'Sin permiso GPS.', kind: RutaToastKind.danger);
         }
         return;
       }
@@ -578,12 +572,7 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
       });
     } catch (e) {
       if (!origenSilent && mounted) {
-        _toast(
-          kIsWeb
-              ? 'No se obtuvo ubicación. En Web usa HTTPS o localhost y concede permisos.'
-              : 'No se obtuvo ubicación: $e',
-          kind: RutaToastKind.danger,
-        );
+        _toast('No se obtuvo ubicación: $e', kind: RutaToastKind.danger);
       }
     } finally {
       if (mounted) setState(() => _gpsLoading = false);
@@ -697,6 +686,12 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
       return;
     }
 
+    final gps = await DeviceLocation.ensureForTracking();
+    if (!gps.ok) {
+      _toast(gps.message ?? 'Sin permiso GPS no se registra la ruta.', kind: RutaToastKind.danger);
+      return;
+    }
+
     final origenTxt = _origenCtrl.text.trim().isEmpty ? 'Mi ubicación actual' : _origenCtrl.text.trim();
     final destinoTxt = _destinoCtrl.text.trim();
 
@@ -738,17 +733,6 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
     }
     if (seed != null) {
       _trail.add(seed);
-    }
-
-    final perm = await Geolocator.checkPermission();
-    LocationPermission p = perm;
-    if (p == LocationPermission.denied) {
-      p = await Geolocator.requestPermission();
-    }
-    if (p == LocationPermission.denied || p == LocationPermission.deniedForever) {
-      _toast('Sin permiso GPS no se registra la ruta.', kind: RutaToastKind.danger);
-      setState(() => _tracking = false);
-      return;
     }
 
     _posSub?.cancel();

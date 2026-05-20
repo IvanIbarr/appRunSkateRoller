@@ -6,6 +6,15 @@ import 'package:flutter/material.dart';
 
 import '../network/api_config.dart';
 
+/// Tamaños estándar de avatar (homologados entre pantallas).
+abstract final class AppAvatarSizes {
+  /// Cabecera de pestañas: Chat, Calendario, Ruta, Marketing, RollerTips, Historial.
+  static const double header = 48;
+
+  /// Pantalla Menú — edición de perfil (más grande a propósito).
+  static const double menuProfile = 96;
+}
+
 /// Avatar de perfil: `fotoPerfil` (data URL, http o ruta) o emoji `avatar`.
 /// Espejo de `AvatarCircle.tsx` en RN.
 class UserProfileAvatar extends StatelessWidget {
@@ -14,7 +23,7 @@ class UserProfileAvatar extends StatelessWidget {
     this.user,
     this.fotoPerfil,
     this.avatar,
-    this.size = 50,
+    this.size = AppAvatarSizes.header,
     this.borderColor,
     this.borderWidth = 2,
     this.backgroundColor = const Color(0xFF0F172A),
@@ -24,7 +33,7 @@ class UserProfileAvatar extends StatelessWidget {
 
   factory UserProfileAvatar.fromUser(
     Map<String, dynamic>? user, {
-    double size = 50,
+    double size = AppAvatarSizes.header,
     Color? borderColor,
     double borderWidth = 2,
     Color backgroundColor = const Color(0xFF0F172A),
@@ -38,6 +47,21 @@ class UserProfileAvatar extends StatelessWidget {
       borderColor: borderColor,
       borderWidth: borderWidth,
       backgroundColor: backgroundColor,
+    );
+  }
+
+  /// Avatar de cabecera unificado (mismo tamaño y borde en todas las pestañas).
+  factory UserProfileAvatar.header(
+    Map<String, dynamic>? user, {
+    Color? borderColor,
+    Color? backgroundColor,
+  }) {
+    return UserProfileAvatar.fromUser(
+      user,
+      size: AppAvatarSizes.header,
+      borderColor: borderColor ?? const Color(0xFF38BDF8).withValues(alpha: 0.5),
+      borderWidth: 2,
+      backgroundColor: backgroundColor ?? const Color.fromRGBO(12, 16, 28, 0.85),
     );
   }
 
@@ -90,54 +114,56 @@ class UserProfileAvatar extends StatelessWidget {
     }
   }
 
+  double get _innerSize =>
+      borderWidth > 0 ? (size - 2 * borderWidth).clamp(0.0, size) : size;
+
   @override
   Widget build(BuildContext context) {
     final foto = _foto;
     final av = _avatar;
     final bytes = decodeDataUrlBytes(foto);
     final networkUrl = bytes == null ? resolveNetworkUrl(foto) : null;
+    final inner = _innerSize;
 
-    Widget inner;
+    Widget content;
     if (bytes != null) {
-      inner = ClipOval(
-        child: Image.memory(bytes, width: size, height: size, fit: BoxFit.cover),
-      );
+      content = Image.memory(bytes, width: inner, height: inner, fit: BoxFit.cover);
     } else if (networkUrl != null) {
-      inner = ClipOval(
-        child: Image.network(
-          networkUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _emojiOrIcon(av),
-        ),
+      content = Image.network(
+        networkUrl,
+        width: inner,
+        height: inner,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _emojiOrIcon(av, inner),
       );
     } else {
-      inner = _emojiOrIcon(av);
+      content = _emojiOrIcon(av, inner);
     }
 
     final border = borderColor ?? const Color.fromRGBO(226, 232, 240, 0.14);
-    return Container(
+
+    return SizedBox(
       width: size,
       height: size,
-      padding: borderWidth > 0 ? EdgeInsets.all(borderWidth) : null,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: borderWidth > 0 ? Border.all(color: border, width: borderWidth) : null,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: borderWidth > 0 ? Border.all(color: border, width: borderWidth) : null,
+        ),
+        child: ClipOval(child: content),
       ),
-      child: inner,
     );
   }
 
-  Widget _emojiOrIcon(String av) {
+  Widget _emojiOrIcon(String av, double inner) {
     return Container(
-      width: size,
-      height: size,
+      width: inner,
+      height: inner,
       decoration: BoxDecoration(shape: BoxShape.circle, color: backgroundColor),
       alignment: Alignment.center,
       child: av.isEmpty
-          ? Icon(placeholderIcon, size: size * 0.45, color: placeholderIconColor)
-          : Text(av, style: TextStyle(fontSize: size * 0.42)),
+          ? Icon(placeholderIcon, size: inner * 0.45, color: placeholderIconColor)
+          : Text(av, style: TextStyle(fontSize: inner * 0.42)),
     );
   }
 }

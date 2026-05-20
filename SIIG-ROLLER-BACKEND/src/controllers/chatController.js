@@ -110,7 +110,13 @@ function isSafeChatMediaUrl(url) {
 const createMessage = async (req, res) => {
   try {
     const {chatType, text, mediaUrl, mediaType} = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id ?? req.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Sesión inválida. Vuelve a iniciar sesión.',
+      });
+    }
 
     const trimmedText = typeof text === 'string' ? text.trim() : '';
 

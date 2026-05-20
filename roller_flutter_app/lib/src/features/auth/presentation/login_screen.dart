@@ -41,8 +41,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (ok) {
             context.go('/inicio');
           } else {
+            final err = ref.read(authControllerProvider).error;
+            final msg = err is String
+                ? err
+                : err?.toString().replaceFirst('Exception: ', '') ?? 'No fue posible iniciar sesión';
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No fue posible iniciar sesión')),
+              SnackBar(content: Text(msg)),
             );
           }
         },

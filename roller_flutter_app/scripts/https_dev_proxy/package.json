@@ -1,0 +1,10 @@
+{
+  "name": "runskate-https-dev-proxy",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.3",
+    "selfsigned": "^2.4.1"
+  }
+}

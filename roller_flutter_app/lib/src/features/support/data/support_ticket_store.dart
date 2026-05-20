@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../../auth/data/auth_repository.dart';
+import '../../../core/auth/app_secure_storage.dart';
 
 class SupportTicket {
   SupportTicket({
@@ -124,7 +124,7 @@ class SupportTicketStore {
 }
 
 final supportTicketStoreProvider = Provider<SupportTicketStore>((ref) {
-  final storage = ref.watch(secureStorageProvider);
+  final storage = ref.watch(appSecureStorageProvider);
   return SupportTicketStore(storage);
 });
 

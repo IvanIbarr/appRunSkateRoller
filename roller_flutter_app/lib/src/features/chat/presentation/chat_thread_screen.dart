@@ -162,7 +162,10 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
       ref.invalidate(chatThreadMessagesProvider(widget.chatType));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo enviar: $e')));
+        final msg = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg.length > 120 ? '${msg.substring(0, 120)}…' : msg)),
+        );
       }
     } finally {
       if (mounted) setState(() => _sending = false);

@@ -233,21 +233,23 @@ class _RollerTipsScreenState extends ConsumerState<RollerTipsScreen> {
             data: (me) {
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
-                child: UserProfileAvatar.fromUser(
+                child: UserProfileAvatar.header(
                   me,
-                  size: 48,
-                  borderColor: const Color(0xFF38BDF8).withValues(alpha: 0.5),
                   backgroundColor: const Color(0xFF1E293B),
                 ),
               );
             },
             loading: () => const Padding(
               padding: EdgeInsets.only(right: 12),
-              child: SizedBox(width: 48, height: 48, child: CircularProgressIndicator(strokeWidth: 2)),
+              child: SizedBox(
+                width: AppAvatarSizes.header,
+                height: AppAvatarSizes.header,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
-            error: (_, _) => const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: CircleAvatar(radius: 24, child: Icon(Icons.person)),
+            error: (_, _) => Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: UserProfileAvatar.header(null, backgroundColor: const Color(0xFF1E293B)),
             ),
           ),
           Expanded(

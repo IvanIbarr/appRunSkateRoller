@@ -307,9 +307,8 @@ class RnMirrorRutaHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          UserProfileAvatar.fromUser(
+          UserProfileAvatar.header(
             user,
-            size: 50,
             borderColor: const Color.fromRGBO(226, 232, 240, 0.14),
             backgroundColor: const Color.fromRGBO(2, 6, 23, 0.62),
           ),

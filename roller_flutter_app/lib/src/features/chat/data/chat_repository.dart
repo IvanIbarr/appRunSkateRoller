@@ -41,21 +41,37 @@ class ChatRepository {
     String? mediaUrl,
     String? mediaType,
   }) async {
-    final ct = _normType(chatType);
-    final res = await _dio.post<Map<String, dynamic>>(
-      '/chat',
-      data: {
-        'chatType': ct,
-        'text': text.trim(),
-        'mediaUrl': mediaUrl?.trim().isEmpty == true ? null : mediaUrl,
-        'mediaType': mediaType?.trim().isEmpty == true ? null : mediaType,
-      },
-    );
-    final data = res.data;
-    if (data == null || data['success'] != true || data['message'] is! Map) {
-      throw Exception('No se pudo enviar mensaje');
+    try {
+      final ct = _normType(chatType);
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/chat',
+        data: {
+          'chatType': ct,
+          'text': text.trim(),
+          'mediaUrl': mediaUrl?.trim().isEmpty == true ? null : mediaUrl,
+          'mediaType': mediaType?.trim().isEmpty == true ? null : mediaType,
+        },
+      );
+      final data = res.data;
+      if (data == null || data['success'] != true || data['message'] is! Map) {
+        final err = data?['error']?.toString();
+        throw Exception(err ?? 'No se pudo enviar mensaje');
+      }
+      return Map<String, dynamic>.from(data['message'] as Map);
+    } on DioException catch (e) {
+      throw Exception(_dioErrorMessage(e, 'No se pudo enviar mensaje'));
     }
-    return Map<String, dynamic>.from(data['message'] as Map);
+  }
+
+  String _dioErrorMessage(DioException e, String fallback) {
+    final body = e.response?.data;
+    if (body is Map && body['error'] != null) {
+      return body['error'].toString();
+    }
+    if (e.type == DioExceptionType.connectionError) {
+      return 'Sin conexión con el servidor';
+    }
+    return fallback;
   }
 
   Future<({String url, String mediaType})> uploadMedia(PlatformFile file) async {

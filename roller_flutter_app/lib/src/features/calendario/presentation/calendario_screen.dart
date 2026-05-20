@@ -6,11 +6,14 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/auth/staff_chat_access.dart';
 import '../../../core/ui/rn_mirror_layouts.dart';
 import '../../../core/ui/user_profile_avatar.dart';
+import '../../chat/data/chat_repository.dart';
 import '../../perfil/data/perfil_providers.dart';
 import 'widgets/evento_image_uploader.dart';
 import '../data/evento_repository.dart';
+import '../data/evento_rsvp_service.dart';
 
 final _calendarioMeProvider = currentMeProvider;
 
@@ -151,8 +154,45 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
     }
   }
 
+  Future<void> _toggleRsvp(WidgetRef ref, Map<String, dynamic> evento) async {
+    final id = (evento['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    final registered = evento['isRegistered'] == true;
+    try {
+      if (registered) {
+        await ref.read(eventoRepositoryProvider).unregister(id);
+        await EventoRsvpService.cancel15Min(id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Te diste de baja del evento')),
+          );
+        }
+      } else {
+        await ref.read(eventoRepositoryProvider).register(id);
+        final sched = await EventoRsvpService.schedule15MinBefore(evento);
+        if (mounted) {
+          if (sched.ok) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('¡Te apuntaste! Aviso 15 min antes de la cita.')),
+            );
+          } else if (sched.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Registrado. ${sched.error}')),
+            );
+          }
+        }
+      }
+      ref.invalidate(eventosProvider);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
   Widget _avatarFromMeMap(Map<String, dynamic> me) {
-    return UserProfileAvatar.fromUser(me, size: 45, borderWidth: 0);
+    return UserProfileAvatar.header(me);
   }
 
   Widget _calendarioContent(List<Map<String, dynamic>> raw, {Map<String, dynamic>? syncMe, String? loadError}) {
@@ -164,13 +204,13 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
         : ref.watch(_calendarioMeProvider).when(
               data: _avatarFromMeMap,
               loading: () => const SizedBox(
-                width: 45,
-                height: 45,
+                width: AppAvatarSizes.header,
+                height: AppAvatarSizes.header,
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6C63FF))),
               ),
               error: (_, _) => Container(
-                width: 45,
-                height: 45,
+                width: AppAvatarSizes.header,
+                height: AppAvatarSizes.header,
                 decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF2A2A3E)),
                 child: const Icon(Icons.person, size: 22, color: Colors.white54),
               ),
@@ -296,8 +336,11 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
           ...eventos.map((e) => _EventCardRn(
                 evento: e,
                 formatRango: () => _formatFechaRango(e),
+                participantCount: (e['participantCount'] as num?)?.toInt() ?? 0,
+                isRegistered: e['isRegistered'] == true,
                 onDelete: (id, titulo) => setState(() => _eventoEliminar = {'id': id, 'titulo': titulo}),
                 onShare: () => setState(() => _eventoCompartir = e),
+                onRegister: () => _toggleRsvp(ref, e),
                 onEdit: () {
                   context.push('/calendario/crear', extra: {'evento': e, 'esEdicion': true});
                 },
@@ -549,15 +592,21 @@ class _EventCardRn extends StatelessWidget {
   const _EventCardRn({
     required this.evento,
     required this.formatRango,
+    required this.participantCount,
+    required this.isRegistered,
     required this.onDelete,
     required this.onShare,
+    required this.onRegister,
     required this.onEdit,
   });
 
   final Map<String, dynamic> evento;
   final String Function() formatRango;
+  final int participantCount;
+  final bool isRegistered;
   final void Function(String id, String titulo) onDelete;
   final VoidCallback onShare;
+  final VoidCallback onRegister;
   final VoidCallback onEdit;
 
   @override
@@ -776,12 +825,43 @@ class _EventCardRn extends StatelessWidget {
                     ),
                   ),
                 ],
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color.fromRGBO(0, 217, 255, 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color.fromRGBO(0, 217, 255, 0.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('👥', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$participantCount ${participantCount == 1 ? 'asistente' : 'asistentes'}'
+                        '${isRegistered ? ' · tú vas ✓' : ''}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF00D9FF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(child: _actionPill(label: '✏️ Editar', bg: const Color(0xFFFFA500), border: const Color(0xFFFFB84D), onTap: onEdit)),
                     const SizedBox(width: 10),
-                    Expanded(child: _actionPill(label: 'Registrarse', bg: const Color(0xFF00D9FF), border: Colors.transparent, onTap: () {})),
+                    Expanded(
+                      child: _actionPill(
+                        label: isRegistered ? 'Me apunto ✓' : 'Registrarse',
+                        bg: isRegistered ? const Color(0xFF1B5E20) : const Color(0xFF00D9FF),
+                        border: Colors.transparent,
+                        onTap: onRegister,
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(child: _actionPill(label: '📤 Compartir', bg: const Color(0xFF9C27B0), border: Colors.transparent, onTap: onShare)),
                   ],
@@ -961,14 +1041,33 @@ class _DeleteModalRn extends StatelessWidget {
   }
 }
 
-class _ShareModalRn extends StatelessWidget {
+class _ShareModalRn extends ConsumerWidget {
   const _ShareModalRn({required this.evento, required this.onClose});
 
   final Map<String, dynamic> evento;
   final VoidCallback onClose;
 
+  Future<void> _postToChat(WidgetRef ref, BuildContext context, String chatType) async {
+    final msg = buildCalendarioShareMessage(evento);
+    try {
+      await ref.read(chatRepositoryProvider).sendMessage(chatType: chatType, text: msg);
+      if (!context.mounted) return;
+      onClose();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Evento publicado en Chat ${chatType == 'staff' ? 'Staff' : 'General'}')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final me = ref.watch(_calendarioMeProvider).valueOrNull;
+    final canStaff = canAccessStaffChat(me);
     return Positioned.fill(
       child: Material(
         color: const Color.fromRGBO(0, 0, 0, 0.7),
@@ -997,6 +1096,15 @@ class _ShareModalRn extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: Color(0xFFC7D0E0)),
                 ),
                 const SizedBox(height: 16),
+                _shareBtn('💬 Chat General', const Color(0xFF38BDF8), () {
+                  _postToChat(ref, context, 'general');
+                }),
+                const SizedBox(height: 10),
+                if (canStaff)
+                  _shareBtn('👥 Chat Staff', const Color(0xFF7C4DFF), () {
+                    _postToChat(ref, context, 'staff');
+                  }),
+                if (canStaff) const SizedBox(height: 10),
                 _shareBtn('WhatsApp', const Color(0xFF25D366), () {
                   (() async {
                     final msg = buildCalendarioShareMessage(evento);

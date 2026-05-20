@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'src/app.dart';
 import 'src/core/config/load_app_dotenv.dart';
 import 'src/features/calendario/data/evento_reminder_service.dart';
+import 'src/features/calendario/data/evento_rsvp_service.dart';
 import 'url_strategy_configure.dart';
 
 /// Punto de entrada único de producción (iOS / Android / Web).
@@ -15,6 +16,7 @@ Future<void> main() async {
   await loadAppDotEnv();
   if (!kIsWeb) {
     await EventoReminderService.init();
+    await EventoRsvpService.init();
   }
   runApp(const ProviderScope(child: RollerApp()));
 }

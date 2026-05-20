@@ -1,35 +1,45 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import '../../../core/network/api_client.dart';
 
 class AuthRepository {
-  AuthRepository(this._dio, this._storage);
+  AuthRepository(this._dio);
 
   final Dio _dio;
-  final FlutterSecureStorage _storage;
 
   Future<String> login({
     required String email,
     required String password,
   }) async {
-    final response = await _dio.post(
-      '/auth/login',
-      data: {
-        'email': email.trim(),
-        'password': password,
-      },
-    );
+    try {
+      final response = await _dio.post(
+        '/auth/login',
+        data: {
+          'email': email.trim(),
+          'password': password,
+        },
+      );
 
-    final data = response.data;
-    if (data is! Map || data['success'] != true || data['token'] == null) {
-      throw Exception('No se pudo iniciar sesion');
+      final data = response.data;
+      if (data is! Map || data['success'] != true || data['token'] == null) {
+        final err = data is Map ? data['error']?.toString() : null;
+        throw Exception(err ?? 'No se pudo iniciar sesión');
+      }
+
+      return data['token'] as String;
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      if (body is Map && body['error'] != null) {
+        throw Exception(body['error'].toString());
+      }
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        throw Exception(
+          'No hay conexión con el servidor. Comprueba WiFi y que el backend esté en el puerto 3001.',
+        );
+      }
+      rethrow;
     }
-
-    final token = data['token'] as String;
-    await _storage.write(key: 'auth_token', value: token);
-    return token;
   }
 
   Future<String> registro({
@@ -63,9 +73,7 @@ class AuthRepository {
       throw Exception('No se pudo registrar');
     }
 
-    final token = data['token'] as String;
-    await _storage.write(key: 'auth_token', value: token);
-    return token;
+    return data['token'] as String;
   }
 
   Future<void> agregarAlias(String alias) async {
@@ -201,13 +209,6 @@ class AuthRepository {
   }
 }
 
-final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
-  return const FlutterSecureStorage();
-});
-
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    ref.watch(dioProvider),
-    ref.watch(secureStorageProvider),
-  );
+  return AuthRepository(ref.watch(dioProvider));
 });

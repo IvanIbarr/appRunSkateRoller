@@ -418,14 +418,26 @@ class RollerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authSessionProvider);
     final router = ref.watch(_routerProvider);
     ref.watch(eventoRealtimeBootstrapProvider);
     return MaterialApp.router(
-      title: 'Roller Flutter',
+      title: 'RunSkateRoller',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
       scaffoldMessengerKey: eventoReminderMessengerKey,
       routerConfig: router,
+      builder: (context, child) {
+        if (session.isLoading) {
+          return const ColoredBox(
+            color: Color(0xFF0A0A0F),
+            child: Center(
+              child: CircularProgressIndicator(color: Color(0xFF00E5FF)),
+            ),
+          );
+        }
+        return child ?? const SizedBox.shrink();
+      },
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

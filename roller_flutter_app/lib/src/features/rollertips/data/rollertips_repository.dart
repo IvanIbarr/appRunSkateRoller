@@ -83,19 +83,27 @@ class RollerTipsRepository {
     String? authorId,
     String? authorName,
   }) async {
-    final res = await _dio.post(
-      '/rollertips/$tipId/comments',
-      data: {
-        'text': text,
-        if (authorId != null) 'authorId': authorId,
-        if (authorName != null) 'authorName': authorName,
-      },
-    );
-    final data = res.data;
-    if (data is! Map || data['success'] != true || data['data'] is! Map) {
-      throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo comentar');
+    try {
+      final res = await _dio.post(
+        '/rollertips/$tipId/comments',
+        data: {
+          'text': text,
+          if (authorId != null && authorId.isNotEmpty) 'authorId': authorId,
+          if (authorName != null && authorName.isNotEmpty) 'authorName': authorName,
+        },
+      );
+      final data = res.data;
+      if (data is! Map || data['success'] != true || data['data'] is! Map) {
+        throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo comentar');
+      }
+      return Map<String, dynamic>.from(data['data'] as Map);
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      if (body is Map && body['error'] != null) {
+        throw Exception(body['error'].toString());
+      }
+      throw Exception('No se pudo comentar (${e.message ?? 'error de red'})');
     }
-    return Map<String, dynamic>.from(data['data'] as Map);
   }
 }
 

@@ -47,6 +47,11 @@ class ApiConfig {
       final u = Uri.base;
       final scheme = u.scheme.isEmpty ? 'http' : u.scheme;
       final host = u.host.isEmpty ? 'localhost' : u.host;
+      // Proxy HTTPS dev (scripts/https_dev_proxy): API en el mismo host/puerto → /api
+      if (scheme == 'https') {
+        final portPart = u.hasPort ? ':${u.port}' : '';
+        return '$scheme://$host$portPart/api';
+      }
       return '$scheme://$host:$_devPort/api';
     }
     return 'http://$_defaultMobileHost:$_devPort/api';

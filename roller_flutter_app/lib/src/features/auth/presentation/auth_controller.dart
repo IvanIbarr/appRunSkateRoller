@@ -19,8 +19,12 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       await _ref.read(authSessionProvider.notifier).setToken(token);
       state = const AsyncData(null);
       return true;
-    } catch (_) {
-      state = AsyncError('Credenciales incorrectas o servidor no disponible', StackTrace.current);
+    } catch (e, st) {
+      var msg = e.toString().replaceFirst('Exception: ', '');
+      if (msg.isEmpty || msg == e.runtimeType.toString()) {
+        msg = 'No fue posible iniciar sesión';
+      }
+      state = AsyncError(msg, st);
       return false;
     }
   }

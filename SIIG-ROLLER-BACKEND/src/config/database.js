@@ -10,10 +10,12 @@ const pool = new Pool({
   max: 20, // máximo de clientes en el pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  options: '-c client_encoding=UTF8',
 });
 
-// Probar la conexión
-pool.on('connect', () => {
+// Forzar UTF-8 en cada conexión (emojis en chat/comentarios)
+pool.on('connect', (client) => {
+  client.query("SET client_encoding TO 'UTF8'").catch(() => {});
   console.log('✅ Conectado a PostgreSQL');
 });
 
