@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/ui/rn_mirror_layouts.dart';
 import '../../../core/ui/user_profile_avatar.dart';
 import '../data/historial_providers.dart';
@@ -35,6 +36,7 @@ class HistorialScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(appLocaleProvider).t;
     final recAsync = ref.watch(historialRecorridosProvider);
     final statsAsync = ref.watch(historialUserStatsProvider);
     final lbAsync = ref.watch(historialLeaderboardProvider);
@@ -61,7 +63,7 @@ class HistorialScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: kIsWeb ? 12 : 32),
-              _SportHeader(meAsync: meAsync),
+              _SportHeader(meAsync: meAsync, tr: t),
               const SizedBox(height: 16),
               _LeaderboardSection(lbAsync: lbAsync, meAsync: meAsync),
               const SizedBox(height: 20),
@@ -87,9 +89,10 @@ class HistorialScreen extends ConsumerWidget {
 }
 
 class _SportHeader extends StatelessWidget {
-  const _SportHeader({required this.meAsync});
+  const _SportHeader({required this.meAsync, required this.tr});
 
   final AsyncValue<Map<String, dynamic>> meAsync;
+  final String Function(String) tr;
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +112,7 @@ class _SportHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Historial',
+                    tr('history.title'),
                     style: GoogleFonts.permanentMarker(
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
@@ -120,7 +123,7 @@ class _SportHeader extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Tus recorridos anteriores',
+                    tr('history.subtitle'),
                     style: GoogleFonts.permanentMarker(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -134,10 +137,10 @@ class _SportHeader extends StatelessWidget {
         );
       },
       loading: () => const SizedBox(height: 72),
-      error: (_, _) => const HistorialSportSectionTitle(
+      error: (_, _) => HistorialSportSectionTitle(
         icon: '🏆',
-        title: 'Historial',
-        subtitle: 'Tus recorridos anteriores',
+        title: tr('history.title'),
+        subtitle: tr('history.subtitle'),
       ),
     );
   }

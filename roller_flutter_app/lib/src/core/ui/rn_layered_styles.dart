@@ -29,6 +29,7 @@ abstract final class RnLayeredStyles {
   static InputDecoration rutaTextField({
     String? hintText,
     double borderRadius = 12,
+    Widget? prefixIcon,
   }) {
     const borderColor = Color.fromRGBO(203, 213, 225, 0.9);
     OutlineInputBorder b(Color c, [double width = 1]) => OutlineInputBorder(
@@ -39,9 +40,14 @@ abstract final class RnLayeredStyles {
     final focus = b(const Color.fromRGBO(56, 189, 248, 0.75), 1.25);
     return InputDecoration(
       hintText: hintText,
+      prefixIcon: prefixIcon,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: prefixIcon == null ? 16 : 12,
+        vertical: 14,
+      ),
+      isDense: true,
       border: idle,
       enabledBorder: idle,
       focusedBorder: focus,

@@ -35,14 +35,18 @@ const isSmtpConfigured = () =>
 
 const isEmailConfigured = () => isResendConfigured() || isSmtpConfigured();
 
-const sendViaResendApi = ({to, subject, text}) => {
+const sendViaResendApi = ({to, subject, text, html}) => {
   const apiKey = process.env.RESEND_API_KEY.trim();
-  const body = JSON.stringify({
+  const payload = {
     from: RESEND_FROM,
     to: [to],
     subject,
     text,
-  });
+  };
+  if (html) {
+    payload.html = html;
+  }
+  const body = JSON.stringify(payload);
   const insecure = process.env.RESEND_TLS_REJECT_UNAUTHORIZED === 'false';
 
   return new Promise((resolve, reject) => {
@@ -90,15 +94,16 @@ const sendViaResendApi = ({to, subject, text}) => {
 
 /**
  * Envía correo: prioridad Resend API, respaldo SMTP.
+ * @param {{ to: string, subject: string, text: string, html?: string }} params
  */
-const sendEmail = async ({to, subject, text}) => {
+const sendEmail = async ({to, subject, text, html}) => {
   const recipient = String(to || '').trim();
   if (!recipient) {
     throw new Error('Destinatario vacío');
   }
 
   if (isResendConfigured()) {
-    await sendViaResendApi({to: recipient, subject, text});
+    await sendViaResendApi({to: recipient, subject, text, html});
     return {provider: 'resend'};
   }
 
@@ -108,12 +113,11 @@ const sendEmail = async ({to, subject, text}) => {
     throw new Error('Correo no configurado (RESEND_API_KEY o SMTP_*)');
   }
 
-  await transporter.sendMail({
-    from,
-    to: recipient,
-    subject,
-    text,
-  });
+  const mail = {from, to: recipient, subject, text};
+  if (html) {
+    mail.html = html;
+  }
+  await transporter.sendMail(mail);
   return {provider: 'smtp'};
 };
 

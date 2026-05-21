@@ -16,6 +16,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/auth/auth_session.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/location/device_location.dart';
 import '../../../core/maps/mapbox_service.dart';
 import '../../../core/ui/app_theme.dart';
@@ -116,15 +117,43 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
     _focusDestino.addListener(_onFocusDest);
   }
 
+  /// Campo táctil compacto (54–56 px) con icono de contexto.
+  Widget _rutaInput({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hint,
+    required IconData prefixIcon,
+    required ValueChanged<String> onChanged,
+    VoidCallback? onTap,
+    ValueChanged<String>? onSubmitted,
+  }) {
+    return SizedBox(
+      height: 56,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15, height: 1.25),
+        textAlignVertical: TextAlignVertical.center,
+        decoration: RnLayeredStyles.rutaTextField(
+          hintText: hint,
+          prefixIcon: Icon(prefixIcon, size: 20, color: const Color(0xFF64748B)),
+        ),
+        onTap: onTap,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+      ),
+    );
+  }
+
   /// Encabezado encima del campo (estilo RN label blanco legible sobre el panel).
   Widget _rutaFieldLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 6),
+      padding: const EdgeInsets.only(left: 2, bottom: 4),
       child: Text(
         text,
         style: TextStyle(
           color: const Color(0xFFF8FAFC),
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: FontWeight.w800,
           shadows: const [
             Shadow(offset: Offset(1, 1), blurRadius: 3, color: Color(0xBF000000)),
@@ -317,8 +346,6 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
     final m = ScaffoldMessenger.maybeOf(context);
     if (m == null || !mounted) return;
 
-    final mq = MediaQuery.of(context);
-    final bottomInset = mq.padding.bottom;
     final borderColor = switch (kind) {
       RutaToastKind.success => const Color(0xFF00FF7F),
       RutaToastKind.danger => const Color(0xFFFF4A5A),
@@ -367,7 +394,7 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
           14,
           0,
           14,
-          RnBottomNavigationSlot.totalHeight + 18 + bottomInset,
+          RnBottomNavigationSlot.reservedBottomInset(context) + 14,
         ),
         duration: duration,
         content: TweenAnimationBuilder<double>(
@@ -887,41 +914,94 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
     );
   }
 
+  static const _trackingPanelGlass = BoxDecoration(
+    color: Color.fromRGBO(2, 6, 23, 0.88),
+    borderRadius: BorderRadius.all(Radius.circular(16)),
+    border: Border.fromBorderSide(BorderSide(color: Color.fromRGBO(0, 255, 127, 0.32), width: 1.1)),
+    boxShadow: [
+      BoxShadow(color: Color.fromRGBO(56, 189, 248, 0.14), blurRadius: 14, spreadRadius: 0),
+      BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.38), blurRadius: 12, offset: Offset(0, 6)),
+    ],
+  );
+
   Widget _pillRow() {
     if (_distanceM == null || _durSec == null) return const SizedBox.shrink();
     final cal = ((_distanceM! / 1000) * 50).round();
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+    return Row(
       children: [
-        _pill('Distancia', _formatKmM(_distanceM!)),
-        _pill('Tiempo', _formatDur(_durSec!)),
-        _pill('Calorías', '$cal'),
+        Expanded(
+          child: _pill(
+            icon: LucideIcons.gauge,
+            accent: const Color(0xFF38BDF8),
+            label: 'Distancia',
+            value: _formatKmM(_distanceM!),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _pill(
+            icon: LucideIcons.timer,
+            accent: const Color(0xFF00FF7F),
+            label: 'Tiempo',
+            value: _formatDur(_durSec!),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _pill(
+            icon: LucideIcons.flame,
+            accent: const Color(0xFFFF9500),
+            label: 'Calorías',
+            value: '$cal',
+          ),
+        ),
       ],
     );
   }
 
-  Widget _pill(String l, String v) {
+  Widget _pill({
+    required IconData icon,
+    required Color accent,
+    required String label,
+    required String value,
+  }) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 110),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: const Color.fromRGBO(226, 232, 240, 0.08),
-        border: Border.all(color: const Color.fromRGBO(56, 189, 248, 0.2)),
-        boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(56, 189, 248, 0.12), blurRadius: 12),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        color: const Color.fromRGBO(15, 23, 42, 0.55),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            l.toUpperCase(),
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.55, color: Color(0xFFB8C5D8)),
+          Row(
+            children: [
+              Icon(icon, size: 13, color: accent),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
+                    color: accent.withValues(alpha: 0.9),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 5),
-          Text(v, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFFF8FAFC))),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, height: 1.1, color: Color(0xFFF8FAFC)),
+          ),
         ],
       ),
     );
@@ -1016,9 +1096,7 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
     final ctr = _mapCenter();
     return SizedBox(
       height: h,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
+      child: Stack(
           fit: StackFit.expand,
           children: [
             FlutterMap(
@@ -1154,7 +1232,6 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -1168,14 +1245,56 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
     if (_spectadorActivo) return null;
     if (!_routeRequested || _distanceM == null || _durSec == null) return null;
     return Container(
-      decoration: RnLayeredStyles.glassPanel(),
-      padding: const EdgeInsets.all(14),
+      decoration: _trackingPanelGlass,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF00FF7F).withValues(alpha: 0.15),
+                  border: Border.all(color: const Color.fromRGBO(0, 255, 127, 0.45)),
+                ),
+                child: Text(
+                  _tracking ? '🛼' : '📍',
+                  style: const TextStyle(fontSize: 14, height: 1),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _tracking ? 'Recorrido en curso' : 'Ruta lista',
+                      style: const TextStyle(
+                        color: Color(0xFF34D399),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                    Text(
+                      _tracking ? 'Comparte o termina cuando quieras' : 'Revisa el resumen y arranca',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           _pillRow(),
-          const SizedBox(height: 12),
-          OutlinedButton(
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
             onPressed: () {
               final input = RecapInput(
                 route: List<LatLng>.from(_routePts),
@@ -1186,53 +1305,77 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
               ).normalized();
               context.push('/recap/crear', extra: input);
             },
+            icon: const Icon(LucideIcons.clapperboard, size: 17),
+            label: const Text('Crear Recap', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              side: const BorderSide(color: Color.fromRGBO(255, 255, 255, 0.55)),
-              foregroundColor: Colors.white,
-              backgroundColor: const Color.fromRGBO(15, 23, 42, 0.32),
+              minimumSize: const Size.fromHeight(44),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              side: const BorderSide(color: Color.fromRGBO(226, 232, 240, 0.4)),
+              foregroundColor: const Color(0xFFE2E8F0),
+              backgroundColor: const Color.fromRGBO(15, 23, 42, 0.42),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Crear Recap', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           if (!_tracking)
-            ElevatedButton(
-              onPressed: _iniciar,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                backgroundColor: const Color(0xFF0891B2),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Text('¡VAMOS! · Iniciar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _compartirRutaTexto,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      backgroundColor: const Color(0xFF3B82F6),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Compartir Ruta', style: TextStyle(fontWeight: FontWeight.w700)),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _iniciar,
+                style: ButtonStyle(
+                  minimumSize: WidgetStateProperty.all(const Size.fromHeight(50)),
+                  backgroundColor: WidgetStateProperty.all(const Color(0xFF00FF7F)),
+                  foregroundColor: WidgetStateProperty.all(const Color(0xFF020617)),
+                  elevation: WidgetStateProperty.all(6),
+                  shadowColor: WidgetStateProperty.all(const Color(0x6600FF7F)),
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _terminar,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      backgroundColor: const Color(0xFFEF4444),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🛼', style: TextStyle(fontSize: 18, height: 1)),
+                    const SizedBox(width: 8),
+                    Text(
+                      '¡VAMOS! · Iniciar',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                      ),
                     ),
-                    child: const Text('Terminar Ruta', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _compartirRutaTexto,
+                  icon: const Icon(LucideIcons.share2, size: 17),
+                  label: const Text('Compartir ruta', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    backgroundColor: const Color(0xFF0891B2),
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: _terminar,
+                  icon: const Icon(LucideIcons.square, size: 17),
+                  label: const Text('Terminar ruta', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],
@@ -1244,8 +1387,11 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final h = MediaQuery.sizeOf(context).height;
-    final mapH = math.max(268.0, h * (kIsWeb ? 0.42 : 0.38)).clamp(260.0, 520.0);
+    final t = ref.watch(appLocaleProvider).t;
+    final hasRouteResult = _routePts.isNotEmpty && _distanceM != null && _durSec != null;
+    final mapH = hasRouteResult
+        ? (kIsWeb ? 300.0 : 280.0)
+        : (kIsWeb ? 250.0 : 235.0);
 
     final form = <Widget>[];
     if (_spectadorActivo) {
@@ -1272,27 +1418,33 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           'Mapa en vivo del compañero. Origen y destino se actualizan con los datos del servidor.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFFCBD5F5), height: 1.35),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: const Color(0xFFCBD5F5),
+                fontSize: 12,
+                height: 1.32,
+              ),
         ),
       ]);
     } else if (!_tracking) {
       form.addAll([
         Text(
           'Escribe o ten a la mano la calle y codigo postal para ubicar mejor origen y destino en el mapa.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFFCBD5F5), height: 17 / 12),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: const Color(0xFFCBD5F5),
+                fontSize: 12,
+                height: 1.35,
+              ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _rutaFieldLabel('Origen'),
-        TextField(
+        _rutaInput(
           controller: _origenCtrl,
           focusNode: _focusOrigen,
-          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15),
-          decoration: RnLayeredStyles.rutaTextField(
-            hintText: _gpsLoading ? 'Obteniendo tu ubicación...' : 'Ej: Lic. Primo Verdad, Col. Jardines, CDMX',
-          ),
+          prefixIcon: LucideIcons.navigation,
+          hint: _gpsLoading ? 'Obteniendo tu ubicación...' : 'Ej: Lic. Primo Verdad, Col. Jardines, CDMX',
           onTap: () => setState(() => _sugDestino = []),
           onChanged: (v) {
             final gpsPreset = v.trim().startsWith('Mi ubicación actual');
@@ -1316,19 +1468,27 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
             _focusOrigen.unfocus();
           },
         ),
-        const SizedBox(height: 10),
-        OutlinedButton(
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
           onPressed: _gpsLoading ? null : () => _obtenerGps(origenSilent: false),
+          icon: Icon(
+            _gpsLoading ? LucideIcons.loader2 : LucideIcons.locateFixed,
+            size: 18,
+            color: const Color(0xFFCBD5E1),
+          ),
+          label: Text(
+            _gpsLoading ? 'Obteniendo GPS…' : 'Usar mi ubicación',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            side: const BorderSide(color: Color.fromRGBO(255, 255, 255, 0.55)),
+            minimumSize: const Size.fromHeight(46),
+            side: const BorderSide(color: Color.fromRGBO(226, 232, 240, 0.45)),
             foregroundColor: const Color(0xFFE2E8F0),
-            backgroundColor: const Color.fromRGBO(15, 23, 42, 0.30),
+            backgroundColor: const Color.fromRGBO(15, 23, 42, 0.38),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text('Usar mi ubicación', style: TextStyle(fontWeight: FontWeight.w700)),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           _gpsLoading
               ? 'Obteniendo GPS...'
@@ -1340,13 +1500,13 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
           textAlign: TextAlign.center,
           style: const TextStyle(color: Color.fromRGBO(248, 250, 252, 0.9), fontSize: 12, fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         _rutaFieldLabel('Destino'),
-        TextField(
+        _rutaInput(
           controller: _destinoCtrl,
           focusNode: _focusDestino,
-          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 15),
-          decoration: RnLayeredStyles.rutaTextField(hintText: 'Ej: Xitla, Col. Arenal 4ta Sección, CDMX'),
+          prefixIcon: LucideIcons.mapPin,
+          hint: 'Ej: Xitla, Col. Arenal 4ta Sección, CDMX',
           onTap: () => setState(() => _sugOrigen = []),
           onChanged: (v) {
             _limpiaRutaPorCampos();
@@ -1365,7 +1525,7 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
             _focusDestino.unfocus();
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         RnMirrorRutaCalcularCta(
           label: _calculando ? 'Calculando...' : 'Calcular ruta',
           enabled:
@@ -1386,6 +1546,8 @@ class _RutaScreenState extends ConsumerState<RutaScreen> {
       children: [
         RnMirrorRutaLayout(
           user: me,
+          navTitle: t('navigation.title'),
+          navSubtitle: t('navigation.subtitle'),
           formFields: form,
           bottomMap: _mapLayer(mapH),
           bottomMapHeight: mapH,

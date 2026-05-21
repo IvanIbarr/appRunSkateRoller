@@ -41,17 +41,44 @@ const certPath = join(certDir, 'dev-cert.pem');
 writeFileSync(keyPath, pems.private);
 writeFileSync(certPath, pems.cert);
 
+/** Express quita el prefijo del mount; el backend espera /api/..., /uploads/..., etc. */
+const pathWithPrefix = (prefix) => (path) => {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if (p === prefix || p.startsWith(`${prefix}/`)) return p;
+  return `${prefix}${p}`;
+};
+
 const apiProxy = createProxyMiddleware({
   target: API_TARGET,
   changeOrigin: true,
   ws: true,
+  pathRewrite: pathWithPrefix('/api'),
+});
+
+const uploadsProxy = createProxyMiddleware({
+  target: API_TARGET,
+  changeOrigin: true,
+  pathRewrite: pathWithPrefix('/uploads'),
+});
+
+const healthProxy = createProxyMiddleware({
+  target: API_TARGET,
+  changeOrigin: true,
+  pathRewrite: pathWithPrefix('/health'),
+});
+
+const socketProxy = createProxyMiddleware({
+  target: API_TARGET,
+  changeOrigin: true,
+  ws: true,
+  pathRewrite: pathWithPrefix('/socket.io'),
 });
 
 const app = express();
 app.use('/api', apiProxy);
-app.use('/uploads', apiProxy);
-app.use('/health', apiProxy);
-app.use('/socket.io', apiProxy);
+app.use('/uploads', uploadsProxy);
+app.use('/health', healthProxy);
+app.use('/socket.io', socketProxy);
 app.use('/', createProxyMiddleware({ target: FLUTTER_TARGET, changeOrigin: true, ws: true }));
 
 https

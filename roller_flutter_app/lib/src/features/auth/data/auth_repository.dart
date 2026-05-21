@@ -105,10 +105,28 @@ class AuthRepository {
   }
 
   Future<void> forgotPassword(String email) async {
-    await _dio.post(
-      '/auth/forgot-password',
-      data: {'email': email.trim()},
-    );
+    try {
+      final res = await _dio.post(
+        '/auth/forgot-password',
+        data: {'email': email.trim()},
+      );
+      final data = res.data;
+      if (data is! Map || data['success'] != true) {
+        throw Exception((data is Map ? data['error'] : null) ?? 'No se pudo enviar el código');
+      }
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      if (body is Map && body['error'] != null) {
+        throw Exception(body['error'].toString());
+      }
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        throw Exception(
+          'No hay conexión con el servidor. Comprueba WiFi y que el backend esté activo.',
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<String> verifyResetCode({

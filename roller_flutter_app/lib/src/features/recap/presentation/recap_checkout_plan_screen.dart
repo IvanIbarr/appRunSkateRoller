@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/page_scaffold.dart';
 import '../models/recap_checkout_draft.dart';
+import '../recap_flow_cache.dart';
 
 class _PlanOption {
   const _PlanOption({
@@ -86,6 +87,7 @@ class RecapCheckoutPlanScreen extends StatelessWidget {
           for (final p in _plans) ...[
             InkWell(
               onTap: () {
+                RecapFlowCache.setPlan(p.id);
                 final draft = RecapCheckoutDraft(
                   planId: p.id,
                   planTitle: p.title,

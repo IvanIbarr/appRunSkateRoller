@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/page_scaffold.dart';
 import '../models/recap_checkout_draft.dart';
+import '../recap_flow_cache.dart';
 
 class RecapCheckoutPagoScreen extends StatefulWidget {
   const RecapCheckoutPagoScreen({super.key, required this.draft});
@@ -40,7 +41,13 @@ class _RecapCheckoutPagoScreenState extends State<RecapCheckoutPagoScreen> {
         ),
       ),
     );
-    context.go('/recap/crear');
+    RecapFlowCache.setPlan(widget.draft.planId);
+    final input = RecapFlowCache.lastInput;
+    if (input != null) {
+      context.go('/recap/crear', extra: input);
+    } else {
+      context.go('/recap/crear');
+    }
   }
 
   @override

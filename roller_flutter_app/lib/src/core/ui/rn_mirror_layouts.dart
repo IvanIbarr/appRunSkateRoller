@@ -296,14 +296,21 @@ abstract final class RnMirrorTypography {
 // -----------------------------------------------------------------------------
 
 class RnMirrorRutaHeader extends StatelessWidget {
-  const RnMirrorRutaHeader({super.key, this.user});
+  const RnMirrorRutaHeader({
+    super.key,
+    this.user,
+    this.title = 'Inicio de Recorrido',
+    this.subtitle = 'Navegación y Tracking',
+  });
 
   final Map<String, dynamic>? user;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -312,14 +319,25 @@ class RnMirrorRutaHeader extends StatelessWidget {
             borderColor: const Color.fromRGBO(226, 232, 240, 0.14),
             backgroundColor: const Color.fromRGBO(2, 6, 23, 0.62),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Inicio de Recorrido', style: RnMirrorTypography.heroTitle()),
-                const SizedBox(height: 4),
-                Text('Navegación y Tracking', style: RnMirrorTypography.heroSubtitle()),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: RnMirrorTypography.heroTitle(size: 26).copyWith(height: 1.05),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: RnMirrorTypography.heroSubtitle(size: 15).copyWith(height: 1.1),
+                ),
               ],
             ),
           ),
@@ -347,10 +365,10 @@ class RnMirrorRutaFormGlass extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: _rutaNeonDarkGlass,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: children,
@@ -379,14 +397,22 @@ class RnMirrorRutaCalcularCta extends StatelessWidget {
       child: ElevatedButton(
         onPressed: enabled ? onPressed : null,
         style: ButtonStyle(
-          minimumSize: WidgetStateProperty.all(const Size.fromHeight(52)),
+          minimumSize: WidgetStateProperty.all(const Size.fromHeight(50)),
           backgroundColor: WidgetStateProperty.resolveWith((s) {
-            if (s.contains(WidgetState.disabled)) return const Color.fromRGBO(148, 163, 184, 0.35);
+            if (s.contains(WidgetState.disabled)) {
+              return const Color.fromRGBO(30, 41, 59, 0.72);
+            }
             return AppTheme.routeElectricCta;
           }),
           foregroundColor: WidgetStateProperty.resolveWith((s) {
-            if (s.contains(WidgetState.disabled)) return const Color(0xFF475569);
+            if (s.contains(WidgetState.disabled)) return const Color(0xFF94A3B8);
             return const Color(0xFF020617);
+          }),
+          side: WidgetStateProperty.resolveWith((s) {
+            if (s.contains(WidgetState.disabled)) {
+              return const BorderSide(color: Color.fromRGBO(148, 163, 184, 0.35));
+            }
+            return BorderSide.none;
           }),
           elevation: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.disabled) ? 0.0 : 8.0),
           shadowColor: WidgetStateProperty.all(const Color(0x9900D4FF)),
@@ -406,6 +432,8 @@ class RnMirrorRutaLayout extends StatelessWidget {
     super.key,
     required this.formFields,
     this.user,
+    this.navTitle,
+    this.navSubtitle,
     this.bottomMap,
     this.bottomMapHeight,
     this.trackingPanel,
@@ -413,6 +441,8 @@ class RnMirrorRutaLayout extends StatelessWidget {
   });
 
   final Map<String, dynamic>? user;
+  final String? navTitle;
+  final String? navSubtitle;
   final List<Widget> formFields;
   final Widget? bottomMap;
   /// Alto del mapa inferior (web móvil suele pedir ~0.35–0.6 del viewport como RN).
@@ -435,33 +465,47 @@ class RnMirrorRutaLayout extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(bottom: RnBottomNavigationSlot.totalHeight + 20),
+                padding: EdgeInsets.only(
+                  bottom: RnBottomNavigationSlot.reservedBottomInset(context) + 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    RnMirrorRutaHeader(user: user),
-                    const SizedBox(height: 10),
+                    RnMirrorRutaHeader(
+                      user: user,
+                      title: navTitle ?? 'Inicio de Recorrido',
+                      subtitle: navSubtitle ?? 'Navegación y Tracking',
+                    ),
+                    const SizedBox(height: 6),
                     RnMirrorRutaFormGlass(children: formFields),
                     if (bottomMap != null) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 8),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: RnLayeredStyles.glassBorder),
+                            borderRadius: BorderRadius.circular(16),
+                            color: const Color.fromRGBO(2, 6, 23, 0.55),
+                            border: Border.all(
+                              color: const Color.fromRGBO(0, 255, 127, 0.22),
+                            ),
                             boxShadow: const [
                               BoxShadow(
-                                color: Color.fromRGBO(0, 0, 0, 0.28),
+                                color: Color.fromRGBO(56, 189, 248, 0.12),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                              ),
+                              BoxShadow(
+                                color: Color.fromRGBO(0, 0, 0, 0.32),
                                 blurRadius: 14,
                                 offset: Offset(0, 6),
                               ),
                             ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                             child: SizedBox(
-                              height: bottomMapHeight ?? 220,
+                              height: bottomMapHeight ?? 240,
                               child: bottomMap,
                             ),
                           ),
@@ -469,9 +513,9 @@ class RnMirrorRutaLayout extends StatelessWidget {
                       ),
                     ],
                     if (trackingPanel != null) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: trackingPanel!,
                       ),
                     ],

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/ui/app_theme.dart';
 import 'auth_controller.dart';
 
@@ -61,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-class LoginLayout extends StatelessWidget {
+class LoginLayout extends ConsumerWidget {
   const LoginLayout({
     super.key,
     required this.emailCtrl,
@@ -88,7 +89,8 @@ class LoginLayout extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(appLocaleProvider).t;
     final w = MediaQuery.of(context).size.width;
     final titleSize = _titleFontSize(w);
     final padH = 24.0;
@@ -149,13 +151,13 @@ class LoginLayout extends StatelessWidget {
                         child: Column(
                           children: [
                             _RnInput(
-                              label: 'Email',
+                              label: t('login.email'),
                               controller: emailCtrl,
                               labelColor: Colors.white,
                               keyboardType: TextInputType.emailAddress,
                             ),
                             _RnInput(
-                              label: 'Contraseña',
+                              label: t('login.password'),
                               controller: passwordCtrl,
                               labelColor: Colors.white,
                               obscureText: true,
@@ -163,7 +165,7 @@ class LoginLayout extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             _RnButton(
-                              title: loading ? 'Iniciando…' : 'Iniciar Sesión',
+                              title: loading ? t('login.loggingIn') : t('login.button'),
                               onTap: loading ? null : onLogin,
                               paddingVertical: 10,
                               paddingHorizontal: 18,
@@ -174,7 +176,7 @@ class LoginLayout extends StatelessWidget {
                             GestureDetector(
                               onTap: loading ? null : onForgot,
                               child: Text(
-                                'Olvidé mi contraseña',
+                                t('login.forgot'),
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.inter(
                                   color: const Color(0xFF0A84FF),
@@ -197,13 +199,13 @@ class LoginLayout extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            '¿No tienes una cuenta? ',
+                            t('login.register'),
                             style: GoogleFonts.inter(fontSize: 14, color: Colors.black, fontWeight: FontWeight.bold),
                           ),
                           GestureDetector(
                             onTap: loading ? null : onRegister,
                             child: Text(
-                              'Regístrate',
+                              t('login.registerLink'),
                               style: GoogleFonts.inter(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold),
                             ),
                           ),

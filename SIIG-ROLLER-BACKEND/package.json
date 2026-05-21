@@ -15,7 +15,8 @@
     "db:compat:setup": "node scripts/setup-compat-columns.js",
     "db:grupos:setup": "node scripts/create-grupos-table.js",
     "db:grupos:check": "node scripts/create-grupos-table.js --check",
-    "db:backup": "node scripts/backup-db.js"
+    "db:backup": "node scripts/backup-db.js",
+    "email:welcome-test": "node scripts/send-welcome-test.js"
   },
   "keywords": [
     "roller",

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_session.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../data/auth_repository.dart';
 
 class AuthController extends StateNotifier<AsyncValue<void>> {
@@ -35,8 +36,12 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       await _repo.forgotPassword(email);
       state = const AsyncData(null);
       return true;
-    } catch (_) {
-      state = AsyncError('No se pudo solicitar recuperacion', StackTrace.current);
+    } catch (e, st) {
+      var msg = e.toString().replaceFirst('Exception: ', '');
+      if (msg.isEmpty || msg == e.runtimeType.toString()) {
+        msg = 'No pudimos enviar el código. Verifica el correo e intenta nuevamente.';
+      }
+      state = AsyncError(msg, st);
       return false;
     }
   }
@@ -67,6 +72,7 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
         avatar: avatar,
       );
       await _ref.read(authSessionProvider.notifier).setToken(token);
+      await _ref.read(appLocaleProvider.notifier).setFromNacionalidad(nacionalidad);
       if (alias != null && alias.trim().isNotEmpty) {
         try {
           await _repo.agregarAlias(alias);

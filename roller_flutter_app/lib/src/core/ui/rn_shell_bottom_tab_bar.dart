@@ -1,10 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../l10n/app_locale.dart';
 import 'rn_mirror_layouts.dart';
 
 enum RnMainRoute {
@@ -62,7 +63,7 @@ abstract final class RnCyberNavTokens {
       ];
 }
 
-class RnBottomTabBar extends StatelessWidget {
+class RnBottomTabBar extends ConsumerWidget {
   const RnBottomTabBar({
     super.key,
     required this.activeRoute,
@@ -72,21 +73,22 @@ class RnBottomTabBar extends StatelessWidget {
   final RnMainRoute activeRoute;
   final void Function(RnMainRoute route) onNavigate;
 
-  static const tabs = <RnTabItem>[
-    RnTabItem(route: RnMainRoute.ruta, label: 'Ruta', shortLabel: 'Ruta', skateEmoji: true),
-    RnTabItem(route: RnMainRoute.chat, label: 'Chat', shortLabel: 'Chat', lucideIcon: LucideIcons.messageCircle),
-    RnTabItem(route: RnMainRoute.historial, label: 'Historial', shortLabel: 'Hist.', lucideIcon: LucideIcons.trophy),
-    RnTabItem(route: RnMainRoute.calendario, label: 'Calendario', shortLabel: 'Cal.', lucideIcon: LucideIcons.calendarDays),
-    RnTabItem(route: RnMainRoute.rollertips, label: 'Rollertips', shortLabel: 'Tips', lucideIcon: LucideIcons.clapperboard),
-    RnTabItem(route: RnMainRoute.marketing, label: 'Marketing', shortLabel: 'Mkt.', lucideIcon: LucideIcons.sparkles),
-    RnTabItem(route: RnMainRoute.menu, label: 'Menú', shortLabel: 'Menú', lucideIcon: LucideIcons.menu),
-  ];
-
   /// Altura interior (fila de tabs). Debe albergar rail + icono + label Orbitron sin overflow.
   static const double kPreferredInteriorHeight = 78;
 
+  List<RnTabItem> _tabs(String Function(String) t) => [
+        RnTabItem(route: RnMainRoute.ruta, label: t('tab.ruta'), shortLabel: t('tab.ruta'), skateEmoji: true),
+        RnTabItem(route: RnMainRoute.chat, label: t('tab.chat'), shortLabel: t('tab.chat'), lucideIcon: LucideIcons.messageCircle),
+        RnTabItem(route: RnMainRoute.historial, label: t('tab.historial'), shortLabel: t('tab.historial'), lucideIcon: LucideIcons.trophy),
+        RnTabItem(route: RnMainRoute.calendario, label: t('tab.calendario'), shortLabel: t('tab.calendario'), lucideIcon: LucideIcons.calendarDays),
+        RnTabItem(route: RnMainRoute.rollertips, label: t('tab.rollertips'), shortLabel: t('tab.rollertips'), lucideIcon: LucideIcons.clapperboard),
+        RnTabItem(route: RnMainRoute.marketing, label: t('tab.marketing'), shortLabel: t('tab.marketing'), lucideIcon: LucideIcons.sparkles),
+        RnTabItem(route: RnMainRoute.menu, label: t('tab.menu'), shortLabel: t('tab.menu'), lucideIcon: LucideIcons.menu),
+      ];
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tabs = _tabs(ref.watch(appLocaleProvider).t);
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(

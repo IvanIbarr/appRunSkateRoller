@@ -7,6 +7,17 @@ import 'chat_thread_rn_mirror.dart';
 
 enum _ChatTab { general, staff }
 
+/// Clearance inferior solo para /chat (no usar [RnBottomNavigationSlot.reservedBottomInset]).
+/// El shell ya dibuja la bottom nav; aquí solo evitamos que el panel choque con ella.
+double _chatBottomInset(BuildContext context) {
+  final safeBottom = MediaQuery.paddingOf(context).bottom;
+  final isMobile = MediaQuery.sizeOf(context).width < 600;
+  if (isMobile) {
+    return safeBottom + 14;
+  }
+  return safeBottom + 18;
+}
+
 /// Espejo estructural de `ComunidadScreen.tsx`: selector General/Staff + panes apilados.
 /// Nota: para Preview usamos mock "usuario con grupo" => staff visible.
 ///
@@ -192,12 +203,9 @@ class _ChatComunidadRnTabsMirrorState extends State<ChatComunidadRnTabsMirror> {
     );
 
     if (!widget.embedRnShell) {
-      // extendBody: el body llega detrás de la barra; padding sin restar alturas manualmente.
       return SizedBox.expand(
         child: Padding(
-          padding: EdgeInsets.only(
-            bottom: RnBottomNavigationSlot.reservedBottomInset(context),
-          ),
+          padding: EdgeInsets.only(bottom: _chatBottomInset(context)),
           child: tabsAndPanel,
         ),
       );

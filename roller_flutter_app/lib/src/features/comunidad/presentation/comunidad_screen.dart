@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/l10n/app_locale.dart';
 import '../../chat/data/chat_repository.dart';
 import '../../perfil/data/perfil_repository.dart';
 
@@ -56,6 +57,7 @@ class _ComunidadScreenState extends ConsumerState<ComunidadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(appLocaleProvider).t;
     final me = ref.watch(_meProvider).valueOrNull;
     final canStaff = _canViewStaff(me);
     if (!canStaff && _tab == 'staff') {
@@ -134,7 +136,7 @@ class _ComunidadScreenState extends ConsumerState<ComunidadScreen> {
                               color: _tab == 'general'
                                   ? const Color.fromRGBO(56, 189, 248, 0.18)
                                   : Colors.transparent,
-                              child: Text('Chat General', style: _tab == 'general' ? activeTabText : tabText),
+                              child: Text(t('community.chatGeneral'), style: _tab == 'general' ? activeTabText : tabText),
                             ),
                           ),
                         ),
@@ -162,7 +164,7 @@ class _ComunidadScreenState extends ConsumerState<ComunidadScreen> {
                                 color: _tab == 'staff'
                                     ? const Color.fromRGBO(56, 189, 248, 0.18)
                                     : Colors.transparent,
-                                child: Text('Chat Staff', style: _tab == 'staff' ? activeTabText : tabText),
+                                child: Text(t('community.chatStaff'), style: _tab == 'staff' ? activeTabText : tabText),
                               ),
                             ),
                           ),

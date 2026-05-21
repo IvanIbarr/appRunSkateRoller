@@ -1262,12 +1262,13 @@ class ChatRnThreadColumn extends StatelessWidget {
           list = RefreshIndicator(onRefresh: onRefresh!, child: list);
         }
 
+        final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
         final composer = Padding(
           padding: EdgeInsets.fromLTRB(
             layout.inputPaddingH,
             6,
             layout.inputPaddingH,
-            MediaQuery.viewInsetsOf(context).bottom + 8,
+            keyboardInset > 0 ? keyboardInset + 4 : 8,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

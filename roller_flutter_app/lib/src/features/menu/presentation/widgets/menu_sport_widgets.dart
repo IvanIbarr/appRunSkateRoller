@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/l10n/app_locale.dart';
 import '../../../../core/ui/rn_layered_styles.dart';
 import '../../../../core/ui/rn_mirror_layouts.dart';
 import '../../../../core/ui/user_profile_avatar.dart';
@@ -47,20 +49,21 @@ class MenuSportGlassCard extends StatelessWidget {
   }
 }
 
-class MenuSportHeader extends StatelessWidget {
+class MenuSportHeader extends ConsumerWidget {
   const MenuSportHeader({required this.email});
 
   final String email;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(appLocaleProvider).t;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Menú', style: RnMirrorTypography.heroTitle()),
+        Text(t('menu.title'), style: RnMirrorTypography.heroTitle()),
         const SizedBox(height: 4),
         Text(
-          'Configuración y opciones',
+          t('menu.subtitle'),
           style: RnMirrorTypography.heroSubtitle(size: 18),
         ),
         if (email.isNotEmpty) ...[

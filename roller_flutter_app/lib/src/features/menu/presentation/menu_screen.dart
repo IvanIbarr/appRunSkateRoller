@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/auth/auth_session.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/ui/rn_layered_styles.dart';
 import '../../../core/ui/rn_mirror_layouts.dart';
 import '../../auth/data/auth_repository.dart';
@@ -263,7 +264,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       error: (_, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Menú', style: RnMirrorTypography.heroTitle()),
+          Text(ref.watch(appLocaleProvider).t('menu.title'), style: RnMirrorTypography.heroTitle()),
           const SizedBox(height: 32),
         ],
       ),

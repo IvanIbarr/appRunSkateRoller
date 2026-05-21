@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'core/auth/auth_session.dart';
+import 'core/l10n/app_locale.dart';
 import 'core/ui/app_theme.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
@@ -420,11 +421,13 @@ class RollerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authSessionProvider);
     final router = ref.watch(_routerProvider);
+    final appLocale = ref.watch(appLocaleProvider);
     ref.watch(eventoRealtimeBootstrapProvider);
     return MaterialApp.router(
       title: 'RunSkateRoller',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
+      locale: appLocale.locale,
       scaffoldMessengerKey: eventoReminderMessengerKey,
       routerConfig: router,
       builder: (context, child) {

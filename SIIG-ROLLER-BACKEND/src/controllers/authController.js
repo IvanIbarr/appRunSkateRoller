@@ -3,6 +3,8 @@ const AuthService = require('../services/authService');
 const PasswordResetService = require('../services/passwordResetService');
 const Usuario = require('../models/Usuario');
 const {sendEmail, isEmailConfigured} = require('../services/emailService');
+const {buildPasswordResetEmail} = require('../templates/passwordResetEmail');
+const {buildWelcomeEmail} = require('../templates/welcomeEmail');
 
 /**
  * Login de usuario
@@ -87,6 +89,25 @@ const registro = async (req, res) => {
 
     if (!result.success) {
       return res.status(400).json(result);
+    }
+
+    if (isEmailConfigured()) {
+      try {
+        const usuario = result.usuario || {};
+        const welcome = buildWelcomeEmail({
+          displayName: usuario.alias || usuario.email?.split('@')[0] || 'Roller',
+          nacionalidad: nacionalidad || usuario.nacionalidad,
+          alias: usuario.alias,
+        });
+        await sendEmail({
+          to: email,
+          subject: welcome.subject,
+          text: welcome.text,
+          html: welcome.html,
+        });
+      } catch (welcomeErr) {
+        console.error('Correo de bienvenida no enviado (registro OK):', welcomeErr.message);
+      }
     }
 
     res.status(201).json(result);
@@ -290,14 +311,17 @@ const forgotPassword = async (req, res) => {
     }
 
     const {code, expiresAt} = PasswordResetService.createReset(email);
+    const displayName = (user.alias || user.email?.split('@')[0] || 'Roller').toString().trim();
+    const resetMail = buildPasswordResetEmail({code, displayName, expiresAt});
     let emailSent = false;
 
     if (isEmailConfigured()) {
       try {
         await sendEmail({
           to: email,
-          subject: 'Código de recuperación - RunSkateRoller',
-          text: `Tu código de recuperación es: ${code}. Expira en 10 minutos.`,
+          subject: resetMail.subject,
+          text: resetMail.text,
+          html: resetMail.html,
         });
         emailSent = true;
       } catch (mailError) {

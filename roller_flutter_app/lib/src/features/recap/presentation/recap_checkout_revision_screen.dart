@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/page_scaffold.dart';
 import '../models/recap_checkout_draft.dart';
+import '../recap_flow_cache.dart';
 
 class RecapCheckoutRevisionScreen extends StatelessWidget {
   const RecapCheckoutRevisionScreen({super.key, required this.draft});
@@ -39,8 +40,14 @@ class RecapCheckoutRevisionScreen extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () {
                 if (isFree) {
+                  RecapFlowCache.setPlan(draft.planId);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plan gratis activado (demo).')));
-                  context.go('/recap/crear');
+                  final input = RecapFlowCache.lastInput;
+                  if (input != null) {
+                    context.go('/recap/crear', extra: input);
+                  } else {
+                    context.go('/recap/crear');
+                  }
                   return;
                 }
                 context.go('/recap/pago', extra: draft);

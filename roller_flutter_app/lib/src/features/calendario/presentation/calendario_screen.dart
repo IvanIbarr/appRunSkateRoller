@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/staff_chat_access.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/ui/rn_mirror_layouts.dart';
 import '../../../core/ui/user_profile_avatar.dart';
 import '../../chat/data/chat_repository.dart';
@@ -197,6 +198,7 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
 
   Widget _calendarioContent(List<Map<String, dynamic>> raw, {Map<String, dynamic>? syncMe, String? loadError}) {
     final eventos = _filteredSorted(raw);
+    final t = ref.watch(appLocaleProvider).t;
     final topPad = MediaQuery.paddingOf(context).top;
     final iosHeaderTop = topPad > 0 ? topPad : 16.0;
     final Widget avatarSlot = syncMe != null
@@ -254,8 +256,8 @@ class _CalendarioScreenState extends ConsumerState<CalendarioScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('📅 Calendario', style: pageTitle()),
-                    Text('Eventos y rodadas programadas', style: pageSubtitle()),
+                    Text('📅 ${t('calendar.title')}', style: pageTitle()),
+                    Text(t('calendar.subtitle'), style: pageSubtitle()),
                   ],
                 ),
               ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/ui/app_theme.dart';
 import '../../../core/ui/rn_shell_bottom_tab_bar.dart';
 import '../../auth/data/auth_repository.dart';
@@ -80,6 +81,7 @@ class _InformacionPersonalScreenState extends ConsumerState<InformacionPersonalS
     _sexo = ['masculino', 'femenino', 'ambos'].contains(sx) ? sx : 'masculino';
     final na = (u['nacionalidad'] ?? 'español').toString();
     _nacionalidad = (na == 'inglés' || na == 'ingles') ? 'inglés' : 'español';
+    ref.read(appLocaleProvider.notifier).setFromNacionalidad(_nacionalidad);
     _telefonoCtrl.text = (u['telefono'] ?? '').toString();
 
     final rawCumple = (u['cumpleaños'] ?? u['cumpleanos'] ?? '').toString();
@@ -496,10 +498,13 @@ class _InformacionPersonalScreenState extends ConsumerState<InformacionPersonalS
       color: active ? const Color(0xFF0D2847) : const Color.fromRGBO(255, 255, 255, 0.08),
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        onTap: () => setState(() {
-          _nacionalidad = value;
-          _toast = null;
-        }),
+        onTap: () async {
+          setState(() {
+            _nacionalidad = value;
+            _toast = null;
+          });
+          await ref.read(appLocaleProvider.notifier).setFromNacionalidad(value);
+        },
         borderRadius: BorderRadius.circular(10),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),

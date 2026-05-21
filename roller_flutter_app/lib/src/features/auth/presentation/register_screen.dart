@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/l10n/app_locale.dart';
 import 'auth_controller.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -61,9 +62,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return age;
   }
 
+  Future<void> _setLanguage(String nacionalidad) async {
+    setState(() => _nacionalidad = nacionalidad);
+    await ref.read(appLocaleProvider.notifier).setFromNacionalidad(nacionalidad);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authControllerProvider).isLoading;
+    final t = ref.watch(appLocaleProvider).t;
 
     return Scaffold(
       body: Stack(
@@ -91,7 +98,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Registro',
+                          t('register.title'),
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             fontSize: 24,
@@ -101,7 +108,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        _Label('Email'),
+                        _Label(t('register.email')),
                         _TextFieldRn(
                           controller: _emailCtrl,
                           enabled: !isLoading,
@@ -109,48 +116,48 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        _Label('Idioma'),
+                        _Label(t('register.language')),
                         Row(
                           children: [
                             Expanded(
                               child: _ToggleButtonRn(
-                                text: 'Español',
+                                text: t('register.language.espanol'),
                                 active: _nacionalidad == 'español',
-                                onTap: isLoading ? null : () => setState(() => _nacionalidad = 'español'),
+                                onTap: isLoading ? null : () => _setLanguage('español'),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: _ToggleButtonRn(
-                                text: 'Inglés',
+                                text: t('register.language.ingles'),
                                 active: _nacionalidad == 'inglés',
-                                onTap: isLoading ? null : () => setState(() => _nacionalidad = 'inglés'),
+                                onTap: isLoading ? null : () => _setLanguage('inglés'),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
 
-                        _Label('Tipo de perfil'),
+                        _Label(t('register.profile')),
                         _ToggleButtonRn(
-                          text: 'Líder de grupo',
+                          text: t('register.profile.liderGrupo'),
                           active: _tipoPerfil == 'liderGrupo',
                           onTap: isLoading ? null : () => setState(() => _tipoPerfil = 'liderGrupo'),
                         ),
                         const SizedBox(height: 8),
                         _ToggleButtonRn(
-                          text: 'Roller',
+                          text: t('register.profile.roller'),
                           active: _tipoPerfil == 'roller',
                           onTap: isLoading ? null : () => setState(() => _tipoPerfil = 'roller'),
                         ),
                         const SizedBox(height: 20),
 
-                        _Label('Sexo'),
+                        _Label(t('register.gender')),
                         Row(
                           children: [
                             Expanded(
                               child: _ToggleButtonRn(
-                                text: 'Masculino',
+                                text: t('register.gender.masculino'),
                                 active: _sexo == 'masculino',
                                 onTap: isLoading ? null : () => setState(() => _sexo = 'masculino'),
                               ),
@@ -158,7 +165,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: _ToggleButtonRn(
-                                text: 'Femenino',
+                                text: t('register.gender.femenino'),
                                 active: _sexo == 'femenino',
                                 onTap: isLoading ? null : () => setState(() => _sexo = 'femenino'),
                               ),
@@ -167,20 +174,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 8),
                         _ToggleButtonRn(
-                          text: 'Ambos',
+                          text: t('register.gender.ambos'),
                           active: _sexo == 'ambos',
                           onTap: isLoading ? null : () => setState(() => _sexo = 'ambos'),
                         ),
                         const SizedBox(height: 20),
 
-                        _Label('Alias'),
+                        _Label(t('register.alias')),
                         _TextFieldRn(
                           controller: _aliasCtrl,
                           enabled: !isLoading,
                         ),
                         const SizedBox(height: 16),
 
-                        _Label('Contraseña'),
+                        _Label(t('register.password')),
                         _TextFieldRn(
                           controller: _passwordCtrl,
                           enabled: !isLoading,
@@ -188,7 +195,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        _Label('Confirmar contraseña'),
+                        _Label(t('register.confirmPassword')),
                         _TextFieldRn(
                           controller: _confirmPasswordCtrl,
                           enabled: !isLoading,
@@ -196,7 +203,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        _Label('Cumpleaños'),
+                        _Label(t('register.birthday')),
                         _TextFieldRn(
                           controller: _cumpleCtrl,
                           enabled: !isLoading,
@@ -204,7 +211,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        _Label('Edad'),
+                        _Label(t('register.age')),
                         _TextFieldRn(
                           controller: _edadCtrl,
                           enabled: !isLoading,
@@ -212,9 +219,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        _Label('Avatar (opcional)'),
+                        _Label(t('register.avatar')),
                         _PickerButtonRn(
-                          text: _avatar.trim().isEmpty ? 'Selecciona un avatar' : _avatar,
+                          text: _avatar.trim().isEmpty ? t('register.selectAvatar') : _avatar,
                           enabled: !isLoading,
                           onTap: () async {
                             if (isLoading) return;
@@ -228,12 +235,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     padding: const EdgeInsets.all(12),
                                     children: [
                                       Text(
-                                        'Selecciona avatar',
+                                        t('register.selectAvatar'),
                                         style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800),
                                       ),
                                       const SizedBox(height: 10),
                                       ...options.map((o) {
-                                        final label = o.isEmpty ? 'Sin avatar' : o;
+                                        final label = o.isEmpty ? t('register.noAvatar') : o;
                                         final active = _avatar == o;
                                         return Padding(
                                           padding: const EdgeInsets.only(bottom: 8),
@@ -256,7 +263,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         const SizedBox(height: 8),
 
                         _PrimaryButtonRn(
-                          title: isLoading ? 'Creando…' : 'Crear cuenta',
+                          title: isLoading ? t('register.creating') : t('register.create'),
                           enabled: !isLoading,
                           onTap: () async {
                             if (isLoading) return;
@@ -265,33 +272,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             final confirm = _confirmPasswordCtrl.text;
                             if (email.isEmpty || !email.contains('@')) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Ingresa un correo válido')),
+                                SnackBar(content: Text(t('register.error.email'))),
                               );
                               return;
                             }
                             if (pass.length < 6) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres')),
+                                SnackBar(content: Text(t('register.error.password'))),
                               );
                               return;
                             }
                             if (pass != confirm) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Las contraseñas no coinciden')),
+                                SnackBar(content: Text(t('register.error.passwordMismatch'))),
                               );
                               return;
                             }
                             final birth = _parseDdMmYyyy(_cumpleCtrl.text);
                             if (birth == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Cumpleaños inválido (usa DD/MM/YYYY)')),
+                                SnackBar(content: Text(t('register.error.birthday'))),
                               );
                               return;
                             }
                             final edad = int.tryParse(_edadCtrl.text.trim()) ?? 0;
                             if (edad < 13) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Debes tener al menos 13 años')),
+                                SnackBar(content: Text(t('register.error.age'))),
                               );
                               return;
                             }
@@ -300,7 +307,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    'La edad no coincide con el cumpleaños. Según la fecha, deberías tener $edadCalc años.',
+                                    t('register.error.ageMismatch').replaceAll('{age}', '$edadCalc'),
                                   ),
                                 ),
                               );
@@ -324,7 +331,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               context.go('/inicio');
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('No se pudo registrar')),
+                                SnackBar(content: Text(t('register.error.failed'))),
                               );
                             }
                           },
@@ -335,7 +342,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              '¿Ya tienes cuenta? ',
+                              t('register.login'),
                               style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFCBD5F5)),
                             ),
                             GestureDetector(
@@ -345,7 +352,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       context.go('/login');
                                     },
                               child: Text(
-                                'Inicia sesión',
+                                t('register.loginLink'),
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   color: const Color(0xFF38BDF8),
